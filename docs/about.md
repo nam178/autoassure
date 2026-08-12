@@ -28,201 +28,152 @@ machine handles the infrastructure.
 ## Glossary
 
 **Scenario** A description of a specific software behavior that AutoAssure
-should verify. Each Scenario declares its Inputs (what it needs to run) and
-Outputs (what it produces).
+should verify.
 
-**Evidence** A named value that a Scenario produces upon successful execution
-(e.g., an order ID, a session token, a created resource).
+**Precondition** A named value that a Scenario requires in order to execute.
 
-**Precondition** A named value that a Scenario requires in order to execute. A
-Scenario cannot run while any of its Preconditions remain unset.
+**Evidence** A named value that a Scenario produces upon successful execution.
 
-**Execution Plan** A graph describing which Scenarios to execute, in what order,
-and how Evidence from one Scenario is wired to the Preconditions of another.
-Users can create Execution Plans manually or allow an Execution Agent to
-generate them.
+**Execution Plan** A natural-language description of a sequence of software
+behaviors that AutoAssure should execute and verify. An Execution Plan can
+mention Scenarios and other Execution Plans, allowing plans to be composed and
+reused.
+
+Execution Plans are versioned and immutable. When an Execution Plan changes, a
+new version is created rather than modifying the existing version.
 
 **Run** The result of executing an Execution Plan against a specific Environment
-at a specific point in time. A Run produces concrete Evidence values, full
-tracing (HTTP requests, response bodies, timing), and structured logs for every
-Scenario executed. This built-in observability is a key advantage over
-traditional test scripts, which require significant custom code to achieve
-comparable logging and tracing visibility. Runs are immutable historical
-records.
+at a specific point in time.
 
-Execution Plans are versioned and immutable. When an Agent changes an Execution
-Plan, it creates a new version rather than modifying the existing version. A Run
-references the exact version of the Execution Plan that was executed and remains
-immutable as a historical record. This ensures that historical Runs remain
-accurate and reproducible even as Plans evolve.
+**Environment** A named configuration (e.g., Production, Staging) holding
+key-value pairs accessible inside Scenarios. Classified as Production or
+Non-Production.
 
 **Agent** An AI worker that autonomously performs work on the Scenario Knowledge
-Base, such as discovering Scenarios or creating and executing Execution Plans.
+Base.
 
 **Application** A software product or system owned by a team and tested as a
-whole. An Application may consist of one or more Components, including a single
-monolith or multiple microservices.
+whole.
 
-**Component** A deployable or logically distinct part of an Application that is
-associated with source code, such as a microservice, web application, mobile
-application, or monolith.
-
-**Default Component** The initial Component automatically created for an
-Application, allowing users to start using AutoAssure without having to define
-their application architecture first. Additional Components can be added later.
-
-**Component Identifier** A short, unique identifier for a Component used to make
-Components easier to recognize, search, filter, and reference throughout the
-AutoAssure interface. AutoAssure could generate one automatically, and users
-could change it if needed.
-
-**Environment** A named configuration (e.g., Production, Staging, Pre-Staging)
-that holds a set of key-value pairs accessible directly inside Scenarios. Each
-Environment is marked as either Production or Non-Production. Scenarios can be
-flagged so they are excluded from Production Environments—for example, a "Delete
-Test User" Scenario should never run against production. During execution, if
-the Execution Agent determines that a Scenario needs a value not yet defined
-(such as a URL endpoint), it can prompt the user to add the key-value pair to
-the relevant Environment on the fly.
+**Component** A deployable or logically distinct part of an Application
+associated with source code (e.g., a microservice or monolith).
 
 ## How It Works
 
-```txt
-ORGANISATION
-│
-└── APPLICATION
-     ├── CONFIGURATION
-     │    ├── Environments
-     │    └── Agents
-     │
-     ├── COMPONENTS
-     │    ├── Component A
-     │    ├── Component B
-     │    └── Component C
-     │
-     ├── SCENARIOS
-     │    ├── Preconditions
-     │    └── Evidence
-     │
-     ├── EXECUTION PLANS
-     │
-     ├── RUNS
-     │
-     └── ..
+### 1. Create an Application
+
+On first launch, a setup wizard guides you through creating your first
+**Application**—typically one per product or system your team owns. Access
+permissions are scoped to Applications, so each team sees only what's theirs.
+
+### 2. Define your Components
+
+Within your Application, you add **Components**—the services or microservices
+that make up your system. You link each Component to a code repository and
+optionally pin it to a branch or tag. If your system is a monolith, AutoAssure
+creates a single default Component for you so you can skip this step and start
+testing immediately.
+
+Once your Components are in place, AutoAssure can offer AI **Agents** to help
+with test design and planning—for example, a Discovery Agent that inspects your
+source code and suggests Scenarios, or an Execution Agent that drafts Execution
+Plans. You can turn this on or off per Application in Settings. Everything an
+Agent does, you can also do yourself.
+
+### 3. Describe what to test
+
+You create **Scenarios** that describe the behaviors you want to verify.
+Scenarios are not scoped to a single Component—they can span your entire system.
+You can write Scenarios manually, or let a Discovery Agent suggest them based on
+your source code.
+
+> **Under the hood:** AutoAssure analyses each Scenario to determine what it
+> needs in order to run (**Preconditions**) and what it produces upon success
+> (**Evidence**). You can see these on a Scenario's detail page, but you don't
+> need to define them yourself.
+
+### 5. Configure your Environments
+
+You set up **Environments** (e.g., Staging, Production) as collections of
+key-value pairs—API endpoints, credentials, feature flags—that Scenarios
+reference at runtime. You mark each Environment as Production or Non-Production.
+Destructive Scenarios (e.g., deleting test data) are automatically excluded from
+Production Environments.
+
+If a Scenario needs a value that doesn't exist yet, the system prompts you to
+add it to the relevant Environment on the fly.
+
+### 6. Design your Execution Plans
+
+While Scenarios describe individual behaviors, **Execution Plans** describe
+multi-step flows—the order in which Scenarios should run and how they connect.
+They are written as simple, natural-language documents rather than test scripts
+or visual graphs.
+
+For example:
+
+```text
+# Shopping Cart Payment Testing
+
+1. Log in as a customer.
+2. Add a MacBook to the shopping cart.
+3. Proceed to checkout.
+4. Complete payment with a valid credit card.
+5. Verify that the order was successfully created.
 ```
 
-To get started, users create one or more **Applications** within an
-organization. Typically, each team owns one Application per product. Employee
-access permissions are scoped to Applications.
+When you save a plan, AutoAssure interprets what you've written and works out
+how the Scenarios should be executed, including how Evidence produced by one
+step should be used by another. If something is ambiguous, AutoAssure asks you
+to clarify rather than requiring you to learn a new test syntax.
 
-Within each Application, users define **Components**—the services or
-microservices that make up the system. Each Component links to a code repository
-and can be pinned to a specific branch or tag. For monolith applications,
-AutoAssure automatically creates a single default Component, so users can start
-testing immediately without defining their architecture first.
+Execution Plans can also run other Execution Plans, making them reusable and
+composable. For example, a `Prepare Shopping Cart` plan can be reused by
+multiple payment-testing plans without duplicating the setup steps.
 
-On first launch, AutoAssure guides users through a setup wizard to create their
-initial Application and Components.
+Plans can describe conditional behavior in natural language as well. AutoAssure
+handles the underlying branching and orchestration automatically—the execution
+graph is an internal implementation detail, not something you need to design.
 
-Within each Application, **Scenarios** describe the behaviors that need to be
-tested. Scenarios are not scoped to a single Component because they capture
-system-wide behavior that may span multiple Components. Users can create
-Scenarios manually, defining their own test behaviors, or they can leverage a
-Discovery Agent to automatically inspect Components and source code to uncover
-new Scenarios. This dual approach lets teams start testing immediately with
-manual design, then scale their test coverage through automated discovery.
+You can create and modify Execution Plans yourself, or let an **Execution
+Agent** generate and maintain them for you.
 
-When defining a Scenario, users declare its **Preconditions**—named values the
-Scenario needs in order to run—and its **Evidence**—named values the Scenario
-produces upon successful execution.
+> **Under the hood:** When you save an Execution Plan, AutoAssure automatically
+> resolves which Scenarios to invoke and how the output of one step feeds into
+> the next. The result is a directed execution graph—you can view it after
+> saving, but you never need to build or maintain it yourself.
 
-**Environments** provide configuration values that Scenarios can reference at
-runtime—things like API endpoints, credentials, or feature flags. Each
-Environment is a collection of key-value pairs and is classified as Production
-or Non-Production. This classification enables safety guardrails: destructive
-Scenarios (e.g., deleting test data) can be excluded from Production
-Environments. When the Execution Agent runs a plan and encounters a missing
-value, it prompts the user to add the key-value pair to the target Environment,
-keeping configuration discoverable and up to date.
+### 7. Run and inspect results
 
-**Execution Plans** orchestrate multiple Scenarios together by wiring Evidence
-from one Scenario to the Preconditions of another. Users can create Execution
-Plans manually, or enable an Execution Agent (via Application Settings) to
-generate them automatically.
-
-**Runs** are produced when an Execution Plan is executed against a target
-Environment. Each Run captures the concrete Evidence values produced by every
-Scenario, along with full tracing and structured logs—HTTP requests, response
-bodies, timing, and any errors encountered. Users can browse recent Runs from
-the Application overview to inspect results without needing to configure
-external logging or tracing infrastructure.
-
-**Agents** are optional helpers that operate on the user's behalf. They can be
-enabled or disabled in Application Settings. When enabled, agents can discover
-Scenarios, generate Execution Plans, and run them. They are a convenience, not a
-requirement—users retain full manual control over all of these activities.
-
-## Application Navigation
-
-```txt
-┌──────────────────────────────────────────────────────────────────────────────┐
-│  AutoAssure ▾     Checkout Application ▾                 🔍  ?  👤           │
-├───────────────┬──────────────────────────────────────────────────────────────┤
-│               │                                                              │
-│  OVERVIEW     │                         Overview                             │
-│               │                                                              │
-│  ◉ Overview   │   Checkout Application                                       │
-│               │   ──────────────────────────────────────────────────────     │
-│  TESTING      │                                                              │
-│  Scenarios    │   ┌─────────────────┐  ┌─────────────────┐                   │
-│  Plans        │   │  42 Scenarios   │  │  96% Passing    │                   │
-│  Runs         │   │  38 Ready       │  │  Last run       │                   │
-│               │   └─────────────────┘  └─────────────────┘                   │
-│               │                                                              │
-│  ───────────  │   Recent Activity                                            │
-│               │                                                              │
-│  SETTINGS     │   ✓ Discovery Agent found 3 new scenarios                    │
-│  Settings     │   ✓ Run #1842 completed                                      │
-│               │   ⚠ 2 scenarios need attention                               │
-│               │                                                              │
-│               │   Recent Runs                                                │
-│               │   ┌────────┬──────────┬───────────┬──────────────┐           │
-│               │   │ #1842  │ Failed   │ 10:42 AM  │ Plan v12     │           │
-│               │   │ #1841  │ Passed   │ 09:15 AM  │ Plan v12     │           │
-│               │   └────────┴──────────┴───────────┴──────────────┘           │
-│               │                                                              │
-└───────────────┴──────────────────────────────────────────────────────────────┘
-```
+You execute an Execution Plan against a target Environment to produce a **Run**.
+Each Run captures the concrete Evidence values from every Scenario, along with
+full tracing and structured logs—HTTP requests, response bodies, timing, and
+errors. You browse recent Runs from your Application overview to inspect results
+without needing to configure any external logging or tracing infrastructure.
 
 ## Decision Logs
 
-**1. Agent as a Secondary Concept**
+### 1. Agent as a Secondary Concept
 
 Agents are an implementation and automation concept rather than the primary
-object users interact with. Users primarily work with Scenarios, Inputs,
-Outputs, and Execution Plans. Agents operate behind these artifacts and are
-responsible for discovering, improving, maintaining, and executing them.
+object users interact with. Users primarily work with **Scenarios and Execution
+Plans**. Agents operate behind these artifacts and are responsible for
+discovering, improving, maintaining, and executing them.
 
 Agents remain visible and accessible so users can understand what AutoAssure is
 doing, inspect activity and logs, and configure agent behavior when needed.
 However, users do not create or manage agents as part of the primary workflow.
 
-Agents are therefore exposed as a **secondary concept**, likely through Project
+Agents are therefore exposed as a secondary concept, likely through Project
 Settings or a dedicated Agents area, rather than being the starting point of the
 user experience.
 
-## Todos
+### 2. Execution Plans are Natural-Language Documents
 
-~~1. Should we introduce the concept of Agents?~~
+Execution Plans are authored as natural-language documents rather than graphs or
+test scripts. AutoAssure interprets them and builds the execution graph
+automatically.
 
-1. Observability and dashboards - where do they sit?
-1. Should we add margin when billing customer the use of tokens? Should we allow
-   customer to plugin their own open API key or bedrock.
-1. How do we execute tests? Deploy test clients? What platforms should test
-   clients be written for?
-1. Color theme/black & white?
-1. How to structure the app? Pages? Menus? Navigation?
-
-```
-
-```
+This supports AutoAssure's goal of letting engineers describe **what** they want
+to verify without having to manage **how** it is executed. Plans remain simple
+for humans to read and modify, while AI handles the underlying complexity.
