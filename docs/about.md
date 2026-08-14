@@ -58,6 +58,10 @@ whole.
 **Component** A deployable or logically distinct part of an Application
 associated with source code (e.g., a microservice or monolith).
 
+**Test Client** A lightweight application that runs in your environment and
+allows AutoAssure to execute authorized operations against systems that are not
+directly accessible from AutoAssure Cloud.
+
 ## How It Works
 
 ### 1. Create an Application
@@ -146,34 +150,28 @@ Agent** generate and maintain them for you.
 ### 7. Run and inspect results
 
 You execute an Execution Plan against a target Environment to produce a **Run**.
+When starting a Run, you select the Test Client that should execute the
+operations.
+
+For convenience, every Application has a default Test Client hosted by
+AutoAssure. This is suitable when AutoAssure can directly access the target
+Environment. For environments that are only accessible from your own network,
+you can install a Test Client in your environment and select it when running the
+plan.
+
+If the selected Environment requires a Test Client that isn't available,
+AutoAssure guides you through downloading and connecting one.
+
+The Test Client performs the requested operations on behalf of AutoAssure while
+enforcing its configured permissions. It can run temporarily as part of a CI/CD
+pipeline or continuously as a service for on-demand execution.
+
 Each Run captures the concrete Evidence values from every Scenario, along with
 full tracing and structured logs—HTTP requests, response bodies, timing, and
 errors. You browse recent Runs from your Application overview to inspect results
 without needing to configure any external logging or tracing infrastructure.
 
-## Decision Logs
-
-### 1. Agent as a Secondary Concept
-
-Agents are an implementation and automation concept rather than the primary
-object users interact with. Users primarily work with **Scenarios and Execution
-Plans**. Agents operate behind these artifacts and are responsible for
-discovering, improving, maintaining, and executing them.
-
-Agents remain visible and accessible so users can understand what AutoAssure is
-doing, inspect activity and logs, and configure agent behavior when needed.
-However, users do not create or manage agents as part of the primary workflow.
-
-Agents are therefore exposed as a secondary concept, likely through Project
-Settings or a dedicated Agents area, rather than being the starting point of the
-user experience.
-
-### 2. Execution Plans are Natural-Language Documents
-
-Execution Plans are authored as natural-language documents rather than graphs or
-test scripts. AutoAssure interprets them and builds the execution graph
-automatically.
-
-This supports AutoAssure's goal of letting engineers describe **what** they want
-to verify without having to manage **how** it is executed. Plans remain simple
-for humans to read and modify, while AI handles the underlying complexity.
+Under the hood: Execution Agents determine which operations are required during
+a Run. AutoAssure sends operations that require environment access to the
+selected Test Client. The Test Client executes them within its environment,
+enforces its local permission policy, and returns the results to AutoAssure.
