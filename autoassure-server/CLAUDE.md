@@ -1,28 +1,31 @@
 # autoassure-server
 
-ASP.NET Core (net10.0) API. OpenAPI spec generated at build time, consumed by `autoassure-server-sdk`.
+Backend API project that serves autoassure-web.
 
 ## Structure
 
-- `Controllers/` — endpoints
-- `Models/` — core pure models, pure business logic functions.
-- `Repositories/` — data access
-- `Services/` — business logic
+- `Controllers/`
+- `Contracts/` — API request/response DTOs
+- `Models/` — pure business domain models and functions.
+- `Repositories/`
+- `Services/`
 - `Common/` — shared utilities
 
 ## After coding
 
-1. `dotnet build`
-2. `dotnet format --verify-no-changes` (analyzer lint: unused imports, style; analyzers on via `EnableNETAnalyzers`+
-   `EnforceCodeStyleInBuild` in csproj)
-3. Tests: ask first
+1. `dotnet build A2.Server.slnx`
+2. `dotnet format A2.Server.slnx --verify-no-changes` (analyzer lint: unused imports, style; analyzers on via
+   `EnableNETAnalyzers`+`EnforceCodeStyleInBuild` in csproj)
+3. `dotnet jb inspectcode A2.Server.slnx -o=inspect.sarif.json --no-build --severity=WARNING` (ReSharper-grade
+   inspections build/format/analyzers don't catch: never-instantiated types, unused positional properties, redundant
+   using directives, etc. — requires `dotnet tool restore` once; see below)
+4. Tests: ask first
 
-(no need formatting, its done automatically via `dotnet csharpier format .` which runs automatically as a Claude Code
-hook)
+(no need to format — `dotnet csharpier format .` runs automatically as a Claude Code hook)
 
-Fix all errors/warnings.
+Fix all errors/warnings from build and format. For `inspectcode` findings: fix real issues; for intentional not-yet-used
+members, suppress.
 
-## SDK regen
+## SDK generation
 
-API changed (endpoint/DTO added/removed/modified) → ask before running `../scripts/generate-sdk.sh` (rebuilds server,
-overwrites SDK, reinstalls package).
+When any API changed (endpoint/DTO added/removed/modified) → ask user if they want to run `../scripts/generate-sdk.sh`
