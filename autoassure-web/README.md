@@ -2,6 +2,21 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
+## Building
+
+This app depends on `autoassure-server-sdk`, a TypeScript API client generated from the `autoassure-server` OpenAPI spec, consumed as a local `file:../autoassure-server-sdk` dependency. That folder must exist and be built **before** installing/building this project:
+
+```bash
+# from the autoassure/ repo root
+bash scripts/generate-sdk.sh
+
+# then, from autoassure-web/
+npm install
+npm run build
+```
+
+Re-run `scripts/generate-sdk.sh` whenever the server's API surface changes (new/changed endpoints or request/response types), then `npm install` again in `autoassure-web` to pick up the regenerated client.
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)

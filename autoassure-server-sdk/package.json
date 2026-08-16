@@ -1,0 +1,17 @@
+{
+  "name": "autoassure-server-sdk",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Generated TypeScript client for the autoassure-server OpenAPI spec. Do not edit src/ by hand — regenerate it with autoassure/scripts/generate-sdk.sh",
+  "main": "dist/Api.js",
+  "types": "dist/Api.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "axios": "^1.7.9"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

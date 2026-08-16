@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/namduong/Documents/autoassure && dotnet tool restore >/dev/null 2>&1; dotnet csharpier format autoassure-server 2>/dev/null || true",
+            "statusMessage": "Formatting autoassure-server with CSharpier..."
+          }
+        ]
+      }
+    ]
+  }
+}
