@@ -1,3 +1,3 @@
 # AutoAssure Web
 
-This project contains the web interface for AutoAssure.
+The web interface of AutoAssure.

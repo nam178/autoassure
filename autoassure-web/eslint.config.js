@@ -26,7 +26,6 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
-      ...reactPlugin.configs.recommended.rules,
       ...reactHooksPlugin.configs.recommended.rules,
       ...tsPlugin.configs.recommended.rules,
       ...tsPlugin.configs["recommended-type-checked"].rules,
