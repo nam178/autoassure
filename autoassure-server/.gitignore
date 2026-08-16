@@ -1,0 +1,19 @@
+# Build and Object files
+bin/
+obj/
+
+# IDE configuration
+.idea/
+
+# Environment and local config
+appsettings.Development.json
+appsettings.local.json
+
+# Runtime
+*.dll
+*.exe
+*.pdb
+
+# OS
+.DS_Store
+Thumbs.db
