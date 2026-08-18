@@ -5,7 +5,7 @@ The web interface of AutoAssure.
 Structure of the core application (layout, auth, etc.)
 
 - /src:
-  - /models: pure models and pure business logic functions.
+  - /models: core BUSINESS models and their pure BUSINESS logic functions.
   - /repositories: data access layer, API clients.
   - /services: business logic services.
   - /components: react views.
