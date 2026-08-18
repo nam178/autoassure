@@ -39,7 +39,7 @@ SDK_DIR="$ROOT_DIR/autoassure-server-sdk"
 SPEC_SCRATCH_DIR="$SDK_DIR/.spec"
 
 echo "==> Building autoassure-server (generates OpenAPI spec)"
-dotnet build "$SERVER_DIR" --nologo -v minimal
+dotnet build "$SERVER_DIR" -c Release --nologo -v minimal
 
 SPEC_FILE="$(find "$SPEC_SCRATCH_DIR" -maxdepth 1 -name '*.json' | head -n 1)"
 if [ -z "$SPEC_FILE" ]; then

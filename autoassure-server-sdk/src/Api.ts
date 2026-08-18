@@ -10,20 +10,24 @@
  * ---------------------------------------------------------------
  */
 
-export interface WeatherForecast {
-  /** @format date */
-  date: string;
-  /**
-   * @format int32
-   * @pattern ^-?(?:0|[1-9]\d*)$
-   */
-  temperatureC: number | string;
-  summary: null | string;
-  /**
-   * @format int32
-   * @pattern ^-?(?:0|[1-9]\d*)$
-   */
-  temperatureF?: number | string;
+export interface AuthTokenResponse {
+  token: string;
+  /** @format date-time */
+  expiresAt: string;
+  identity: GoogleIdentity;
+}
+
+export interface ExchangeGoogleCodeRequest {
+  code: string;
+  codeVerifier: string;
+}
+
+export interface GoogleIdentity {
+  googleUserId: string;
+  email: string;
+  emailVerified: boolean;
+  name: null | string;
+  hostedDomain: null | string;
 }
 
 import type {
@@ -212,18 +216,23 @@ export class Api<SecurityDataType extends unknown> {
     this.http = http;
   }
 
-  weatherforecast = {
+  auth = {
     /**
      * No description
      *
-     * @tags A2.Server
-     * @name GetWeatherForecast
-     * @request GET:/weatherforecast
+     * @tags Auth
+     * @name GoogleTokenCreate
+     * @request POST:/auth/google/token
      */
-    getWeatherForecast: (params: RequestParams = {}) =>
-      this.http.request<WeatherForecast[], any>({
-        path: `/weatherforecast`,
-        method: "GET",
+    googleTokenCreate: (
+      data: ExchangeGoogleCodeRequest,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<AuthTokenResponse, any>({
+        path: `/auth/google/token`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),

@@ -5,22 +5,48 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/weatherforecast": {
-      "get": {
+    "/auth/google/token": {
+      "post": {
         "tags": [
-          "A2.Server"
+          "Auth"
         ],
-        "operationId": "GetWeatherForecast",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExchangeGoogleCodeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExchangeGoogleCodeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExchangeGoogleCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
             "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokenResponse"
+                }
+              },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/WeatherForecast"
-                  }
+                  "$ref": "#/components/schemas/AuthTokenResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokenResponse"
                 }
               }
             }
@@ -31,39 +57,71 @@
   },
   "components": {
     "schemas": {
-      "WeatherForecast": {
+      "AuthTokenResponse": {
         "required": [
-          "date",
-          "temperatureC",
-          "summary"
+          "token",
+          "expiresAt",
+          "identity"
         ],
         "type": "object",
         "properties": {
-          "date": {
+          "token": {
+            "type": "string"
+          },
+          "expiresAt": {
             "type": "string",
-            "format": "date"
+            "format": "date-time"
           },
-          "temperatureC": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
+          "identity": {
+            "$ref": "#/components/schemas/GoogleIdentity"
+          }
+        }
+      },
+      "ExchangeGoogleCodeRequest": {
+        "required": [
+          "code",
+          "codeVerifier"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
           },
-          "summary": {
+          "codeVerifier": {
+            "type": "string"
+          }
+        }
+      },
+      "GoogleIdentity": {
+        "required": [
+          "googleUserId",
+          "email",
+          "emailVerified",
+          "name",
+          "hostedDomain"
+        ],
+        "type": "object",
+        "properties": {
+          "googleUserId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "name": {
             "type": [
               "null",
               "string"
             ]
           },
-          "temperatureF": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
+          "hostedDomain": {
             "type": [
-              "integer",
+              "null",
               "string"
-            ],
-            "format": "int32"
+            ]
           }
         }
       }
@@ -71,7 +129,7 @@
   },
   "tags": [
     {
-      "name": "A2.Server"
+      "name": "Auth"
     }
   ]
 }
