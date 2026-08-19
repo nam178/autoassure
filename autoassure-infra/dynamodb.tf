@@ -14,22 +14,6 @@ resource "aws_dynamodb_table" "refresh_tokens" {
     type = "S"
   }
 
-  attribute {
-    name = "GoogleUserId"
-    type = "S"
-  }
-
-  # Lets a future "revoke all sessions for this user" endpoint look up every
-  # refresh token for a user. DynamoDB GSIs only ever support eventually
-  # consistent reads, which is fine for that use case (not the per-request
-  # token-validation hot path, which reads the base table by
-  # RefreshTokenSecretHash instead, with ConsistentRead=true).
-  global_secondary_index {
-    name            = "GoogleUserIdIndex"
-    hash_key        = "GoogleUserId"
-    projection_type = "ALL"
-  }
-
   # ExpiresAt is stored as epoch seconds (see DynamoDbRefreshTokenRepository.cs)
   # so DynamoDB can use it directly for TTL-based cleanup. TTL deletion isn't
   # immediate (up to 48h), so the app still checks ExpiresAt on every read.
@@ -39,7 +23,7 @@ resource "aws_dynamodb_table" "refresh_tokens" {
   }
 
   point_in_time_recovery {
-    enabled = true
+    enabled = var.environment == "prod"
   }
 
   server_side_encryption {
