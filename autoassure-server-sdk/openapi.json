@@ -53,6 +53,55 @@
           }
         }
       }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshTokenResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshTokenResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshTokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -61,6 +110,7 @@
         "required": [
           "token",
           "expiresAt",
+          "refreshTokenSecret",
           "identity"
         ],
         "type": "object",
@@ -71,6 +121,9 @@
           "expiresAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "refreshTokenSecret": {
+            "type": "string"
           },
           "identity": {
             "$ref": "#/components/schemas/GoogleIdentity"
@@ -109,7 +162,8 @@
             "type": "string"
           },
           "emailVerified": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "True if Google confirmed the email. Only trust this when string? GoogleIdentity.HostedDomain is set\n(a Google Workspace account, verified by the domain admin) or string GoogleIdentity.Email ends with\n\"@gmail.com\" (Google-owned, self-verified). For any other domain the address may belong to a\nnon-Google mailbox that was never actually confirmed to receive mail — don't rely on it."
           },
           "name": {
             "type": [
@@ -121,7 +175,40 @@
             "type": [
               "null",
               "string"
-            ]
+            ],
+            "description": "The Google Workspace domain (\"hd\" claim), or null for a personal account."
+          }
+        }
+      },
+      "RefreshTokenRequest": {
+        "required": [
+          "refreshTokenSecret"
+        ],
+        "type": "object",
+        "properties": {
+          "refreshTokenSecret": {
+            "type": "string",
+            "description": "The raw refresh token secret previously issued to the client, to be exchanged for a new access token."
+          }
+        }
+      },
+      "RefreshTokenResponse": {
+        "required": [
+          "token",
+          "expiresAt",
+          "refreshTokenSecret"
+        ],
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refreshTokenSecret": {
+            "type": "string"
           }
         }
       }

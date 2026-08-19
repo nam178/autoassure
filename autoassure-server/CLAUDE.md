@@ -10,6 +10,8 @@ Backend API project that serves autoassure-web.
 - `Repositories/`
 - `Services/`
 - `Common/` — shared utilities
+- `Repositories/` — persistence, currently DynamoDB-backed. AWS infra (tables, etc.) is provisioned
+  via Terraform in `../autoassure-infra`, not created by the app at runtime.
 
 ## After coding
 

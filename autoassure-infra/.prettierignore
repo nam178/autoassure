@@ -1,0 +1,9 @@
+# Formatted by `terraform fmt`, not prettier
+*.tf
+*.tfvars
+.terraform.lock.hcl
+
+# Terraform working directory (provider binaries, state cache)
+.terraform/
+*.tfstate
+*.tfstate.backup

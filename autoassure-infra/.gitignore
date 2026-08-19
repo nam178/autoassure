@@ -1,0 +1,12 @@
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+*.tfplan
+.tflint.d/
+
+# dev.tfvars / prod.tfvars are tracked (no secrets, just region/env). Any
+# personal/local override file should use this suffix instead:
+*.tfvars.local
+
+# Personal editor settings (e.g. per-window color), not shared team config.
+.vscode/

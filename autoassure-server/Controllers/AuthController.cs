@@ -10,7 +10,7 @@ namespace A2.Server.Controllers;
 [Route("auth")]
 public class AuthController(
     IGoogleTokenExchangeService googleTokenExchangeService,
-    ITokenIssuerService tokenService
+    IAuthTokenService authTokenService
 ) : ControllerBase
 {
     [HttpPost("google/token")]
@@ -24,12 +24,38 @@ public class AuthController(
                 request.Code,
                 request.CodeVerifier
             );
-            var token = tokenService.IssueToken(identity);
-            return Ok(new AuthTokenResponse(token.Value, token.ExpiresAt, identity));
+            var tokens = await authTokenService.IssueAsync(identity);
+            return Ok(
+                new AuthTokenResponse(
+                    tokens.AccessToken.Value,
+                    tokens.AccessToken.ExpiresAt,
+                    tokens.RefreshTokenSecret,
+                    identity
+                )
+            );
         }
         catch (Exception ex) when (ex is InvalidJwtException or GoogleTokenExchangeException)
         {
             return Unauthorized(new { error = "Google authorization failed." });
         }
+    }
+
+    [HttpPost("refresh")]
+    public async Task<ActionResult<RefreshTokenResponse>> Refresh(RefreshTokenRequest request)
+    {
+        var tokens = await authTokenService.RefreshAsync(request.RefreshTokenSecret);
+
+        if (tokens is null)
+        {
+            return Unauthorized(new { error = "Refresh token is invalid, expired, or revoked." });
+        }
+
+        return Ok(
+            new RefreshTokenResponse(
+                tokens.AccessToken.Value,
+                tokens.AccessToken.ExpiresAt,
+                tokens.RefreshTokenSecret
+            )
+        );
     }
 }

@@ -14,6 +14,7 @@ export interface AuthTokenResponse {
   token: string;
   /** @format date-time */
   expiresAt: string;
+  refreshTokenSecret: string;
   identity: GoogleIdentity;
 }
 
@@ -25,9 +26,28 @@ export interface ExchangeGoogleCodeRequest {
 export interface GoogleIdentity {
   googleUserId: string;
   email: string;
+  /**
+   * True if Google confirmed the email. Only trust this when string? GoogleIdentity.HostedDomain is set
+   * (a Google Workspace account, verified by the domain admin) or string GoogleIdentity.Email ends with
+   * "@gmail.com" (Google-owned, self-verified). For any other domain the address may belong to a
+   * non-Google mailbox that was never actually confirmed to receive mail — don't rely on it.
+   */
   emailVerified: boolean;
   name: null | string;
+  /** The Google Workspace domain ("hd" claim), or null for a personal account. */
   hostedDomain: null | string;
+}
+
+export interface RefreshTokenRequest {
+  /** The raw refresh token secret previously issued to the client, to be exchanged for a new access token. */
+  refreshTokenSecret: string;
+}
+
+export interface RefreshTokenResponse {
+  token: string;
+  /** @format date-time */
+  expiresAt: string;
+  refreshTokenSecret: string;
 }
 
 import type {
@@ -230,6 +250,23 @@ export class Api<SecurityDataType extends unknown> {
     ) =>
       this.http.request<AuthTokenResponse, any>({
         path: `/auth/google/token`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Auth
+     * @name RefreshCreate
+     * @request POST:/auth/refresh
+     */
+    refreshCreate: (data: RefreshTokenRequest, params: RequestParams = {}) =>
+      this.http.request<RefreshTokenResponse, any>({
+        path: `/auth/refresh`,
         method: "POST",
         body: data,
         type: ContentType.Json,

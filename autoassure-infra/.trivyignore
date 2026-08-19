@@ -1,0 +1,4 @@
+# AWS-0025: DynamoDB table uses the AWS-owned encryption key rather than a customer-managed
+# KMS key. Sufficient for a hashed-token table at this stage; a CMK adds per-request cost and
+# key-rotation overhead not justified yet. Revisit if compliance requirements change.
+AWS-0025
