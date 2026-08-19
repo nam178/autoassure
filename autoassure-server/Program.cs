@@ -8,11 +8,17 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var ssmParameterPath = Environment.GetEnvironmentVariable("SSM_PARAMETER_PATH");
+if (!string.IsNullOrEmpty(ssmParameterPath))
+{
+    builder.Configuration.AddSystemsManager(ssmParameterPath);
+}
+
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
-builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection("Google"));
+builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection("OAuth:Google"));
 builder.Services.Configure<AuthTokenOptions>(builder.Configuration.GetSection("Auth"));
 builder.Services.Configure<DynamoDbOptions>(builder.Configuration.GetSection("DynamoDb"));
 builder.Services.AddHttpClient<IGoogleTokenExchangeService, GoogleTokenExchangeService>();
