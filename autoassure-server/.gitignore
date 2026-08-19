@@ -2,6 +2,9 @@
 bin/
 obj/
 
+# Lint output
+inspect.sarif.json
+
 # IDE configuration
 .idea/
 
