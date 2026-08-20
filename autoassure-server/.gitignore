@@ -7,6 +7,7 @@ inspect.sarif.json
 
 # IDE configuration
 .idea/
+*.DotSettings.user
 
 # Environment and local config
 appsettings.Development.json

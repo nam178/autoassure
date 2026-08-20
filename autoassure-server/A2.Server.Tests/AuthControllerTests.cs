@@ -40,7 +40,7 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
                             config.AddInMemoryCollection(
                                 new Dictionary<string, string?>
                                 {
-                                    ["Jwt:SigningKey"] = "test-signing-key-at-least-32-bytes-long",
+                                    ["Auth:SigningKey"] = "test-signing-key-at-least-32-bytes-long",
                                 }
                             )
                     )
