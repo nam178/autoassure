@@ -8,8 +8,8 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var ssmParameterPath = Environment.GetEnvironmentVariable("SSM_PARAMETER_PATH");
-if (!string.IsNullOrEmpty(ssmParameterPath))
+var ssmParameterPath = builder.Configuration["AUTOASSURE_SSM_PARAMETER_PATH"];
+if (!DesignTimeBuild.IsActive && !string.IsNullOrEmpty(ssmParameterPath))
 {
     builder.Configuration.AddSystemsManager(ssmParameterPath);
 }
@@ -26,6 +26,7 @@ builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddScoped<IRefreshTokenRepository, DynamoDbRefreshTokenRepository>();
 builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
 builder.Services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
+builder.Services.AddHostedService<ConfigValidationHostedService>();
 
 builder
     .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -60,4 +61,4 @@ app.MapControllers();
 
 app.Run();
 
-public partial class Program { }
+public abstract partial class Program { }
