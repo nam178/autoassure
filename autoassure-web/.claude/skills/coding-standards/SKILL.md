@@ -24,6 +24,7 @@ description:
 - Code (services, components, hooks, etc.) MUST NOT read `import.meta.env` or
   any other config source directly; config MUST be injected via
   constructor/props (read/validated in `/src/ioc`).
+- AVOID ReturnType<T>. Declare type properly.
 
 ## Comments & Docs Best Practices
 
