@@ -1,16 +1,16 @@
 import { memo, type ReactNode } from "react";
 import { Navigate } from "react-router-dom";
-import { useIsLoggedIn } from "../../hooks/useIsLoggedIn";
+import { useAuthenticationState } from "../../hooks/useAuthenticationState";
 
 export const RequireAuth = memo(function RequireAuth({
   children,
 }: {
   children: ReactNode;
 }) {
-  const isLoggedIn = useIsLoggedIn();
+  const authState = useAuthenticationState();
 
   // When there's no saved session, send the user to log in instead of rendering the protected view.
-  if (!isLoggedIn) {
+  if (authState.status === "logged-out") {
     return <Navigate to="/auth/login" replace />;
   }
 
