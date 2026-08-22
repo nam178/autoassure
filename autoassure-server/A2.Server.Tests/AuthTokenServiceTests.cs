@@ -105,6 +105,28 @@ public class AuthTokenServiceTests
         Assert.Null(result);
     }
 
+    [Theory]
+    [InlineData(0, true)]
+    [InlineData(-1, false)]
+    public async Task RefreshAsync_HonorsExpiryBoundary(
+        int secondsBeforeExpiryCutoff,
+        bool expectValid
+    )
+    {
+        var now = DateTimeOffset.UtcNow;
+        var repository = new FakeRefreshTokenRepository();
+        var issueService = CreateService(
+            repository,
+            now.AddDays(-30).AddSeconds(secondsBeforeExpiryCutoff),
+            expiryDays: 30
+        );
+        var refreshTokenSecret = await IssueRefreshTokenSecretAsync(issueService);
+
+        var result = await CreateService(repository, now).RefreshAsync(refreshTokenSecret);
+
+        Assert.Equal(expectValid, result is not null);
+    }
+
     [Fact]
     public async Task RefreshAsync_ReturnsNull_WhenTokenRevoked()
     {

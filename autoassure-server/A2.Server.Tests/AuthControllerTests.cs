@@ -23,15 +23,15 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
                 : throw new GoogleTokenExchangeException("invalid_grant");
     }
 
-    private sealed class FakeAuthTokenService(IssuedTokens tokens) : IAuthTokenService
+    private sealed class FakeAuthTokenService(IssuedTokens? tokens) : IAuthTokenService
     {
-        public Task<IssuedTokens> IssueAsync(GoogleIdentity identity) => Task.FromResult(tokens);
+        public Task<IssuedTokens> IssueAsync(GoogleIdentity identity) => Task.FromResult(tokens!);
 
         public Task<IssuedTokens?> RefreshAsync(string refreshTokenSecret) =>
-            Task.FromResult<IssuedTokens?>(tokens);
+            Task.FromResult(tokens);
     }
 
-    private HttpClient CreateClient(GoogleIdentity? fakeIdentity, IssuedTokens fakeTokens) =>
+    private HttpClient CreateClient(GoogleIdentity? fakeIdentity, IssuedTokens? fakeTokens) =>
         factory
             .WithWebHostBuilder(builder =>
                 builder
@@ -77,15 +77,11 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<AuthTokenResponse>();
-        Assert.Equal(
-            new AuthTokenResponse(
-                tokens.AccessToken.Value,
-                tokens.AccessToken.ExpiresAt,
-                tokens.RefreshTokenSecret,
-                identity
-            ),
-            body
-        );
+        Assert.NotNull(body);
+        Assert.Equal(tokens.AccessToken.Value, body.Token);
+        Assert.Equal(tokens.RefreshTokenSecret, body.RefreshTokenSecret);
+        Assert.Equal(identity, body.Identity);
+        Assert.InRange(body.ExpiresInSeconds, 3595, 3600);
     }
 
     [Fact]
@@ -101,6 +97,35 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
                 "/auth/google/token",
                 new { code = "fake-code", codeVerifier = "fake-verifier" }
             );
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostAuthRefresh_ReturnsNewTokens_WhenRefreshSucceeds()
+    {
+        var identity = new GoogleIdentity("user-123", "user@example.com", true, "Test User", null);
+        var tokens = new IssuedTokens(
+            new AppToken("fake-app-token", DateTimeOffset.UtcNow.AddHours(1)),
+            "fake-refresh-token"
+        );
+
+        var response = await CreateClient(identity, tokens)
+            .PostAsJsonAsync("/auth/refresh", new { refreshTokenSecret = "fake-refresh-token" });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<RefreshTokenResponse>();
+        Assert.NotNull(body);
+        Assert.Equal(tokens.AccessToken.Value, body.Token);
+        Assert.Equal(tokens.RefreshTokenSecret, body.RefreshTokenSecret);
+        Assert.InRange(body.ExpiresInSeconds, 3595, 3600);
+    }
+
+    [Fact]
+    public async Task PostAuthRefresh_ReturnsUnauthorized_WhenTokenInvalid()
+    {
+        var response = await CreateClient(null, null)
+            .PostAsJsonAsync("/auth/refresh", new { refreshTokenSecret = "unknown-token" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }

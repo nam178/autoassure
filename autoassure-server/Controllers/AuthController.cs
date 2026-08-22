@@ -10,7 +10,8 @@ namespace A2.Server.Controllers;
 [Route("auth")]
 public class AuthController(
     IGoogleTokenExchangeService googleTokenExchangeService,
-    IAuthTokenService authTokenService
+    IAuthTokenService authTokenService,
+    IClock clock
 ) : ControllerBase
 {
     [HttpPost("google/token")]
@@ -28,7 +29,7 @@ public class AuthController(
             return Ok(
                 new AuthTokenResponse(
                     tokens.AccessToken.Value,
-                    tokens.AccessToken.ExpiresAt,
+                    ExpiresInSeconds(tokens.AccessToken.ExpiresAt),
                     tokens.RefreshTokenSecret,
                     identity
                 )
@@ -53,9 +54,12 @@ public class AuthController(
         return Ok(
             new RefreshTokenResponse(
                 tokens.AccessToken.Value,
-                tokens.AccessToken.ExpiresAt,
+                ExpiresInSeconds(tokens.AccessToken.ExpiresAt),
                 tokens.RefreshTokenSecret
             )
         );
     }
+
+    private int ExpiresInSeconds(DateTimeOffset expiresAt) =>
+        (int)Math.Round((expiresAt - clock.UtcNow).TotalSeconds);
 }

@@ -109,7 +109,7 @@
       "AuthTokenResponse": {
         "required": [
           "token",
-          "expiresAt",
+          "expiresInSeconds",
           "refreshTokenSecret",
           "identity"
         ],
@@ -118,9 +118,14 @@
           "token": {
             "type": "string"
           },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time"
+          "expiresInSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Number of seconds until Token expires, measured from when the response is sent.\nA relative duration is used instead of an absolute timestamp because the client's clock may be offset\nfrom the server's.",
+            "format": "int32"
           },
           "refreshTokenSecret": {
             "type": "string"
@@ -195,7 +200,7 @@
       "RefreshTokenResponse": {
         "required": [
           "token",
-          "expiresAt",
+          "expiresInSeconds",
           "refreshTokenSecret"
         ],
         "type": "object",
@@ -203,9 +208,14 @@
           "token": {
             "type": "string"
           },
-          "expiresAt": {
-            "type": "string",
-            "format": "date-time"
+          "expiresInSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Number of seconds until Token expires, measured from when the response is sent.\nA relative duration is used instead of an absolute timestamp because the client's clock may be offset\nfrom the server's.",
+            "format": "int32"
           },
           "refreshTokenSecret": {
             "type": "string"

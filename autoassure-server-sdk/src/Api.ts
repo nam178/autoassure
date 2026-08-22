@@ -12,8 +12,14 @@
 
 export interface AuthTokenResponse {
   token: string;
-  /** @format date-time */
-  expiresAt: string;
+  /**
+   * Number of seconds until Token expires, measured from when the response is sent.
+   * A relative duration is used instead of an absolute timestamp because the client's clock may be offset
+   * from the server's.
+   * @format int32
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  expiresInSeconds: number | string;
   refreshTokenSecret: string;
   identity: GoogleIdentity;
 }
@@ -45,8 +51,14 @@ export interface RefreshTokenRequest {
 
 export interface RefreshTokenResponse {
   token: string;
-  /** @format date-time */
-  expiresAt: string;
+  /**
+   * Number of seconds until Token expires, measured from when the response is sent.
+   * A relative duration is used instead of an absolute timestamp because the client's clock may be offset
+   * from the server's.
+   * @format int32
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  expiresInSeconds: number | string;
   refreshTokenSecret: string;
 }
 

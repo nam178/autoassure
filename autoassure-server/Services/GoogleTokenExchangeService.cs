@@ -1,13 +1,15 @@
 using System.Text.Json.Serialization;
 using A2.Server.Common;
 using A2.Server.Models;
-using Google.Apis.Auth;
 using Microsoft.Extensions.Options;
 
 namespace A2.Server.Services;
 
-public class GoogleTokenExchangeService(HttpClient httpClient, IOptions<GoogleAuthOptions> options)
-    : IGoogleTokenExchangeService
+public class GoogleTokenExchangeService(
+    HttpClient httpClient,
+    IOptions<GoogleAuthOptions> options,
+    IGoogleIdTokenValidator idTokenValidator
+) : IGoogleTokenExchangeService
 {
     private const string TokenEndpoint = "https://oauth2.googleapis.com/token";
 
@@ -46,10 +48,7 @@ public class GoogleTokenExchangeService(HttpClient httpClient, IOptions<GoogleAu
             );
         }
 
-        var payload = await GoogleJsonWebSignature.ValidateAsync(
-            body.IdToken,
-            new GoogleJsonWebSignature.ValidationSettings { Audience = [options.Value.ClientId] }
-        );
+        var payload = await idTokenValidator.ValidateAsync(body.IdToken, options.Value.ClientId);
 
         return new GoogleIdentity(
             payload.Subject,

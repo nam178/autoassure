@@ -21,6 +21,7 @@ builder.Services.AddControllers();
 builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection("OAuth:Google"));
 builder.Services.Configure<AuthTokenOptions>(builder.Configuration.GetSection("Auth"));
 builder.Services.Configure<DynamoDbOptions>(builder.Configuration.GetSection("DynamoDb"));
+builder.Services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
 builder.Services.AddHttpClient<IGoogleTokenExchangeService, GoogleTokenExchangeService>();
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddScoped<IRefreshTokenRepository, DynamoDbRefreshTokenRepository>();
