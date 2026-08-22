@@ -6,7 +6,7 @@ export const LoginPage = memo(function LoginPage() {
   const authenticationService = useAuthenticationService();
 
   return (
-    <Container size="xs" py="xl">
+    <Container>
       <Stack align="center" gap="md">
         <Title order={1}>Log in</Title>
         {/* Kick off the Google PKCE flow; the service owns everything from here. */}

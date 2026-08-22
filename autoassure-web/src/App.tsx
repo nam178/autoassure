@@ -7,7 +7,7 @@ import { RequireAuth } from "./components/auth/RequireAuth";
 
 const HomePage = memo(function HomePage() {
   return (
-    <Container size="xs" py="xl">
+    <Container>
       <Title order={1}>AutoAssure</Title>
     </Container>
   );

@@ -38,7 +38,7 @@ export const AuthCallbackPage = memo(function AuthCallbackPage() {
 
   if (error !== null) {
     return (
-      <Container size="xs" py="xl">
+      <Container>
         <Stack gap="md">
           <Title order={1}>Login failed</Title>
           <Text c="var(--mantine-color-error)">{error}</Text>
@@ -48,7 +48,7 @@ export const AuthCallbackPage = memo(function AuthCallbackPage() {
   }
 
   return (
-    <Container size="xs" py="xl">
+    <Container>
       <Text>Signing you in&hellip;</Text>
     </Container>
   );
