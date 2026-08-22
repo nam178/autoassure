@@ -17,18 +17,18 @@ public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
 {
     private const string TableName = "RefreshTokens";
 
-    private AmazonDynamoDBClient client = null!;
-    private DynamoDbRefreshTokenRepository repository = null!;
+    private AmazonDynamoDBClient _client = null!;
+    private DynamoDbRefreshTokenRepository _repository = null!;
 
     public async Task InitializeAsync()
     {
-        client = TestDynamoClient.CreateClient<AmazonDynamoDBClient>();
-        repository = new DynamoDbRefreshTokenRepository(
-            client,
+        _client = TestDynamoClient.CreateClient<AmazonDynamoDBClient>();
+        _repository = new DynamoDbRefreshTokenRepository(
+            _client,
             Options.Create(new DynamoDbOptions { RefreshTokenTableName = TableName })
         );
 
-        await client.CreateTableAsync(
+        await _client.CreateTableAsync(
             new CreateTableRequest
             {
                 TableName = TableName,
@@ -44,7 +44,7 @@ public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
 
     public Task DisposeAsync()
     {
-        client.Dispose();
+        _client.Dispose();
         return Task.CompletedTask;
     }
 
@@ -60,8 +60,8 @@ public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
             null
         );
 
-        await repository.AddAsync(token);
-        var result = await repository.GetByHashAsync("hash-1");
+        await _repository.AddAsync(token);
+        var result = await _repository.GetByHashAsync("hash-1");
 
         Assert.Equal(token, result);
     }
@@ -69,7 +69,7 @@ public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
     [Fact]
     public async Task GetByHashAsync_ReturnsNull_WhenNotFound()
     {
-        var result = await repository.GetByHashAsync("does-not-exist");
+        var result = await _repository.GetByHashAsync("does-not-exist");
 
         Assert.Null(result);
     }
@@ -86,7 +86,7 @@ public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
             new DateTimeOffset(2026, 1, 15, 0, 0, 0, TimeSpan.Zero)
         );
 
-        await client.PutItemAsync(
+        await _client.PutItemAsync(
             new PutItemRequest
             {
                 TableName = TableName,
@@ -107,7 +107,7 @@ public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
             }
         );
 
-        var result = await repository.GetByHashAsync("hash-2");
+        var result = await _repository.GetByHashAsync("hash-2");
 
         Assert.Equal(token, result);
     }
