@@ -50,13 +50,14 @@ public class AuthTokenServiceTests
         new(
             repository,
             Options.Create(
-                new AuthTokenOptions(
-                    SigningKey: "this-is-a-test-signing-key-32-bytes-long",
-                    Issuer: "test-issuer",
-                    Audience: "test-audience",
-                    AccessTokenExpiryMinutes: jwtExpiryMinutes,
-                    RefreshTokenExpiryDays: expiryDays
-                )
+                new AuthTokenOptions
+                {
+                    SigningKey = "this-is-a-test-signing-key-32-bytes-long",
+                    Issuer = "test-issuer",
+                    Audience = "test-audience",
+                    AccessTokenExpiryMinutes = jwtExpiryMinutes,
+                    RefreshTokenExpiryDays = expiryDays,
+                }
             ),
             new FakeClock(now)
         );

@@ -83,11 +83,12 @@ public class GoogleTokenExchangeServiceTests
         new(
             new HttpClient(new FakeGoogleOAuthHandler(validCode, idToken)),
             Options.Create(
-                new GoogleAuthOptions(
-                    ClientId: "client",
-                    ClientSecret: "secret",
-                    RedirectUri: "https://example.com"
-                )
+                new GoogleAuthOptions
+                {
+                    ClientId = "client",
+                    ClientSecret = "secret",
+                    RedirectUri = "https://example.com",
+                }
             ),
             new FakeGoogleIdTokenValidator(idToken, payload)
         );
