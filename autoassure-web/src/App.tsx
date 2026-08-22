@@ -1,17 +1,9 @@
-import { Container, Title } from "@mantine/core";
 import { memo } from "react";
 import { Route, Routes } from "react-router-dom";
 import { AuthCallbackPage } from "./components/auth/AuthCallbackPage";
 import { LoginPage } from "./components/auth/LoginPage";
 import { RequireAuth } from "./components/auth/RequireAuth";
-
-const HomePage = memo(function HomePage() {
-  return (
-    <Container>
-      <Title order={1}>AutoAssure</Title>
-    </Container>
-  );
-});
+import { HomePage } from "./components/home/HomePage";
 
 const App = memo(function App() {
   return (
