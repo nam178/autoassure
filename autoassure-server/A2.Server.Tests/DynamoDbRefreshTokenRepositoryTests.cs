@@ -53,7 +53,7 @@ public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
     {
         var token = new RefreshToken(
             "hash-1",
-            "google-user-1",
+            "user-1",
             "user@example.com",
             new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
@@ -79,7 +79,7 @@ public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
     {
         var token = new RefreshToken(
             "hash-2",
-            "google-user-2",
+            "user-2",
             "revoked@example.com",
             new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
@@ -93,7 +93,7 @@ public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
                 Item = new Dictionary<string, AttributeValue>
                 {
                     ["RefreshTokenSecretHash"] = new(token.RefreshTokenSecretHash),
-                    ["GoogleUserId"] = new(token.GoogleUserId),
+                    ["UserId"] = new(token.UserId),
                     ["Email"] = new(token.Email),
                     ["ExpiresAt"] = new()
                     {

@@ -5,4 +5,5 @@ namespace A2.Server.Common;
 public record DynamoDbOptions
 {
     public string RefreshTokenTableName { get; init; } = "";
+    public string UserTableName { get; init; } = "";
 }

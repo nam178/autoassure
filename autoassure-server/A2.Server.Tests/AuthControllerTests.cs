@@ -25,10 +25,26 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
 
     private sealed class FakeAuthTokenService(IssuedTokens? tokens) : IAuthTokenService
     {
-        public Task<IssuedTokens> IssueAsync(GoogleIdentity identity) => Task.FromResult(tokens!);
+        public Task<IssuedTokens> IssueAsync(User user) => Task.FromResult(tokens!);
 
         public Task<IssuedTokens?> RefreshAsync(string refreshTokenSecret) =>
             Task.FromResult(tokens);
+    }
+
+    private sealed class FakeGoogleUserSyncService : IGoogleUserSyncService
+    {
+        public Task<User> SyncAsync(GoogleIdentity googleIdentity) =>
+            Task.FromResult(
+                new User
+                {
+                    Id = "user-id-" + googleIdentity.GoogleUserId,
+                    GoogleUserId = googleIdentity.GoogleUserId,
+                    FirstName = googleIdentity.FirstName ?? "",
+                    LastName = googleIdentity.LastName ?? "",
+                    Email = googleIdentity.Email,
+                    EmailVerified = googleIdentity.EmailVerified,
+                }
+            );
     }
 
     private HttpClient CreateClient(GoogleIdentity? fakeIdentity, IssuedTokens? fakeTokens) =>
@@ -52,6 +68,11 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
                             )
                         );
                         services.Replace(
+                            ServiceDescriptor.Scoped<IGoogleUserSyncService>(
+                                _ => new FakeGoogleUserSyncService()
+                            )
+                        );
+                        services.Replace(
                             ServiceDescriptor.Scoped<IAuthTokenService>(
                                 _ => new FakeAuthTokenService(fakeTokens)
                             )
@@ -63,7 +84,14 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
     [Fact]
     public async Task PostAuthGoogleToken_ReturnsToken_WhenExchangeSucceeds()
     {
-        var identity = new GoogleIdentity("user-123", "user@example.com", true, "Test User", null);
+        var identity = new GoogleIdentity(
+            "user-123",
+            "user@example.com",
+            true,
+            "Test",
+            "User",
+            null
+        );
         var tokens = new IssuedTokens(
             new AppToken("fake-app-token", DateTimeOffset.UtcNow.AddHours(1)),
             "fake-refresh-token"
@@ -80,7 +108,7 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
         Assert.NotNull(body);
         Assert.Equal(tokens.AccessToken.Value, body.Token);
         Assert.Equal(tokens.RefreshTokenSecret, body.RefreshTokenSecret);
-        Assert.Equal(identity, body.Identity);
+        Assert.Equal("user-id-" + identity.GoogleUserId, body.User.Id);
         Assert.InRange(body.ExpiresInSeconds, 3595, 3600);
     }
 
@@ -104,7 +132,14 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
     [Fact]
     public async Task PostAuthRefresh_ReturnsNewTokens_WhenRefreshSucceeds()
     {
-        var identity = new GoogleIdentity("user-123", "user@example.com", true, "Test User", null);
+        var identity = new GoogleIdentity(
+            "user-123",
+            "user@example.com",
+            true,
+            "Test",
+            "User",
+            null
+        );
         var tokens = new IssuedTokens(
             new AppToken("fake-app-token", DateTimeOffset.UtcNow.AddHours(1)),
             "fake-refresh-token"

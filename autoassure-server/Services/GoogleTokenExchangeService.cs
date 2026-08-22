@@ -54,7 +54,8 @@ public class GoogleTokenExchangeService(
             payload.Subject,
             payload.Email,
             payload.EmailVerified,
-            payload.Name,
+            payload.GivenName,
+            payload.FamilyName,
             payload.HostedDomain
         );
     }

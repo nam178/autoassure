@@ -25,6 +25,8 @@ builder.Services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>()
 builder.Services.AddHttpClient<IGoogleTokenExchangeService, GoogleTokenExchangeService>();
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddScoped<IRefreshTokenRepository, DynamoDbRefreshTokenRepository>();
+builder.Services.AddScoped<IUserRepository, DynamoDbUserRepository>();
+builder.Services.AddScoped<IGoogleUserSyncService, GoogleUserSyncService>();
 builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
 builder.Services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
 builder.Services.AddHostedService<ConfigValidationHostedService>();

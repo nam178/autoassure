@@ -39,7 +39,7 @@ public class DynamoDbRefreshTokenRepository(
                 Item = new Dictionary<string, AttributeValue>
                 {
                     ["RefreshTokenSecretHash"] = new(token.RefreshTokenSecretHash),
-                    ["GoogleUserId"] = new(token.GoogleUserId),
+                    ["UserId"] = new(token.UserId),
                     ["Email"] = new(token.Email),
                     ["ExpiresAt"] = new()
                     {
@@ -83,7 +83,7 @@ public class DynamoDbRefreshTokenRepository(
     private static RefreshToken ToRefreshToken(Dictionary<string, AttributeValue> item) =>
         new(
             item["RefreshTokenSecretHash"].S,
-            item["GoogleUserId"].S,
+            item["UserId"].S,
             item["Email"].S,
             DateTimeOffset.FromUnixTimeSeconds(
                 long.Parse(item["ExpiresAt"].N, CultureInfo.InvariantCulture)

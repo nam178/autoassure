@@ -101,7 +101,8 @@ public class GoogleTokenExchangeServiceTests
             Subject = "user-123",
             Email = "user@example.com",
             EmailVerified = true,
-            Name = "Test User",
+            GivenName = "Test",
+            FamilyName = "User",
         };
         var service = CreateService("good-code", "fake-id-token", payload);
 
@@ -110,7 +111,8 @@ public class GoogleTokenExchangeServiceTests
         Assert.Equal(payload.Subject, identity.GoogleUserId);
         Assert.Equal(payload.Email, identity.Email);
         Assert.True(identity.EmailVerified);
-        Assert.Equal(payload.Name, identity.Name);
+        Assert.Equal(payload.GivenName, identity.FirstName);
+        Assert.Equal(payload.FamilyName, identity.LastName);
     }
 
     [Fact]

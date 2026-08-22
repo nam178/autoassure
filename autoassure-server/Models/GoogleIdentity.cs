@@ -7,12 +7,20 @@ namespace A2.Server.Models;
 /// non-Google mailbox that was never actually confirmed to receive mail — don't rely on it.
 /// </param>
 /// <param name="HostedDomain">The Google Workspace domain ("hd" claim), or null for a personal account.</param>
-// ReSharper disable NotAccessedPositionalProperty.Global -- EmailVerified/Name/HostedDomain are captured
-// for future use (audit logging, display name, Workspace-domain checks) but not read yet.
 public record GoogleIdentity(
     string GoogleUserId,
     string Email,
     bool EmailVerified,
-    string? Name,
+    string? FirstName,
+    string? LastName,
     string? HostedDomain
-);
+)
+{
+    /// <summary>Whether the email is provably verified per the <see cref="EmailVerified"/> rules above.</summary>
+    public bool IsEmailReallyVerified() =>
+        EmailVerified
+        && (
+            HostedDomain is not null
+            || Email.EndsWith("@gmail.com", StringComparison.OrdinalIgnoreCase)
+        );
+}

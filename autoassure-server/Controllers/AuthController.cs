@@ -1,5 +1,6 @@
 using A2.Server.Common;
 using A2.Server.Contracts;
+using A2.Server.Models;
 using A2.Server.Services;
 using Google.Apis.Auth;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +11,7 @@ namespace A2.Server.Controllers;
 [Route("auth")]
 public class AuthController(
     IGoogleTokenExchangeService googleTokenExchangeService,
+    IGoogleUserSyncService googleUserSyncService,
     IAuthTokenService authTokenService,
     IClock clock
 ) : ControllerBase
@@ -25,13 +27,14 @@ public class AuthController(
                 request.Code,
                 request.CodeVerifier
             );
-            var tokens = await authTokenService.IssueAsync(identity);
+            var user = await googleUserSyncService.SyncAsync(identity);
+            var tokens = await authTokenService.IssueAsync(user);
             return Ok(
                 new AuthTokenResponse(
                     tokens.AccessToken.Value,
                     ExpiresInSeconds(tokens.AccessToken.ExpiresAt),
                     tokens.RefreshTokenSecret,
-                    identity
+                    ToUserResponse(user)
                 )
             );
         }
@@ -40,6 +43,9 @@ public class AuthController(
             return Unauthorized(new { error = "Google authorization failed." });
         }
     }
+
+    private static UserResponse ToUserResponse(User user) =>
+        new(user.Id, user.FirstName, user.LastName, user.Email, user.EmailVerified);
 
     [HttpPost("refresh")]
     public async Task<ActionResult<RefreshTokenResponse>> Refresh(RefreshTokenRequest request)

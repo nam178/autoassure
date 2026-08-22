@@ -16,13 +16,10 @@ public class AuthTokenService(
     IClock clock
 ) : IAuthTokenService
 {
-    public async Task<IssuedTokens> IssueAsync(GoogleIdentity identity)
+    public async Task<IssuedTokens> IssueAsync(User user)
     {
-        var accessToken = GenerateNewAccessToken(identity);
-        var refreshTokenSecret = await CreateRefreshTokenSecretAsync(
-            identity.GoogleUserId,
-            identity.Email
-        );
+        var accessToken = GenerateNewAccessToken(user.Id, user.Email);
+        var refreshTokenSecret = await CreateRefreshTokenSecretAsync(user.Id, user.Email);
 
         return new IssuedTokens(accessToken, refreshTokenSecret);
     }
@@ -45,24 +42,23 @@ public class AuthTokenService(
             return null;
         }
 
-        var identity = new GoogleIdentity(stored.GoogleUserId, stored.Email, false, null, null);
-        var accessToken = GenerateNewAccessToken(identity);
+        var accessToken = GenerateNewAccessToken(stored.UserId, stored.Email);
         var newRefreshTokenSecret = await CreateRefreshTokenSecretAsync(
-            stored.GoogleUserId,
+            stored.UserId,
             stored.Email
         );
 
         return new IssuedTokens(accessToken, newRefreshTokenSecret);
     }
 
-    private AppToken GenerateNewAccessToken(GoogleIdentity identity)
+    private AppToken GenerateNewAccessToken(string userId, string email)
     {
         var expiresAt = clock.UtcNow.AddMinutes(authTokenOptions.Value.AccessTokenExpiryMinutes);
 
         var claims = new[]
         {
-            new Claim(JwtRegisteredClaimNames.Sub, identity.GoogleUserId),
-            new Claim(JwtRegisteredClaimNames.Email, identity.Email),
+            new Claim(JwtRegisteredClaimNames.Sub, userId),
+            new Claim(JwtRegisteredClaimNames.Email, email),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
 
@@ -82,7 +78,7 @@ public class AuthTokenService(
         return new AppToken(new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
     }
 
-    private async Task<string> CreateRefreshTokenSecretAsync(string googleUserId, string email)
+    private async Task<string> CreateRefreshTokenSecretAsync(string userId, string email)
     {
         var secret = Convert
             .ToBase64String(RandomNumberGenerator.GetBytes(32))
@@ -94,7 +90,7 @@ public class AuthTokenService(
         await repository.AddAsync(
             new RefreshToken(
                 Hash(secret),
-                googleUserId,
+                userId,
                 email,
                 now.AddDays(authTokenOptions.Value.RefreshTokenExpiryDays),
                 now,

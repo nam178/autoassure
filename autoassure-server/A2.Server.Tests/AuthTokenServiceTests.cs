@@ -72,9 +72,17 @@ public class AuthTokenServiceTests
     {
         var now = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
         var service = CreateService(new FakeRefreshTokenRepository(), now, jwtExpiryMinutes: 5);
-        var identity = new GoogleIdentity("user-123", "user@example.com", true, "Test User", null);
+        var user = new User
+        {
+            Id = "user-123",
+            GoogleUserId = "google-123",
+            FirstName = "Test",
+            LastName = "User",
+            Email = "user@example.com",
+            EmailVerified = true,
+        };
 
-        var tokens = await service.IssueAsync(identity);
+        var tokens = await service.IssueAsync(user);
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(tokens.AccessToken.Value);
         Assert.Equal("user-123", jwt.Subject);
@@ -176,8 +184,16 @@ public class AuthTokenServiceTests
 
     private static async Task<string> IssueRefreshTokenSecretAsync(AuthTokenService service)
     {
-        var identity = new GoogleIdentity("user-123", "user@example.com", true, "Test User", null);
-        var tokens = await service.IssueAsync(identity);
+        var user = new User
+        {
+            Id = "user-123",
+            GoogleUserId = "google-123",
+            FirstName = "Test",
+            LastName = "User",
+            Email = "user@example.com",
+            EmailVerified = true,
+        };
+        var tokens = await service.IssueAsync(user);
         return tokens.RefreshTokenSecret;
     }
 }

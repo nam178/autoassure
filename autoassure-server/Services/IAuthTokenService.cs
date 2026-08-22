@@ -4,7 +4,7 @@ namespace A2.Server.Services;
 
 public interface IAuthTokenService
 {
-    Task<IssuedTokens> IssueAsync(GoogleIdentity identity);
+    Task<IssuedTokens> IssueAsync(User user);
 
     Task<IssuedTokens?> RefreshAsync(string refreshTokenSecret);
 }
