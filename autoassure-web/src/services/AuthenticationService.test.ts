@@ -46,12 +46,12 @@ class FakeScheduler implements Scheduler {
   }
 }
 
-const googleIdentity = {
-  googleUserId: "google-user-1",
+const googleUser = {
+  id: "google-user-1",
+  firstName: "Ada",
+  lastName: "Lovelace",
   email: "user@example.test",
   emailVerified: true,
-  name: null,
-  hostedDomain: null,
 };
 
 // Minimal in-memory Storage so tests don't depend on a browser/jsdom environment.
@@ -358,7 +358,7 @@ describe("AuthenticationService", () => {
           token: jwt,
           expiresInSeconds: 3600,
           refreshTokenSecret: "refresh-secret-1",
-          identity: googleIdentity,
+          user: googleUser,
         },
       } as GoogleTokenCreateResponse);
       const mockedClient = mock<Api<unknown>>();
@@ -942,7 +942,7 @@ describe("AuthenticationService", () => {
           // next check tick is due to attempt a refresh.
           expiresInSeconds: AUTH_REFRESH_THRESHOLD_SECONDS - 1,
           refreshTokenSecret: "secret-1",
-          identity: googleIdentity,
+          user: googleUser,
         },
       } as GoogleTokenCreateResponse);
       when(
@@ -984,7 +984,7 @@ describe("AuthenticationService", () => {
           token: secondJwt,
           expiresInSeconds: 3600,
           refreshTokenSecret: "secret-2",
-          identity: googleIdentity,
+          user: googleUser,
         },
       } as GoogleTokenCreateResponse);
       await service.completeGoogleLogin("auth-code-2");
