@@ -111,7 +111,7 @@
           "token",
           "expiresInSeconds",
           "refreshTokenSecret",
-          "identity"
+          "user"
         ],
         "type": "object",
         "properties": {
@@ -130,10 +130,11 @@
           "refreshTokenSecret": {
             "type": "string"
           },
-          "identity": {
-            "$ref": "#/components/schemas/GoogleIdentity"
+          "user": {
+            "$ref": "#/components/schemas/UserResponse"
           }
-        }
+        },
+        "description": "Returned after a successful Google sign-in: the issued tokens and the signed-in user."
       },
       "ExchangeGoogleCodeRequest": {
         "required": [
@@ -143,47 +144,15 @@
         "type": "object",
         "properties": {
           "code": {
-            "type": "string"
+            "type": "string",
+            "description": "The authorization code returned by Google after the user consents."
           },
           "codeVerifier": {
-            "type": "string"
+            "type": "string",
+            "description": "The PKCE code verifier the client generated for this authorization request."
           }
-        }
-      },
-      "GoogleIdentity": {
-        "required": [
-          "googleUserId",
-          "email",
-          "emailVerified",
-          "name",
-          "hostedDomain"
-        ],
-        "type": "object",
-        "properties": {
-          "googleUserId": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
-          },
-          "emailVerified": {
-            "type": "boolean",
-            "description": "True if Google confirmed the email. Only trust this when string? GoogleIdentity.HostedDomain is set\n(a Google Workspace account, verified by the domain admin) or string GoogleIdentity.Email ends with\n\"@gmail.com\" (Google-owned, self-verified). For any other domain the address may belong to a\nnon-Google mailbox that was never actually confirmed to receive mail — don't rely on it."
-          },
-          "name": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "hostedDomain": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "The Google Workspace domain (\"hd\" claim), or null for a personal account."
-          }
-        }
+        },
+        "description": "An OAuth 2.0 PKCE authorization code from Google's consent screen, to be exchanged for\n    the user's Google identity."
       },
       "RefreshTokenRequest": {
         "required": [
@@ -195,7 +164,8 @@
             "type": "string",
             "description": "The raw refresh token secret previously issued to the client, to be exchanged for a new access token."
           }
-        }
+        },
+        "description": "Requests a new access token using a previously issued refresh token."
       },
       "RefreshTokenResponse": {
         "required": [
@@ -220,7 +190,36 @@
           "refreshTokenSecret": {
             "type": "string"
           }
-        }
+        },
+        "description": "Returned after a successful token refresh: the newly issued tokens."
+      },
+      "UserResponse": {
+        "required": [
+          "id",
+          "firstName",
+          "lastName",
+          "email",
+          "emailVerified"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          }
+        },
+        "description": "The signed-in AutoAssure user, as returned to the client after authentication."
       }
     }
   },

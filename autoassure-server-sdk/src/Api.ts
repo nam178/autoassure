@@ -10,6 +10,7 @@
  * ---------------------------------------------------------------
  */
 
+/** Returned after a successful Google sign-in: the issued tokens and the signed-in user. */
 export interface AuthTokenResponse {
   token: string;
   /**
@@ -21,34 +22,28 @@ export interface AuthTokenResponse {
    */
   expiresInSeconds: number | string;
   refreshTokenSecret: string;
-  identity: GoogleIdentity;
+  /** The signed-in AutoAssure user, as returned to the client after authentication. */
+  user: UserResponse;
 }
 
+/**
+ * An OAuth 2.0 PKCE authorization code from Google's consent screen, to be exchanged for
+ *     the user's Google identity.
+ */
 export interface ExchangeGoogleCodeRequest {
+  /** The authorization code returned by Google after the user consents. */
   code: string;
+  /** The PKCE code verifier the client generated for this authorization request. */
   codeVerifier: string;
 }
 
-export interface GoogleIdentity {
-  googleUserId: string;
-  email: string;
-  /**
-   * True if Google confirmed the email. Only trust this when string? GoogleIdentity.HostedDomain is set
-   * (a Google Workspace account, verified by the domain admin) or string GoogleIdentity.Email ends with
-   * "@gmail.com" (Google-owned, self-verified). For any other domain the address may belong to a
-   * non-Google mailbox that was never actually confirmed to receive mail — don't rely on it.
-   */
-  emailVerified: boolean;
-  name: null | string;
-  /** The Google Workspace domain ("hd" claim), or null for a personal account. */
-  hostedDomain: null | string;
-}
-
+/** Requests a new access token using a previously issued refresh token. */
 export interface RefreshTokenRequest {
   /** The raw refresh token secret previously issued to the client, to be exchanged for a new access token. */
   refreshTokenSecret: string;
 }
 
+/** Returned after a successful token refresh: the newly issued tokens. */
 export interface RefreshTokenResponse {
   token: string;
   /**
@@ -60,6 +55,15 @@ export interface RefreshTokenResponse {
    */
   expiresInSeconds: number | string;
   refreshTokenSecret: string;
+}
+
+/** The signed-in AutoAssure user, as returned to the client after authentication. */
+export interface UserResponse {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  emailVerified: boolean;
 }
 
 import type {
