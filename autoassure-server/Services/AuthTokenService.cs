@@ -37,7 +37,13 @@ public class AuthTokenService(
             return null;
         }
 
-        await repository.MarkAsRevoked(refreshTokenSecretHash, clock.UtcNow);
+        // Atomically claim the token so two concurrent refreshes of the same secret can't both
+        // succeed. If we lose the race, someone else already revoked/used it — treat as invalid.
+        var claimed = await repository.TryRevokeAsync(refreshTokenSecretHash, clock.UtcNow);
+        if (!claimed)
+        {
+            return null;
+        }
 
         var identity = new GoogleIdentity(stored.GoogleUserId, stored.Email, false, null, null);
         var accessToken = GenerateNewAccessToken(identity);

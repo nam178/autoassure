@@ -30,14 +30,19 @@ public class AuthTokenServiceTests
             return Task.CompletedTask;
         }
 
-        public Task MarkAsRevoked(string refreshTokenSecretHash, DateTimeOffset revokedAt)
+        public Task<bool> TryRevokeAsync(string refreshTokenSecretHash, DateTimeOffset revokedAt)
         {
-            RevokedHash = refreshTokenSecretHash;
-            if (Stored?.RefreshTokenSecretHash == refreshTokenSecretHash)
+            if (
+                Stored?.RefreshTokenSecretHash != refreshTokenSecretHash
+                || Stored.RevokedAt is not null
+            )
             {
-                Stored = Stored with { RevokedAt = revokedAt };
+                return Task.FromResult(false);
             }
-            return Task.CompletedTask;
+
+            RevokedHash = refreshTokenSecretHash;
+            Stored = Stored with { RevokedAt = revokedAt };
+            return Task.FromResult(true);
         }
     }
 
@@ -135,7 +140,7 @@ public class AuthTokenServiceTests
         var repository = new FakeRefreshTokenRepository();
         var service = CreateService(repository, now);
         var refreshTokenSecret = await IssueRefreshTokenSecretAsync(service);
-        await repository.MarkAsRevoked(repository.Stored!.RefreshTokenSecretHash, now);
+        await repository.TryRevokeAsync(repository.Stored!.RefreshTokenSecretHash, now);
 
         var result = await service.RefreshAsync(refreshTokenSecret);
 

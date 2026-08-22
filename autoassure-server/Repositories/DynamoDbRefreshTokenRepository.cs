@@ -52,22 +52,33 @@ public class DynamoDbRefreshTokenRepository(
             }
         );
 
-    public Task MarkAsRevoked(string refreshTokenSecretHash, DateTimeOffset revokedAt) =>
-        client.UpdateItemAsync(
-            new UpdateItemRequest
-            {
-                TableName = TableName,
-                Key = new Dictionary<string, AttributeValue>
+    public async Task<bool> TryRevokeAsync(string refreshTokenSecretHash, DateTimeOffset revokedAt)
+    {
+        try
+        {
+            await client.UpdateItemAsync(
+                new UpdateItemRequest
                 {
-                    ["RefreshTokenSecretHash"] = new(refreshTokenSecretHash),
-                },
-                UpdateExpression = "SET RevokedAt = :revokedAt",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
-                {
-                    [":revokedAt"] = new(revokedAt.ToString("O")),
-                },
-            }
-        );
+                    TableName = TableName,
+                    Key = new Dictionary<string, AttributeValue>
+                    {
+                        ["RefreshTokenSecretHash"] = new(refreshTokenSecretHash),
+                    },
+                    UpdateExpression = "SET RevokedAt = :revokedAt",
+                    ConditionExpression = "attribute_not_exists(RevokedAt)",
+                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    {
+                        [":revokedAt"] = new(revokedAt.ToString("O")),
+                    },
+                }
+            );
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
 
     private static RefreshToken ToRefreshToken(Dictionary<string, AttributeValue> item) =>
         new(

@@ -8,5 +8,6 @@ public interface IRefreshTokenRepository
 
     Task AddAsync(RefreshToken token);
 
-    Task MarkAsRevoked(string refreshTokenSecretHash, DateTimeOffset revokedAt);
+    /// <summary>Atomically revokes a token, but only if it isn't already revoked. Returns false if it was already revoked (e.g. by a concurrent refresh), so the caller can detect reuse.</summary>
+    Task<bool> TryRevokeAsync(string refreshTokenSecretHash, DateTimeOffset revokedAt);
 }
