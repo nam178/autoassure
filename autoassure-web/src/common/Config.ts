@@ -14,3 +14,9 @@ export const AUTH_REFRESH_CHECK_INTERVAL_MS = 5_000;
  * there's no point waiting for a retry that can no longer land in time.
  */
 export const AUTH_EXPIRY_SAFETY_MARGIN_SECONDS = 2 * 60;
+
+/** Path of the home page, rendered inside the app shell. */
+export const ROUTE_HOME = "/";
+
+/** Path of the scenarios page, rendered inside the app shell. */
+export const ROUTE_SCENARIOS = "/scenarios";
