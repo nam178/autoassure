@@ -1,7 +1,7 @@
 import { isAxiosError } from "axios";
 
 /** Coarse-grained cause of a service call failure. */
-export type ServiceErrorKind = "client" | "server" | "network";
+export type ServiceErrorKind = "client" | "server" | "network" | "unknown";
 
 /** Generic error services throw when a backend call fails, classified so callers can react without inspecting transport details. */
 export class ServiceError extends Error {
@@ -23,9 +23,11 @@ export class ServiceError extends Error {
   }
 
   /**
-   * Classifies an error thrown by an SDK call into a `ServiceError`:
-   * "client" for 4xx, "server" for 5xx, "network" for anything else
-   * (timeout, no response, non-HTTP error).
+   * Classifies an error thrown by an SDK call into a `ServiceError`: "client"
+   * for 4xx, "server" for 5xx, "network" for an Axios error with no response
+   * (timeout, request never reached the server), "unknown" for anything that
+   * didn't come from Axios at all -- a genuine transport failure isn't the
+   * only possibility there, so it isn't safe to assume "network".
    */
   static fromSdkError(error: unknown): ServiceError {
     if (isAxiosError(error)) {
@@ -39,7 +41,7 @@ export class ServiceError extends Error {
       return new ServiceError("network", error.message, { cause: error });
     }
     return new ServiceError(
-      "network",
+      "unknown",
       error instanceof Error ? error.message : String(error),
       { cause: error },
     );

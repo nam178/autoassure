@@ -1,10 +1,17 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { useAutoAssureClient } from "./AutoAssureClientContext";
 import {
   AuthenticationService,
   type GoogleAuthConfig,
 } from "../services/AuthenticationService";
 import { SystemClock } from "../services/Clock";
+import { SystemScheduler } from "../services/Scheduler";
 
 const AuthenticationServiceContext =
   createContext<AuthenticationService | null>(null);
@@ -34,9 +41,20 @@ export function AuthenticationServiceProvider({
       new AuthenticationService(
         client,
         new SystemClock(),
+        new SystemScheduler(),
         getGoogleAuthConfigFromEnv(),
       ),
   );
+
+  // Owns the background refresh check's lifecycle: started once mounted,
+  // stopped on unmount so it can't outlive this provider (e.g. under
+  // StrictMode's double-invoke, or if the provider is ever remounted).
+  useEffect(() => {
+    service.start();
+    return () => {
+      service.dispose();
+    };
+  }, [service]);
 
   return (
     <AuthenticationServiceContext.Provider value={service}>

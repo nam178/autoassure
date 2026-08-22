@@ -4,8 +4,9 @@ description:
   MUST load this BEFORE writing or editing any .ts or .tsx file in this repo.
 ---
 
+## General Rules
+
 - Components MUST be `export const Foo = memo(function Foo(props) { ... })`.
-- Inline comments MUST explain INTENTION ("when X, do Y"), not mechanics.
 - UI MUST use Mantine (`@mantine/core`) components, not raw HTML elements.
 - Styling MUST prefer CSS variables (Mantine `--mantine-*`) over hard-coded
   values.
@@ -14,19 +15,40 @@ description:
 - `/src/ioc/AppProviders.tsx` MUST list every singleton service's Provider in
   `appProviders`.
 - Class methods MUST use `foo() {}`, not arrow class fields.
-- Methods that can throw MUST have a `@throws` JSDoc explaining when, so callers
-  can avoid/handle it. Include throws from downstream services/calls, not
-  just direct `throw`s.
 - Interface/class fields MUST be `readonly` unless mutation is intentional.
-- Exported classes, public methods, and public APIs MUST have a super short
-  JSDoc: what it does, not how.
-- Non-obvious constants MUST have a one-line comment saying what they are.
+- Important app-level constants MUST live in `/src/common/Config.ts`, named with
+  the prefix of the feature/area that owns them (e.g. `AUTH_*`).
 - Services publishing events MUST use `eventemitter3` (typed `EventEmitter`).
 - Event types MUST be fine-grained enough listeners can't pick the wrong one,
   but not so many they're a pain to listen to.
 - Code (services, components, hooks, etc.) MUST NOT read `import.meta.env` or
   any other config source directly; config MUST be injected via
   constructor/props (read/validated in `/src/ioc`).
-- Service-layer methods that throw on a backend call SHOULD use or extend
-  `ServiceError` (`src/models/ServiceError.ts`).
-- `try/catch` MUST wrap ONLY the call that can throw, not surrounding code.
+
+## Comments & Docs Best Practices
+
+- Add inline comments for each code block.
+- Inline comment MUST explain INTENTION of the next code block ("when X, do Y"),
+  not mechanics. MUST keep it short, I recommend 2 sentences MAX.
+
+Good: // Retrieve the user from database. DynamoDB client is used because.. (The intention, then the "why")
+Bad:  // DynamoDB is used because user is stored here  (What's the intention?)
+
+- Wite as a linguist expert in jsdoc, comments, classes, methods, variable
+  naming, etc. Writing MUST flow nice, simple, and easy to understand.
+- Exported classes, public methods, and public APIs, constants MUST have a super
+  short JSDoc: what it does, not how.
+- Non-obvious constants MUST have a one-line jsdoc saying what they are.
+
+## Error Handling
+
+- MUST try/catch only the line of code that potentially throw an exception,
+  narrow down by exception code/type. Otherwise, you wil catch wrong exception,
+  swallowing real errors.
+- Methods that can throw MUST have a `@throws` JSDoc explaining when, so callers
+  can avoid/handle it. Include throws from downstream services/calls, not just
+  direct `throw`s.
+- When catching exceptions from `autoassure-server-sdk`, use `ServiceError`
+  (`src/models/ServiceError.ts`) to parse the exception. If can't be handled,
+  you SHOULD rethrow as ServiceError or a custom error that extends
+  `ServiceError`.
