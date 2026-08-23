@@ -3,8 +3,8 @@
 ### 1. Agent as a Secondary Concept
 
 Agents are an implementation and automation concept rather than the primary
-object users interact with. Users primarily work with **Scenarios and Execution
-Plans**. Agents operate behind these artifacts and are responsible for
+object users interact with. Users primarily work with **Scenarios and
+Activities**. Agents operate behind these artifacts and are responsible for
 discovering, improving, maintaining, and executing them.
 
 Agents remain visible and accessible so users can understand what AutoAssure is
@@ -15,15 +15,22 @@ Agents are therefore exposed as a secondary concept, likely through Project
 Settings or a dedicated Agents area, rather than being the starting point of the
 user experience.
 
-### 2. Execution Plans are Natural-Language Documents
+### 2. ~~Execution Plans are Natural-Language Documents~~ (Superseded)
 
-Execution Plans are authored as natural-language documents rather than graphs or
-test scripts. AutoAssure interprets them and builds the execution graph
-automatically.
+> **Superseded.** The Execution Plan / Test Plan concept has been removed
+> entirely. Scenario is now the primary testing entity, made up of one or more
+> Activities. There is no separate multi-Scenario document to author — you Try
+> or Run one or more Scenarios directly, and AutoAssure determines execution
+> order, dependency resolution, and whether a failed Activity should prevent
+> later Activities from running. Explicit Scenario dependencies still exist,
+> but only as an advanced escape hatch (`Once` / `Fresh`), not as the normal
+> way of composing tests.
 
-This supports AutoAssure's goal of letting engineers describe **what** they want
-to verify without having to manage **how** it is executed. Plans remain simple
-for humans to read and modify, while AI handles the underlying complexity.
+Execution Plans were originally authored as natural-language documents rather
+than graphs or test scripts, with AutoAssure interpreting them and building the
+execution graph automatically. This supported the same underlying goal that
+Scenarios/Activities now serve directly: letting engineers describe **what**
+they want verified without having to manage **how** it is executed.
 
 ### 3. Rust, Open Source, Cross-Platform Test Client
 
