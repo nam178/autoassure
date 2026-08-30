@@ -42,7 +42,7 @@ public class AuthController(
         }
         catch (Exception ex) when (ex is InvalidJwtException or GoogleTokenExchangeException)
         {
-            return Unauthorized(new { error = "Google authorization failed." });
+            return Unauthorized(new ErrorResponse("Google authorization failed."));
         }
     }
 
@@ -56,7 +56,9 @@ public class AuthController(
 
         if (tokens is null)
         {
-            return Unauthorized(new { error = "Refresh token is invalid, expired, or revoked." });
+            return Unauthorized(
+                new ErrorResponse("Refresh token is invalid, expired, or revoked.")
+            );
         }
 
         return Ok(

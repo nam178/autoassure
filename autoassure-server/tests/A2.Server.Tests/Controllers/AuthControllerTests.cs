@@ -137,6 +137,8 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        Assert.Equal("Google authorization failed.", error!.Message);
     }
 
     [Fact]
@@ -178,6 +180,8 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        Assert.Equal("Refresh token is invalid, expired, or revoked.", error!.Message);
     }
 
     [Theory]
