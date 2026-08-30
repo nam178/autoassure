@@ -19,7 +19,9 @@ public class RunsController(
     ICallerOrganizationService callerOrganizationService
 ) : ControllerBase
 {
-    /// <response code="400">EnvironmentId does not reference an Environment belonging to this Application.</response>
+    /// <response code="400">EnvironmentId does not reference an Environment belonging to this
+    /// Application, or the Application/Environment no longer exists (deleted after this request
+    /// started).</response>
     /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
     [HttpPost("applications/{appId:guid}/runs")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -40,7 +42,11 @@ public class RunsController(
         );
         if (environment is null || environment.ApplicationId != appId)
         {
-            return BadRequest();
+            return BadRequest(
+                new ErrorResponse(
+                    "EnvironmentId does not reference an Environment belonging to this Application."
+                )
+            );
         }
 
         var userId = User.GetUserId();
@@ -57,9 +63,15 @@ public class RunsController(
             UpdatedByUserId = userId,
         };
 
+        // The Application/Environment existed above but may have been deleted since -- not the
+        // client-facing "resource" they asked for, so this is a 400, not a 404.
         if (!await runRepository.TrySaveAsync(run))
         {
-            return NotFound();
+            return BadRequest(
+                new ErrorResponse(
+                    "Application or Environment could not be found or has been deleted."
+                )
+            );
         }
         return Ok(run.ToResponse());
     }

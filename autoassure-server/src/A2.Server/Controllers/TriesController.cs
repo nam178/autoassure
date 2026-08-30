@@ -19,7 +19,9 @@ public class TriesController(
     ICallerOrganizationService callerOrganizationService
 ) : ControllerBase
 {
-    /// <response code="400">EnvironmentId does not reference an Environment belonging to the Scenario's Application.</response>
+    /// <response code="400">EnvironmentId does not reference an Environment belonging to the
+    /// Scenario's Application, or the Application/Environment no longer exists (deleted after this
+    /// request started).</response>
     /// <response code="404">No Scenario with the given id exists in the caller's Organization.</response>
     [HttpPost("scenarios/{id:guid}/try")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -42,7 +44,11 @@ public class TriesController(
         );
         if (environment is null || environment.ApplicationId != scenario.ApplicationId)
         {
-            return BadRequest();
+            return BadRequest(
+                new ErrorResponse(
+                    "EnvironmentId does not reference an Environment belonging to the Scenario's Application."
+                )
+            );
         }
 
         var userId = User.GetUserId();
@@ -59,9 +65,15 @@ public class TriesController(
             UpdatedByUserId = userId,
         };
 
+        // The Scenario/Environment existed above but may have been deleted since -- not the
+        // client-facing "resource" they asked for, so this is a 400, not a 404.
         if (!await runRepository.TrySaveAsync(run))
         {
-            return NotFound();
+            return BadRequest(
+                new ErrorResponse(
+                    "Application or Environment could not be found or has been deleted."
+                )
+            );
         }
         return Ok(run.ToTryResponse());
     }

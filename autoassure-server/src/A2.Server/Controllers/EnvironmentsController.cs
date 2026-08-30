@@ -20,9 +20,11 @@ public class EnvironmentsController(
 {
     private const int MaxKeyLength = 200;
 
+    /// <response code="400">The Application no longer exists (deleted after this request started).</response>
     /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
     [HttpPost("applications/{appId:guid}/environments")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EnvironmentResponse>> Create(
         Guid appId,
@@ -53,9 +55,13 @@ public class EnvironmentsController(
             UpdatedAt = now,
         };
 
+        // The Application existed above but may have been deleted since -- not the client-facing
+        // "resource" they asked for, so this is a 400, not a 404.
         if (!await environmentRepository.TrySaveAsync(environment))
         {
-            return NotFound();
+            return BadRequest(
+                new ErrorResponse("Application could not be found or has been deleted.")
+            );
         }
         return Ok(await ToResponseAsync(environment));
     }
@@ -122,7 +128,8 @@ public class EnvironmentsController(
         return Ok(await ToResponseAsync(updated));
     }
 
-    /// <response code="400">key exceeds the maximum allowed length.</response>
+    /// <response code="400">key exceeds the maximum allowed length, or the Environment no longer
+    /// exists (deleted after this request started).</response>
     /// <response code="404">No Environment with the given id exists in the caller's Organization.</response>
     [HttpPut("environments/{id:guid}/variables/{key}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -136,7 +143,7 @@ public class EnvironmentsController(
     {
         if (key.Length > MaxKeyLength)
         {
-            return BadRequest(new { error = $"key must be at most {MaxKeyLength} characters." });
+            return BadRequest(new ErrorResponse($"key must be at most {MaxKeyLength} characters."));
         }
 
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
@@ -146,6 +153,8 @@ public class EnvironmentsController(
             return NotFound();
         }
 
+        // The Environment existed above but may have been deleted since -- not the client-facing
+        // "resource" they asked for, so this is a 400, not a 404.
         if (
             !await environmentVariableRepository.TryUpdateAsync(
                 organizationId,
@@ -157,7 +166,9 @@ public class EnvironmentsController(
             )
         )
         {
-            return NotFound();
+            return BadRequest(
+                new ErrorResponse("Environment could not be found or has been deleted.")
+            );
         }
         return NoContent();
     }

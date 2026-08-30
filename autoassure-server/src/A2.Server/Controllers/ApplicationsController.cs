@@ -17,10 +17,10 @@ public class ApplicationsController(
     IClock clock
 ) : ControllerBase
 {
-    /// <response code="404">The caller's Organization no longer exists.</response>
+    /// <response code="400">The caller's Organization could not be found or has been deleted.</response>
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApplicationResponse>> Create(CreateApplicationRequest request)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
@@ -38,9 +38,13 @@ public class ApplicationsController(
             UpdatedAt = now,
         };
 
+        // Organization not existing is not the client-facing "resource" they asked for -- a 404
+        // would misleadingly imply the /applications route itself doesn't resolve.
         if (!await applicationRepository.TrySaveAsync(application))
         {
-            return NotFound();
+            return BadRequest(
+                new ErrorResponse("Organization could not be found or has been deleted.")
+            );
         }
 
         return Ok(application.ToResponse());

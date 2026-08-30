@@ -254,7 +254,7 @@ public sealed class ApplicationsControllerTests
     }
 
     [Fact]
-    public async Task Create_WhenOrganizationDoesNotExist_ReturnsNotFound()
+    public async Task Create_WhenOrganizationDoesNotExist_ReturnsBadRequestWithMessage()
     {
         // setup
         var userId = Guid.CreateVersion7();
@@ -268,7 +268,9 @@ public sealed class ApplicationsControllerTests
         );
 
         // verify
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        Assert.Equal("Organization could not be found or has been deleted.", error!.Message);
     }
 
     [Fact]

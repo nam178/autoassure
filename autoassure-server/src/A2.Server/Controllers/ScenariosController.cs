@@ -29,7 +29,9 @@ public class ScenariosController(
     // already uses up to 23 items, leaving headroom for reference checks.
     private const int MaxActivityReferenceCount = 50;
 
-    /// <response code="400">Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not reference existing library rows, or the total number of unique references exceeds the allowed maximum.</response>
+    /// <response code="400">Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not
+    /// reference existing library rows, the total number of unique references exceeds the allowed
+    /// maximum, or the Application no longer exists (deleted after this request started).</response>
     /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
     [HttpPost("applications/{appId:guid}/scenarios")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -49,19 +51,21 @@ public class ScenariosController(
         var tags = request.Tags ?? [];
         if (!TryValidateTags(tags, out var tagsError))
         {
-            return BadRequest(new { error = tagsError });
+            return BadRequest(new ErrorResponse(tagsError!));
         }
 
         var activities = await ToActivitiesAsync(organizationId, appId, request.Activities ?? []);
         if (activities is null)
         {
             return BadRequest(
-                new { error = "PreconditionIds/EvidenceIds must reference existing library rows." }
+                new ErrorResponse(
+                    "PreconditionIds/EvidenceIds must reference existing library rows."
+                )
             );
         }
         if (!TryValidateActivityReferenceCount(activities, out var referenceCountError))
         {
-            return BadRequest(new { error = referenceCountError });
+            return BadRequest(new ErrorResponse(referenceCountError!));
         }
 
         var userId = User.GetUserId();
@@ -82,13 +86,19 @@ public class ScenariosController(
             UpdatedAt = now,
         };
 
+        // The Application existed above but may have been deleted since -- not the client-facing
+        // "resource" they asked for, so this is a 400, not a 404.
         var result = await scenarioRepository.TrySaveAsync(scenario);
         return result switch
         {
             ScenarioWriteResult.Success => Ok(scenario.ToResponse()),
-            ScenarioWriteResult.ApplicationNotFound => NotFound(),
+            ScenarioWriteResult.ApplicationNotFound => BadRequest(
+                new ErrorResponse("Application could not be found or has been deleted.")
+            ),
             _ => BadRequest(
-                new { error = "PreconditionIds/EvidenceIds must reference existing library rows." }
+                new ErrorResponse(
+                    "PreconditionIds/EvidenceIds must reference existing library rows."
+                )
             ),
         };
     }
@@ -105,7 +115,7 @@ public class ScenariosController(
     {
         if (!string.IsNullOrEmpty(folder) && !string.IsNullOrEmpty(tag))
         {
-            return BadRequest(new { error = "folder and tag are mutually exclusive." });
+            return BadRequest(new ErrorResponse("folder and tag are mutually exclusive."));
         }
 
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
@@ -130,7 +140,9 @@ public class ScenariosController(
         return scenario is null ? NotFound() : Ok(scenario.ToResponse());
     }
 
-    /// <response code="400">Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not reference existing library rows, or the total number of unique references exceeds the allowed maximum.</response>
+    /// <response code="400">Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not
+    /// reference existing library rows, the total number of unique references exceeds the allowed
+    /// maximum, or the Application no longer exists (deleted after this request started).</response>
     /// <response code="404">No Scenario with the given id exists in the caller's Organization.</response>
     [HttpPatch("scenarios/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -148,7 +160,7 @@ public class ScenariosController(
         var tags = request.Tags ?? [];
         if (!TryValidateTags(tags, out var tagsError))
         {
-            return BadRequest(new { error = tagsError });
+            return BadRequest(new ErrorResponse(tagsError!));
         }
 
         var activities = await ToActivitiesAsync(
@@ -159,12 +171,14 @@ public class ScenariosController(
         if (activities is null)
         {
             return BadRequest(
-                new { error = "PreconditionIds/EvidenceIds must reference existing library rows." }
+                new ErrorResponse(
+                    "PreconditionIds/EvidenceIds must reference existing library rows."
+                )
             );
         }
         if (!TryValidateActivityReferenceCount(activities, out var referenceCountError))
         {
-            return BadRequest(new { error = referenceCountError });
+            return BadRequest(new ErrorResponse(referenceCountError!));
         }
 
         var updated = previous with
@@ -178,13 +192,19 @@ public class ScenariosController(
             UpdatedAt = clock.UtcNow,
         };
 
+        // The Scenario's Application existed when it was created but may have been deleted since --
+        // not the client-facing "resource" they asked for, so this is a 400, not a 404.
         var result = await scenarioRepository.TryUpdateAsync(updated, previous);
         return result switch
         {
             ScenarioWriteResult.Success => Ok(updated.ToResponse()),
-            ScenarioWriteResult.ApplicationNotFound => NotFound(),
+            ScenarioWriteResult.ApplicationNotFound => BadRequest(
+                new ErrorResponse("Application could not be found or has been deleted.")
+            ),
             _ => BadRequest(
-                new { error = "PreconditionIds/EvidenceIds must reference existing library rows." }
+                new ErrorResponse(
+                    "PreconditionIds/EvidenceIds must reference existing library rows."
+                )
             ),
         };
     }

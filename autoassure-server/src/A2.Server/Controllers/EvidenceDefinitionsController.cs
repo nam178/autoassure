@@ -17,9 +17,11 @@ public class EvidenceDefinitionsController(
     IClock clock
 ) : ControllerBase
 {
+    /// <response code="400">The Application no longer exists (deleted after this request started).</response>
     /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
     [HttpPost("applications/{appId:guid}/evidence-definitions")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EvidenceDefinitionResponse>> Create(
         Guid appId,
@@ -48,9 +50,13 @@ public class EvidenceDefinitionsController(
             UpdatedAt = now,
         };
 
+        // The Application existed above but may have been deleted since -- not the client-facing
+        // "resource" they asked for, so this is a 400, not a 404.
         if (!await evidenceDefinitionRepository.TrySaveAsync(evidence))
         {
-            return NotFound();
+            return BadRequest(
+                new ErrorResponse("Application could not be found or has been deleted.")
+            );
         }
         return Ok(evidence.ToResponse());
     }
