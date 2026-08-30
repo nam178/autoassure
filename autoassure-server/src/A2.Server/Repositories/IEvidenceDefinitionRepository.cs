@@ -9,8 +9,8 @@ public interface IEvidenceDefinitionRepository
     Task<bool> TrySaveAsync(EvidenceDefinition evidence);
 
     /// <summary>Updates only Name, Description, ExampleValue, UpdatedByUserId, and UpdatedAt on an
-    /// existing EvidenceDefinition.</summary>
-    Task UpdateAsync(
+    /// existing EvidenceDefinition. Returns false if the EvidenceDefinition no longer exists.</summary>
+    Task<bool> TryUpdateAsync(
         Guid organizationId,
         Guid applicationId,
         Guid id,

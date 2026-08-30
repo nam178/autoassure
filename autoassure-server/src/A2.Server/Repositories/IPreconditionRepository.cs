@@ -9,8 +9,8 @@ public interface IPreconditionRepository
     Task<bool> TrySaveAsync(Precondition precondition);
 
     /// <summary>Updates only Name, ValueSource, ExampleValue, UpdatedByUserId, and UpdatedAt on an
-    /// existing Precondition.</summary>
-    Task UpdateAsync(
+    /// existing Precondition. Returns false if the Precondition no longer exists.</summary>
+    Task<bool> TryUpdateAsync(
         Guid organizationId,
         Guid applicationId,
         Guid id,

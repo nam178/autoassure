@@ -183,7 +183,7 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
     }
 
     [Fact]
-    public async Task UpdateAsync_WhenUserExists_UpdatesEditableFieldsOnly()
+    public async Task TryUpdateAsync_WhenUserExists_UpdatesEditableFieldsOnly()
     {
         // setup
         var user = CreateUser();
@@ -197,10 +197,11 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
         };
 
         // test
-        await _repository.UpdateAsync(user.Id, fields);
+        var succeeded = await _repository.TryUpdateAsync(user.Id, fields);
         var fetched = await _repository.GetByGoogleUserIdAsync(user.GoogleUserId);
 
         // verify
+        Assert.True(succeeded);
         Assert.Equal(
             user with
             {
@@ -211,6 +212,26 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
             },
             fetched
         );
+    }
+
+    [Fact]
+    public async Task TryUpdateAsync_WhenUserDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
+    {
+        // setup
+        var id = Guid.CreateVersion7();
+        var fields = new UserUpdatableFields
+        {
+            FirstName = "Grace",
+            LastName = "Hopper",
+            Email = "grace@example.com",
+            EmailVerified = false,
+        };
+
+        // test
+        var succeeded = await _repository.TryUpdateAsync(id, fields);
+
+        // verify
+        Assert.False(succeeded);
     }
 
     [Fact]

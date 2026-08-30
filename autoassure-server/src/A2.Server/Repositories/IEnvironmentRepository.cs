@@ -9,8 +9,8 @@ public interface IEnvironmentRepository
     Task<bool> TrySaveAsync(Environment environment);
 
     /// <summary>Updates only Name, Classification, UpdatedByUserId, and UpdatedAt on an existing
-    /// Environment.</summary>
-    Task UpdateAsync(
+    /// Environment. Returns false if the Environment no longer exists.</summary>
+    Task<bool> TryUpdateAsync(
         Guid organizationId,
         Guid applicationId,
         Guid id,

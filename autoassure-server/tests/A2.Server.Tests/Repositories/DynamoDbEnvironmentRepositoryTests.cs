@@ -161,7 +161,7 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
     }
 
     [Fact]
-    public async Task UpdateAsync_WhenEnvironmentExists_UpdatesNameClassificationAndAuditFields()
+    public async Task TryUpdateAsync_WhenEnvironmentExists_UpdatesNameClassificationAndAuditFields()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -184,7 +184,7 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
         var updatedAt = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero);
 
         // test
-        await _repository.UpdateAsync(
+        var succeeded = await _repository.TryUpdateAsync(
             organizationId,
             applicationId,
             environment.Id,
@@ -199,6 +199,7 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
         var result = await _repository.GetByIdAsync(organizationId, environment.Id);
 
         // verify
+        Assert.True(succeeded);
         Assert.Equal(
             environment with
             {
@@ -209,6 +210,34 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
             },
             result
         );
+    }
+
+    [Fact]
+    public async Task TryUpdateAsync_WhenEnvironmentDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var id = Guid.CreateVersion7();
+
+        // test
+        var succeeded = await _repository.TryUpdateAsync(
+            organizationId,
+            applicationId,
+            id,
+            new EnvironmentUpdatableFields
+            {
+                Name = "Production",
+                Classification = EnvironmentClassification.Production,
+                UpdatedByUserId = Guid.CreateVersion7(),
+                UpdatedAt = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
+            }
+        );
+        var result = await _repository.GetByIdAsync(organizationId, id);
+
+        // verify
+        Assert.False(succeeded);
+        Assert.Null(result);
     }
 
     [Fact]

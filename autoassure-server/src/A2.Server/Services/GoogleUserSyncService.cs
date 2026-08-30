@@ -59,7 +59,16 @@ public class GoogleUserSyncService(
             Email = googleIdentity.Email,
             EmailVerified = existing.EmailVerified || isGoogleEmailReallyVerified,
         };
-        await userRepository.UpdateAsync(existing.Id, fields);
+
+        // The user may have been deleted since GetByGoogleUserIdAsync ran above (e.g. account
+        // deletion racing this sign-in). Treat that the same as a first sign-in rather than letting
+        // UpdateItem silently recreate a partial row.
+        var updateSucceeded = await userRepository.TryUpdateAsync(existing.Id, fields);
+        if (!updateSucceeded)
+        {
+            return await SyncUserAsync(googleIdentity);
+        }
+
         return existing with
         {
             FirstName = fields.FirstName,

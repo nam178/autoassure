@@ -160,7 +160,7 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
     }
 
     [Fact]
-    public async Task UpdateAsync_WhenCalled_UpdatesOnlyAllowedFields()
+    public async Task TryUpdateAsync_WhenCalled_UpdatesOnlyAllowedFields()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -181,10 +181,16 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
         };
 
         // test
-        await _repository.UpdateAsync(organizationId, applicationId, precondition.Id, fields);
+        var succeeded = await _repository.TryUpdateAsync(
+            organizationId,
+            applicationId,
+            precondition.Id,
+            fields
+        );
         var result = await _repository.GetByIdAsync(organizationId, precondition.Id);
 
         // verify
+        Assert.True(succeeded);
         Assert.Equal(
             precondition with
             {
@@ -196,6 +202,35 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
             },
             result
         );
+    }
+
+    [Fact]
+    public async Task TryUpdateAsync_WhenPreconditionDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var id = Guid.CreateVersion7();
+
+        // test
+        var succeeded = await _repository.TryUpdateAsync(
+            organizationId,
+            applicationId,
+            id,
+            new PreconditionUpdatableFields
+            {
+                Name = "Updated Name",
+                ValueSource = PreconditionValueSource.SpecificValue,
+                ExampleValue = "updated-value",
+                UpdatedByUserId = Guid.CreateVersion7(),
+                UpdatedAt = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
+            }
+        );
+        var result = await _repository.GetByIdAsync(organizationId, id);
+
+        // verify
+        Assert.False(succeeded);
+        Assert.Null(result);
     }
 
     [Fact]

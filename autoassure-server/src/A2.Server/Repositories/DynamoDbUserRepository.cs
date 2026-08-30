@@ -80,24 +80,35 @@ public class DynamoDbUserRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpt
         }
     }
 
-    public Task UpdateAsync(Guid id, UserUpdatableFields fields) =>
-        client.UpdateItemAsync(
-            new UpdateItemRequest
-            {
-                TableName = TableName,
-                Key = new Dictionary<string, AttributeValue> { ["Id"] = new(id.ToString()) },
-                UpdateExpression =
-                    "SET FirstName = :firstName, LastName = :lastName, Email = :email, "
-                    + "EmailVerified = :emailVerified",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+    public async Task<bool> TryUpdateAsync(Guid id, UserUpdatableFields fields)
+    {
+        try
+        {
+            await client.UpdateItemAsync(
+                new UpdateItemRequest
                 {
-                    [":firstName"] = new(fields.FirstName),
-                    [":lastName"] = new(fields.LastName),
-                    [":email"] = new(fields.Email),
-                    [":emailVerified"] = new() { BOOL = fields.EmailVerified },
-                },
-            }
-        );
+                    TableName = TableName,
+                    Key = new Dictionary<string, AttributeValue> { ["Id"] = new(id.ToString()) },
+                    UpdateExpression =
+                        "SET FirstName = :firstName, LastName = :lastName, Email = :email, "
+                        + "EmailVerified = :emailVerified",
+                    ConditionExpression = "attribute_exists(Id)",
+                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    {
+                        [":firstName"] = new(fields.FirstName),
+                        [":lastName"] = new(fields.LastName),
+                        [":email"] = new(fields.Email),
+                        [":emailVerified"] = new() { BOOL = fields.EmailVerified },
+                    },
+                }
+            );
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
 
     public async Task<bool> TryCreatePersonalOrganizationAsync(
         Organization organization,

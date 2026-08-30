@@ -22,7 +22,7 @@ public static partial class ContractMapper
         );
 
     /// <summary>Maps a single Environment variable to its response representation.</summary>
-    public static EnvironmentVariableResponse ToResponse(this EnvironmentVariable variable) =>
+    private static EnvironmentVariableResponse ToResponse(this EnvironmentVariable variable) =>
         new(variable.Key, variable.Value);
 
     public static ModelEnvironmentClassification ToModel(
@@ -37,7 +37,7 @@ public static partial class ContractMapper
             _ => throw new ArgumentOutOfRangeException(nameof(classification)),
         };
 
-    public static ContractEnvironmentClassification ToContract(
+    private static ContractEnvironmentClassification ToContract(
         this ModelEnvironmentClassification classification
     ) =>
         classification switch

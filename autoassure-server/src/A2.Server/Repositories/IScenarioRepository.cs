@@ -17,9 +17,10 @@ public interface IScenarioRepository
 
     /// <summary>Atomically updates only Title, Description, Folder, Tags, Activities,
     /// UpdatedByUserId, and UpdatedAt on the Scenario, and reconciles its folder/tag mappings
-    /// against <paramref name="previousState"/>, after verifying its Application and every
-    /// referenced Precondition/EvidenceDefinition exist. Takes the full Scenario (not a narrower
-    /// fields type) because both the reference checks and the mapping diff need every field.</summary>
+    /// against <paramref name="previousState"/>, after verifying the Scenario, its Application, and
+    /// every referenced Precondition/EvidenceDefinition still exist. Takes the full Scenario (not a
+    /// narrower fields type) because both the reference checks and the mapping diff need every
+    /// field.</summary>
     Task<ScenarioWriteResult> TryUpdateAsync(Scenario scenario, Scenario previousState);
 
     /// <summary>Atomically deletes the Scenario and its folder/tag mappings.</summary>

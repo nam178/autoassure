@@ -96,12 +96,16 @@ public class EvidenceDefinitionsController(
             UpdatedByUserId = User.GetUserId(),
             UpdatedAt = clock.UtcNow,
         };
-        await evidenceDefinitionRepository.UpdateAsync(
+        var updateSucceeded = await evidenceDefinitionRepository.TryUpdateAsync(
             organizationId,
             existing.ApplicationId,
             id,
             fields
         );
+        if (!updateSucceeded)
+        {
+            return NotFound();
+        }
         var updated = existing with
         {
             Name = fields.Name,

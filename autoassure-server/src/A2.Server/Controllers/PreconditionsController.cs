@@ -96,12 +96,16 @@ public class PreconditionsController(
             UpdatedByUserId = User.GetUserId(),
             UpdatedAt = clock.UtcNow,
         };
-        await preconditionRepository.UpdateAsync(
+        var updateSucceeded = await preconditionRepository.TryUpdateAsync(
             organizationId,
             existing.ApplicationId,
             id,
             fields
         );
+        if (!updateSucceeded)
+        {
+            return NotFound();
+        }
         var updated = existing with
         {
             Name = fields.Name,

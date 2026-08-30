@@ -39,6 +39,9 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
             ApplicationExistsCheck(scenario.OrganizationId, scenario.ApplicationId),
         };
         transactItems.AddRange(ReferenceExistsChecks(scenario));
+        // Guards against the Scenario being deleted between the Controller's existence check and this
+        // write -- without it, UpdateItem would silently recreate a partial row.
+        var scenarioItemIndex = transactItems.Count;
         transactItems.Add(UpdateScenario(scenario));
 
         // Reconcile the folder mapping: only touch it if the folder actually changed, so an
@@ -59,13 +62,17 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
             currentTags.Except(previousTags).Select(tag => PutTagMapping(scenario, tag))
         );
 
-        return await TryWriteAsync(transactItems);
+        return await TryWriteAsync(transactItems, scenarioItemIndex);
     }
 
     // Runs the transaction and, on cancellation, distinguishes an Application-missing failure (always
-    // transact item 0) from a Precondition/EvidenceDefinition-missing failure (every other index) --
-    // the two map to different HTTP statuses in the Controller.
-    private async Task<ScenarioWriteResult> TryWriteAsync(List<TransactWriteItem> transactItems)
+    // transact item 0), a Scenario-missing failure (scenarioItemIndex, only set by TryUpdateAsync),
+    // and a Precondition/EvidenceDefinition-missing failure (every other index) -- the three map to
+    // different HTTP statuses in the Controller.
+    private async Task<ScenarioWriteResult> TryWriteAsync(
+        List<TransactWriteItem> transactItems,
+        int? scenarioItemIndex = null
+    )
     {
         try
         {
@@ -76,12 +83,19 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
         }
         catch (TransactionCanceledException ex)
         {
-            var applicationCheckFailed =
-                ex.CancellationReasons is { Count: > 0 } reasons
-                && reasons[0].Code == "ConditionalCheckFailed";
-            return applicationCheckFailed
-                ? ScenarioWriteResult.ApplicationNotFound
-                : ScenarioWriteResult.ReferenceNotFound;
+            if (ex.CancellationReasons is not { Count: > 0 } reasons)
+            {
+                return ScenarioWriteResult.ReferenceNotFound;
+            }
+            if (reasons[0].Code == "ConditionalCheckFailed")
+            {
+                return ScenarioWriteResult.ApplicationNotFound;
+            }
+            if (scenarioItemIndex is { } index && reasons[index].Code == "ConditionalCheckFailed")
+            {
+                return ScenarioWriteResult.ScenarioNotFound;
+            }
+            return ScenarioWriteResult.ReferenceNotFound;
         }
     }
 
@@ -305,6 +319,7 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
                     "SET Title = :title, Description = :description, Folder = :folder, "
                     + "Tags = :tags, Activities = :activities, UpdatedByUserId = :updatedByUserId, "
                     + "UpdatedAt = :updatedAt",
+                ConditionExpression = "attribute_exists(Id)",
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
                     [":title"] = new(scenario.Title),

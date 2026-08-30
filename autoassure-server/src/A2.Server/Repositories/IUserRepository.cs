@@ -12,8 +12,9 @@ public interface IUserRepository
     /// (e.g. two simultaneous first sign-ins), in which case it does nothing and returns false.</summary>
     Task<bool> TrySaveAsync(User user);
 
-    /// <summary>Updates only FirstName, LastName, Email, and EmailVerified on an existing user.</summary>
-    Task UpdateAsync(Guid id, UserUpdatableFields fields);
+    /// <summary>Updates only FirstName, LastName, Email, and EmailVerified on an existing user.
+    /// Returns false if the user no longer exists.</summary>
+    Task<bool> TryUpdateAsync(Guid id, UserUpdatableFields fields);
 
     /// <summary>Creates the given personal Organization and its owner membership for this user
     /// together, unless this user's personal Organization was just created concurrently (e.g. two

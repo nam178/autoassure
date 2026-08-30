@@ -192,12 +192,15 @@ public class ScenariosController(
             UpdatedAt = clock.UtcNow,
         };
 
-        // The Scenario's Application existed when it was created but may have been deleted since --
-        // not the client-facing "resource" they asked for, so this is a 400, not a 404.
+        // The Scenario existed above but may have been deleted since (by a concurrent request) -- the
+        // client-facing "resource" they asked for is gone, so this is a 404, same as the check above.
+        // Its Application existed when it was created but may have been deleted since -- not the
+        // client-facing resource, so that's a 400, not a 404.
         var result = await scenarioRepository.TryUpdateAsync(updated, previous);
         return result switch
         {
             ScenarioWriteResult.Success => Ok(updated.ToResponse()),
+            ScenarioWriteResult.ScenarioNotFound => NotFound(),
             ScenarioWriteResult.ApplicationNotFound => BadRequest(
                 new ErrorResponse("Application could not be found or has been deleted.")
             ),

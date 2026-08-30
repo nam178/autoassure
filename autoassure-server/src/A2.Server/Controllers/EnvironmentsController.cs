@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using A2.Server.Common;
 using A2.Server.Contracts;
 using A2.Server.Repositories;
@@ -10,7 +11,7 @@ namespace A2.Server.Controllers;
 
 [ApiController]
 [Authorize]
-public class EnvironmentsController(
+public partial class EnvironmentsController(
     IEnvironmentRepository environmentRepository,
     IEnvironmentVariableRepository environmentVariableRepository,
     ICallerOrganizationService callerOrganizationService,
@@ -18,6 +19,9 @@ public class EnvironmentsController(
 ) : ControllerBase
 {
     private const int MaxKeyLength = 200;
+
+    [GeneratedRegex("^[A-Za-z0-9_]+$")]
+    private static partial Regex ValidKeyRegex();
 
     /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
     [HttpPost("applications/{appId:guid}/environments")]
@@ -62,7 +66,11 @@ public class EnvironmentsController(
             organizationId,
             appId
         );
-        var responses = await Task.WhenAll(environments.Select(ToResponseAsync));
+        var responses = new List<EnvironmentResponse>(environments.Count);
+        foreach (var environment in environments)
+        {
+            responses.Add(await ToResponseAsync(environment));
+        }
         return Ok(responses);
     }
 
@@ -105,7 +113,16 @@ public class EnvironmentsController(
             UpdatedByUserId = User.GetUserId(),
             UpdatedAt = clock.UtcNow,
         };
-        await environmentRepository.UpdateAsync(organizationId, existing.ApplicationId, id, fields);
+        var updateSucceeded = await environmentRepository.TryUpdateAsync(
+            organizationId,
+            existing.ApplicationId,
+            id,
+            fields
+        );
+        if (!updateSucceeded)
+        {
+            return NotFound();
+        }
         var updated = existing with
         {
             Name = fields.Name,
@@ -116,8 +133,11 @@ public class EnvironmentsController(
         return Ok(await ToResponseAsync(updated));
     }
 
-    /// <response code="400">key exceeds the maximum allowed length, or the Environment no longer
-    /// exists (deleted after this request started).</response>
+    /// <param name="key">Variable name. Must be 1-200 characters, using only letters, digits, and
+    /// underscores.</param>
+    /// <response code="400">key exceeds the maximum allowed length, key contains characters other than
+    /// letters, digits, or underscores, or the Environment no longer exists (deleted after this request
+    /// started).</response>
     /// <response code="404">No Environment with the given id exists in the caller's Organization.</response>
     [HttpPut("environments/{id:guid}/variables/{key}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -132,6 +152,12 @@ public class EnvironmentsController(
         if (key.Length > MaxKeyLength)
         {
             return BadRequest(new ErrorResponse($"key must be at most {MaxKeyLength} characters."));
+        }
+        if (!ValidKeyRegex().IsMatch(key))
+        {
+            return BadRequest(
+                new ErrorResponse("key must contain only letters, digits, and underscores.")
+            );
         }
 
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();

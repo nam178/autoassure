@@ -162,7 +162,7 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
     }
 
     [Fact]
-    public async Task UpdateAsync_WhenCalled_UpdatesOnlyUpdatableFields()
+    public async Task TryUpdateAsync_WhenCalled_UpdatesOnlyUpdatableFields()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -183,10 +183,16 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
         };
 
         // test
-        await _repository.UpdateAsync(organizationId, applicationId, evidence.Id, fields);
+        var succeeded = await _repository.TryUpdateAsync(
+            organizationId,
+            applicationId,
+            evidence.Id,
+            fields
+        );
         var result = await _repository.GetByIdAsync(organizationId, evidence.Id);
 
         // verify
+        Assert.True(succeeded);
         Assert.Equal(
             evidence with
             {
@@ -198,6 +204,35 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
             },
             result
         );
+    }
+
+    [Fact]
+    public async Task TryUpdateAsync_WhenEvidenceDefinitionDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var id = Guid.CreateVersion7();
+
+        // test
+        var succeeded = await _repository.TryUpdateAsync(
+            organizationId,
+            applicationId,
+            id,
+            new EvidenceDefinitionUpdatableFields
+            {
+                Name = "Updated Name",
+                Description = "Updated description.",
+                ExampleValue = "ORD-99999",
+                UpdatedByUserId = Guid.CreateVersion7(),
+                UpdatedAt = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
+            }
+        );
+        var result = await _repository.GetByIdAsync(organizationId, id);
+
+        // verify
+        Assert.False(succeeded);
+        Assert.Null(result);
     }
 
     [Fact]

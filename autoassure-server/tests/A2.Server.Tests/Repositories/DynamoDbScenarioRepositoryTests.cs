@@ -312,6 +312,24 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
     }
 
     [Fact]
+    public async Task TryUpdateAsync_WhenScenarioDoesNotExist_ReturnsScenarioNotFoundAndDoesNotCreateIt()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        await SeedApplicationAsync(organizationId, applicationId);
+        var scenario = CreateScenario(organizationId, applicationId);
+
+        // test
+        var result = await _repository.TryUpdateAsync(scenario, scenario);
+        var fetched = await _repository.GetByIdAsync(organizationId, scenario.Id);
+
+        // verify
+        Assert.Equal(ScenarioWriteResult.ScenarioNotFound, result);
+        Assert.Null(fetched);
+    }
+
+    [Fact]
     public async Task DeleteAsync_WhenScenarioExists_RemovesScenarioAndFolderTagMappings()
     {
         // setup

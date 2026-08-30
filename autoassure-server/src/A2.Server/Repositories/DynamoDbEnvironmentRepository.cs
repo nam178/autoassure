@@ -57,36 +57,53 @@ public class DynamoDbEnvironmentRepository(
         }
     }
 
-    public Task UpdateAsync(
+    public async Task<bool> TryUpdateAsync(
         Guid organizationId,
         Guid applicationId,
         Guid id,
         EnvironmentUpdatableFields fields
-    ) =>
-        client.UpdateItemAsync(
-            new UpdateItemRequest
-            {
-                TableName = TableName,
-                Key = new Dictionary<string, AttributeValue>
+    )
+    {
+        try
+        {
+            await client.UpdateItemAsync(
+                new UpdateItemRequest
                 {
-                    ["OrganizationId_ApplicationId"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
-                    ),
-                    ["Id"] = new(id.ToString()),
-                },
-                UpdateExpression =
-                    "SET #name = :name, Classification = :classification, "
-                    + "UpdatedByUserId = :updatedByUserId, UpdatedAt = :updatedAt",
-                ExpressionAttributeNames = new Dictionary<string, string> { ["#name"] = "Name" },
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
-                {
-                    [":name"] = new(fields.Name),
-                    [":classification"] = new(fields.Classification.ToString()),
-                    [":updatedByUserId"] = new(fields.UpdatedByUserId.ToString()),
-                    [":updatedAt"] = new(fields.UpdatedAt.ToString("O")),
-                },
-            }
-        );
+                    TableName = TableName,
+                    Key = new Dictionary<string, AttributeValue>
+                    {
+                        ["OrganizationId_ApplicationId"] = new(
+                            DynamoDbMapper.ApplicationScopedPartitionKey(
+                                organizationId,
+                                applicationId
+                            )
+                        ),
+                        ["Id"] = new(id.ToString()),
+                    },
+                    UpdateExpression =
+                        "SET #name = :name, Classification = :classification, "
+                        + "UpdatedByUserId = :updatedByUserId, UpdatedAt = :updatedAt",
+                    ConditionExpression = "attribute_exists(Id)",
+                    ExpressionAttributeNames = new Dictionary<string, string>
+                    {
+                        ["#name"] = "Name",
+                    },
+                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    {
+                        [":name"] = new(fields.Name),
+                        [":classification"] = new(fields.Classification.ToString()),
+                        [":updatedByUserId"] = new(fields.UpdatedByUserId.ToString()),
+                        [":updatedAt"] = new(fields.UpdatedAt.ToString("O")),
+                    },
+                }
+            );
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
 
     public async Task<Environment?> GetByIdAsync(Guid organizationId, Guid id)
     {
