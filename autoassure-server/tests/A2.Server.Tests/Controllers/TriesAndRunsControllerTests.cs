@@ -5,7 +5,6 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using A2.Server.Contracts;
-using A2.Server.Tests;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -483,6 +482,38 @@ public sealed class TriesAndRunsControllerTests
 
         // verify
         Assert.Single(runs!);
+    }
+
+    [Fact]
+    public async Task PostRun_WhenApplicationDoesNotExist_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{Guid.CreateVersion7()}/runs",
+            new CreateRunRequest([Guid.CreateVersion7()], Guid.CreateVersion7())
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostTry_WhenScenarioDoesNotExist_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/scenarios/{Guid.CreateVersion7()}/try",
+            new CreateTryRequest(Guid.CreateVersion7())
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]

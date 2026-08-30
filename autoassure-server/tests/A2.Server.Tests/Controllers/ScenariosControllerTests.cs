@@ -5,7 +5,6 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using A2.Server.Contracts;
-using A2.Server.Tests;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -330,6 +329,25 @@ public sealed class ScenariosControllerTests
         return precondition!.Id;
     }
 
+    // Looks up the caller's OrganizationId directly from DynamoDB so a test can construct the exact
+    // key needed to delete an Application row out from under an authenticated client.
+    private async Task<Guid> GetOrganizationIdAsync(Guid userId)
+    {
+        var response = await _client.QueryAsync(
+            new QueryRequest
+            {
+                TableName = "OrganizationUsers",
+                IndexName = "UserIdIndex",
+                KeyConditionExpression = "UserId = :userId",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":userId"] = new(userId.ToString()),
+                },
+            }
+        );
+        return Guid.Parse(response.Items[0]["OrganizationId"].S);
+    }
+
     [Fact]
     public async Task Create_WhenValidRequest_RoundTripsTitleAndActivitiesThroughGetById()
     {
@@ -433,6 +451,22 @@ public sealed class ScenariosControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WhenApplicationDoesNotExist_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{Guid.CreateVersion7()}/scenarios",
+            new CreateScenarioRequest("Title", "Description", null, null, null)
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Theory]
@@ -545,6 +579,62 @@ public sealed class ScenariosControllerTests
         // verify
         var withoutTag = await listWithoutTag.Content.ReadFromJsonAsync<List<ScenarioResponse>>();
         Assert.Empty(withoutTag!);
+    }
+
+    [Fact]
+    public async Task Update_WhenScenarioDoesNotExistInCallersOrganization_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+
+        // test
+        var response = await client.PatchAsJsonAsync(
+            $"/scenarios/{Guid.CreateVersion7()}",
+            new UpdateScenarioRequest("Title", "Description", "/", null, null)
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WhenApplicationDeletedMidRequest_ReturnsBadRequest()
+    {
+        // setup
+        var userId = Guid.CreateVersion7();
+        await SeedOrganizationMembershipAsync(userId);
+        var client = CreateAuthenticatedClient(userId);
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest("Title", "Description", null, null, null)
+        );
+        var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
+
+        // Update() never re-checks the Application's existence itself (only the Scenario's) -- the
+        // Application is only re-validated inside TryUpdateAsync's transaction, so deleting it here
+        // deterministically exercises that failure without racing the request.
+        var organizationId = await GetOrganizationIdAsync(userId);
+        await _client.DeleteItemAsync(
+            new DeleteItemRequest
+            {
+                TableName = "Applications",
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    ["OrganizationId"] = new(organizationId.ToString()),
+                    ["Id"] = new(appId.ToString()),
+                },
+            }
+        );
+
+        // test
+        var response = await client.PatchAsJsonAsync(
+            $"/scenarios/{created.Id}",
+            new UpdateScenarioRequest("Title", "Description", "/", null, null)
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]

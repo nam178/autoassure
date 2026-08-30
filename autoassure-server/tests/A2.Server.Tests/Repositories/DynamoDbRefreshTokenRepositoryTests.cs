@@ -2,7 +2,6 @@ using System.Globalization;
 using A2.Server.Common;
 using A2.Server.Models;
 using A2.Server.Repositories;
-using A2.Server.Tests;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.Options;
@@ -119,5 +118,29 @@ public sealed class DynamoDbRefreshTokenRepositoryTests(DynamoDbLocalFixture dyn
 
         // verify
         Assert.Equal(token, result);
+    }
+
+    [Fact]
+    public async Task TryUpdateAsync_WhenTokenIsNotYetRevoked_SetsRevokedAtAndReturnsTrue()
+    {
+        // setup
+        var token = new RefreshToken(
+            "hash-3",
+            Guid.CreateVersion7(),
+            "user@example.com",
+            new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            null
+        );
+        await _repository.SaveAsync(token);
+        var revokedAt = new DateTimeOffset(2026, 1, 15, 0, 0, 0, TimeSpan.Zero);
+
+        // test
+        var result = await _repository.TryUpdateAsync("hash-3", revokedAt);
+        var fetched = await _repository.GetByHashAsync("hash-3");
+
+        // verify
+        Assert.True(result);
+        Assert.Equal(token with { RevokedAt = revokedAt }, fetched);
     }
 }

@@ -5,7 +5,6 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using A2.Server.Contracts;
-using A2.Server.Tests;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -368,6 +367,38 @@ public sealed class PreconditionsControllerTests
         var list = await listResponse.Content.ReadFromJsonAsync<List<PreconditionResponse>>();
         var precondition = Assert.Single(list!);
         Assert.Equal("", precondition.ExampleValue);
+    }
+
+    [Fact]
+    public async Task Create_WhenApplicationDoesNotExist_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{Guid.CreateVersion7()}/preconditions",
+            new CreatePreconditionRequest("X", PreconditionValueSource.SpecificValue, "")
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WhenPreconditionDoesNotExistInCallersOrganization_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+
+        // test
+        var response = await client.PatchAsJsonAsync(
+            $"/preconditions/{Guid.CreateVersion7()}",
+            new UpdatePreconditionRequest("X", PreconditionValueSource.SpecificValue, "")
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
