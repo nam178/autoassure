@@ -12,13 +12,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
-using TestDynamo;
 
 namespace A2.Server.Tests;
 
 /// <summary>Integration tests for <see cref="A2.Server.Controllers.TriesController"/> and
-/// <see cref="A2.Server.Controllers.RunsController"/> over real HTTP, against an in-memory TestDynamo
-/// database (no Docker/JVM required). Covers only creation -- execution is stubbed for this steel thread.</summary>
+/// <see cref="A2.Server.Controllers.RunsController"/> over real HTTP, against DynamoDB Local. Covers only
+/// creation -- execution is stubbed for this steel thread.</summary>
+[Collection("DynamoDbLocal")]
 public sealed class TriesAndRunsControllerTests
     : IClassFixture<WebApplicationFactory<Program>>,
         IAsyncLifetime
@@ -30,7 +30,10 @@ public sealed class TriesAndRunsControllerTests
     private readonly WebApplicationFactory<Program> _factory;
     private AmazonDynamoDBClient _client = null!;
 
-    public TriesAndRunsControllerTests(WebApplicationFactory<Program> factory)
+    public TriesAndRunsControllerTests(
+        WebApplicationFactory<Program> factory,
+        DynamoDbLocalFixture dynamoDbLocalFixture
+    )
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
@@ -55,7 +58,7 @@ public sealed class TriesAndRunsControllerTests
             );
             builder.ConfigureServices(services =>
             {
-                _client = TestDynamoClient.CreateClient<AmazonDynamoDBClient>();
+                _client = dynamoDbLocalFixture.CreateClient();
                 services.Replace(ServiceDescriptor.Singleton<IAmazonDynamoDB>(_client));
             });
         });
@@ -269,10 +272,27 @@ public sealed class TriesAndRunsControllerTests
         );
     }
 
-    public Task DisposeAsync()
+    public async Task DisposeAsync()
     {
+        foreach (
+            var tableName in new[]
+            {
+                "Applications",
+                "Scenarios",
+                "Environments",
+                "EnvironmentVariables",
+                "ScenariosByFolder",
+                "ScenariosByTag",
+                "Runs",
+                "Tries",
+                "Organizations",
+                "OrganizationUsers",
+            }
+        )
+        {
+            await _client.DeleteTableAsync(tableName);
+        }
         _client.Dispose();
-        return Task.CompletedTask;
     }
 
     private async Task SeedOrganizationMembershipAsync(Guid userId)

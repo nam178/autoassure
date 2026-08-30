@@ -5,15 +5,16 @@ using A2.Server.Services;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.Options;
-using TestDynamo;
 
 namespace A2.Server.Tests;
 
-/// <summary>Integration tests for <see cref="GoogleUserSyncService"/> against an in-memory TestDynamo
-/// database (no Docker/JVM required), covering how it syncs a <see cref="User"/> from a
-/// <see cref="GoogleIdentity"/> through the real <see cref="DynamoDbUserRepository"/>, and how it
-/// provisions a personal <see cref="Organization"/> on first sign-in.</summary>
-public sealed class GoogleUserSyncServiceTests : IAsyncLifetime
+/// <summary>Integration tests for <see cref="GoogleUserSyncService"/> against DynamoDB Local, covering how
+/// it syncs a <see cref="User"/> from a <see cref="GoogleIdentity"/> through the real
+/// <see cref="DynamoDbUserRepository"/>, and how it provisions a personal <see cref="Organization"/> on
+/// first sign-in.</summary>
+[Collection("DynamoDbLocal")]
+public sealed class GoogleUserSyncServiceTests(DynamoDbLocalFixture dynamoDbLocalFixture)
+    : IAsyncLifetime
 {
     private const string UserTableName = "Users";
     private const string OrganizationTableName = "Organizations";
@@ -26,7 +27,7 @@ public sealed class GoogleUserSyncServiceTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _client = TestDynamoClient.CreateClient<AmazonDynamoDBClient>();
+        _client = dynamoDbLocalFixture.CreateClient();
         var options = Options.Create(
             new DynamoDbOptions
             {
@@ -108,10 +109,20 @@ public sealed class GoogleUserSyncServiceTests : IAsyncLifetime
         );
     }
 
-    public Task DisposeAsync()
+    public async Task DisposeAsync()
     {
+        foreach (
+            var tableName in new[]
+            {
+                UserTableName,
+                OrganizationTableName,
+                OrganizationUserTableName,
+            }
+        )
+        {
+            await _client.DeleteTableAsync(tableName);
+        }
         _client.Dispose();
-        return Task.CompletedTask;
     }
 
     [Fact]

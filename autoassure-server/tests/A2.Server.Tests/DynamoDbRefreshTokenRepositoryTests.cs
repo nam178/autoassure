@@ -5,15 +5,15 @@ using A2.Server.Repositories;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.Options;
-using TestDynamo;
 
 namespace A2.Server.Tests;
 
-/// <summary>Integration tests for <see cref="DynamoDbRefreshTokenRepository"/> against an in-memory
-/// TestDynamo database (no Docker/JVM required), covering read/write mapping only — TestDynamo doesn't
-/// faithfully emulate conditional-write semantics, so the atomic-revoke race is covered by the fakes in
+/// <summary>Integration tests for <see cref="DynamoDbRefreshTokenRepository"/> against DynamoDB Local,
+/// covering read/write mapping only — the atomic-revoke race is covered by the fakes in
 /// <c>AuthTokenServiceTests</c> (A2.Server.UnitTests) instead.</summary>
-public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
+[Collection("DynamoDbLocal")]
+public sealed class DynamoDbRefreshTokenRepositoryTests(DynamoDbLocalFixture dynamoDbLocalFixture)
+    : IAsyncLifetime
 {
     private const string TableName = "RefreshTokens";
 
@@ -22,7 +22,7 @@ public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _client = TestDynamoClient.CreateClient<AmazonDynamoDBClient>();
+        _client = dynamoDbLocalFixture.CreateClient();
         _repository = new DynamoDbRefreshTokenRepository(
             _client,
             Options.Create(new DynamoDbOptions { RefreshTokenTableName = TableName })
@@ -42,10 +42,10 @@ public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
         );
     }
 
-    public Task DisposeAsync()
+    public async Task DisposeAsync()
     {
+        await _client.DeleteTableAsync(TableName);
         _client.Dispose();
-        return Task.CompletedTask;
     }
 
     [Fact]

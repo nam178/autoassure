@@ -25,8 +25,7 @@ description:
   client).
 - MUST fake downstream deps (realistic in-memory, no external calls), never
   mocks/stubs.
-- For DynamoDB, generate fake implementations, realistically simulate dynamodb
-  features like conditional checks failures.
+- To fake DynamoDB, MUST use DynamoDB local.
 - Duplication across tests is fine — don't extract shared helpers.
 - MUST produce four types of tests:
   - Type 1: Realistic test data, happy path.

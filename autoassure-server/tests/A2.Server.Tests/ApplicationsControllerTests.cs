@@ -13,14 +13,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
-using TestDynamo;
 
 namespace A2.Server.Tests;
 
 /// <summary>Integration tests for <see cref="A2.Server.Controllers.ApplicationsController"/> over real
-/// HTTP, against an in-memory TestDynamo database (no Docker/JVM required). Each Organization used by a
-/// test is pre-seeded with an <see cref="OrganizationUser"/> membership so <c>ICallerOrganizationService</c>
-/// can resolve the caller's Organization from the request's JWT.</summary>
+/// HTTP, against DynamoDB Local. Each Organization used by a test is pre-seeded with an
+/// <see cref="OrganizationUser"/> membership so <c>ICallerOrganizationService</c> can resolve the
+/// caller's Organization from the request's JWT.</summary>
+[Collection("DynamoDbLocal")]
 public sealed class ApplicationsControllerTests
     : IClassFixture<WebApplicationFactory<Program>>,
         IAsyncLifetime
@@ -32,7 +32,10 @@ public sealed class ApplicationsControllerTests
     private readonly WebApplicationFactory<Program> _factory;
     private AmazonDynamoDBClient _client = null!;
 
-    public ApplicationsControllerTests(WebApplicationFactory<Program> factory)
+    public ApplicationsControllerTests(
+        WebApplicationFactory<Program> factory,
+        DynamoDbLocalFixture dynamoDbLocalFixture
+    )
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
@@ -50,7 +53,7 @@ public sealed class ApplicationsControllerTests
             );
             builder.ConfigureServices(services =>
             {
-                _client = TestDynamoClient.CreateClient<AmazonDynamoDBClient>();
+                _client = dynamoDbLocalFixture.CreateClient();
                 services.Replace(ServiceDescriptor.Singleton<IAmazonDynamoDB>(_client));
             });
         });
@@ -122,10 +125,13 @@ public sealed class ApplicationsControllerTests
         );
     }
 
-    public Task DisposeAsync()
+    public async Task DisposeAsync()
     {
+        foreach (var tableName in new[] { "Applications", "Organizations", "OrganizationUsers" })
+        {
+            await _client.DeleteTableAsync(tableName);
+        }
         _client.Dispose();
-        return Task.CompletedTask;
     }
 
     private async Task SeedOrganizationMembershipAsync(Guid userId, bool seedOrganization = true)

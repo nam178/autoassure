@@ -14,16 +14,15 @@ As AutoAssure is a multi-tenant SaaS. MUST include the tenant (OrganizationId) i
 - `Repositories/`
 - `Services/`
 - `Common/` — shared utilities
-- `Repositories/` — persistence, currently DynamoDB-backed. AWS infra (tables, etc.) is provisioned via Terraform in
+- `Repositories/` — storage layer
 
 ## After coding
 
+Run verifications and fix errors:
+
 1. `dotnet build A2.Server.slnx`
-2. `dotnet format A2.Server.slnx --verify-no-changes` (analyzer lint: unused imports, style; analyzers on via
-   `EnableNETAnalyzers`+`EnforceCodeStyleInBuild` in csproj)
-3. `dotnet jb inspectcode A2.Server.slnx -o=inspect.sarif.json --no-build --severity=WARNING` (ReSharper-grade
-   inspections build/format/analyzers don't catch: never-instantiated types, unused positional properties, redundant
-   using directives, etc. — requires `dotnet tool restore` once; see below)
+2. `dotnet format A2.Server.slnx --verify-no-changes`
+3. `dotnet jb inspectcode A2.Server.slnx -o=inspect.sarif.json --no-build --severity=WARNING`
 4. Tests: ask first
 
 (no need to format — `dotnet csharpier format .` runs automatically as a Claude Code hook)

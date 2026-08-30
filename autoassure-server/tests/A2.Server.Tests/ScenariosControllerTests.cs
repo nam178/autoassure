@@ -12,12 +12,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
-using TestDynamo;
 
 namespace A2.Server.Tests;
 
 /// <summary>Integration tests for <see cref="A2.Server.Controllers.ScenariosController"/> over real
-/// HTTP, against an in-memory TestDynamo database (no Docker/JVM required).</summary>
+/// HTTP, against DynamoDB Local.</summary>
+[Collection("DynamoDbLocal")]
 public sealed class ScenariosControllerTests
     : IClassFixture<WebApplicationFactory<Program>>,
         IAsyncLifetime
@@ -29,7 +29,10 @@ public sealed class ScenariosControllerTests
     private readonly WebApplicationFactory<Program> _factory;
     private AmazonDynamoDBClient _client = null!;
 
-    public ScenariosControllerTests(WebApplicationFactory<Program> factory)
+    public ScenariosControllerTests(
+        WebApplicationFactory<Program> factory,
+        DynamoDbLocalFixture dynamoDbLocalFixture
+    )
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
@@ -52,7 +55,7 @@ public sealed class ScenariosControllerTests
             );
             builder.ConfigureServices(services =>
             {
-                _client = TestDynamoClient.CreateClient<AmazonDynamoDBClient>();
+                _client = dynamoDbLocalFixture.CreateClient();
                 services.Replace(ServiceDescriptor.Singleton<IAmazonDynamoDB>(_client));
             });
         });
@@ -216,10 +219,25 @@ public sealed class ScenariosControllerTests
         );
     }
 
-    public Task DisposeAsync()
+    public async Task DisposeAsync()
     {
+        foreach (
+            var tableName in new[]
+            {
+                "Applications",
+                "Preconditions",
+                "EvidenceDefinitions",
+                "Scenarios",
+                "ScenariosByFolder",
+                "ScenariosByTag",
+                "Organizations",
+                "OrganizationUsers",
+            }
+        )
+        {
+            await _client.DeleteTableAsync(tableName);
+        }
         _client.Dispose();
-        return Task.CompletedTask;
     }
 
     private async Task SeedOrganizationMembershipAsync(Guid userId)
