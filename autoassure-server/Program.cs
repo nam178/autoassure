@@ -17,7 +17,9 @@ if (!DesignTimeBuild.IsActive && !string.IsNullOrEmpty(ssmParameterPath))
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-builder.Services.AddControllers();
+builder
+    .Services.AddControllers()
+    .AddJsonOptions(options => options.JsonSerializerOptions.RespectNullableAnnotations = true);
 builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection("OAuth:Google"));
 builder.Services.Configure<AuthTokenOptions>(builder.Configuration.GetSection("Auth"));
 builder.Services.Configure<DynamoDbOptions>(builder.Configuration.GetSection("DynamoDb"));
@@ -26,8 +28,19 @@ builder.Services.AddHttpClient<IGoogleTokenExchangeService, GoogleTokenExchangeS
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddScoped<IRefreshTokenRepository, DynamoDbRefreshTokenRepository>();
 builder.Services.AddScoped<IUserRepository, DynamoDbUserRepository>();
+builder.Services.AddScoped<IOrganizationRepository, DynamoDbOrganizationRepository>();
+builder.Services.AddScoped<IOrganizationUserRepository, DynamoDbOrganizationUserRepository>();
 builder.Services.AddScoped<IGoogleUserSyncService, GoogleUserSyncService>();
 builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICallerOrganizationService, CallerOrganizationService>();
+builder.Services.AddScoped<IApplicationRepository, DynamoDbApplicationRepository>();
+builder.Services.AddScoped<IEnvironmentRepository, DynamoDbEnvironmentRepository>();
+builder.Services.AddScoped<IEnvironmentVariableRepository, DynamoDbEnvironmentVariableRepository>();
+builder.Services.AddScoped<IPreconditionRepository, DynamoDbPreconditionRepository>();
+builder.Services.AddScoped<IEvidenceDefinitionRepository, DynamoDbEvidenceDefinitionRepository>();
+builder.Services.AddScoped<IScenarioRepository, DynamoDbScenarioRepository>();
+builder.Services.AddScoped<IRunRepository, DynamoDbRunRepository>();
 builder.Services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
 builder.Services.AddHostedService<ConfigValidationHostedService>();
 
@@ -45,6 +58,9 @@ builder
     .Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(jwtOptions =>
     {
+        // Keep JWT claim types as-issued (e.g. "sub") instead of ASP.NET's default remapping to
+        // long-form ClaimTypes URIs, so ClaimsPrincipalExtensions.GetUserId() can read Sub directly.
+        jwtOptions.MapInboundClaims = false;
         var tokenOptions = builder.Configuration.GetSection("Auth").Get<AuthTokenOptions>()!;
         jwtOptions.TokenValidationParameters = new TokenValidationParameters
         {

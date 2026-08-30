@@ -1,0 +1,190 @@
+using A2.Server.Common;
+using A2.Server.Contracts;
+using A2.Server.Repositories;
+using A2.Server.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Environment = A2.Server.Models.Environment;
+
+namespace A2.Server.Controllers;
+
+[ApiController]
+[Authorize]
+public class EnvironmentsController(
+    IApplicationRepository applicationRepository,
+    IEnvironmentRepository environmentRepository,
+    IEnvironmentVariableRepository environmentVariableRepository,
+    ICallerOrganizationService callerOrganizationService,
+    IClock clock
+) : ControllerBase
+{
+    private const int MaxKeyLength = 200;
+
+    /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
+    [HttpPost("applications/{appId:guid}/environments")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<EnvironmentResponse>> Create(
+        Guid appId,
+        CreateEnvironmentRequest request
+    )
+    {
+        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
+        // An Environment must belong to an Application in the caller's own Organization -- reject
+        // otherwise, rather than silently creating an orphaned/cross-tenant Environment row.
+        if (await applicationRepository.GetByIdAsync(organizationId, appId) is null)
+        {
+            return NotFound();
+        }
+
+        var userId = User.GetUserId();
+        var now = clock.UtcNow;
+
+        var environment = new Environment
+        {
+            Id = Guid.CreateVersion7(),
+            OrganizationId = organizationId,
+            ApplicationId = appId,
+            Name = request.Name,
+            Classification = request.Classification.ToModel(),
+            CreatedByUserId = userId,
+            UpdatedByUserId = userId,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        if (!await environmentRepository.TrySaveAsync(environment))
+        {
+            return NotFound();
+        }
+        return Ok(await ToResponseAsync(environment));
+    }
+
+    [HttpGet("applications/{appId:guid}/environments")]
+    public async Task<ActionResult<IReadOnlyList<EnvironmentResponse>>> List(Guid appId)
+    {
+        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
+        var environments = await environmentRepository.ListByApplicationAsync(
+            organizationId,
+            appId
+        );
+        var responses = await Task.WhenAll(environments.Select(ToResponseAsync));
+        return Ok(responses);
+    }
+
+    /// <response code="404">No Environment with the given id exists in the caller's Organization.</response>
+    [HttpGet("environments/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<EnvironmentResponse>> GetById(Guid id)
+    {
+        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
+        var environment = await environmentRepository.GetByIdAsync(organizationId, id);
+        if (environment is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(await ToResponseAsync(environment));
+    }
+
+    /// <response code="404">No Environment with the given id exists in the caller's Organization.</response>
+    [HttpPatch("environments/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<EnvironmentResponse>> Update(
+        Guid id,
+        UpdateEnvironmentRequest request
+    )
+    {
+        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
+        var existing = await environmentRepository.GetByIdAsync(organizationId, id);
+        if (existing is null)
+        {
+            return NotFound();
+        }
+
+        var fields = new EnvironmentUpdatableFields
+        {
+            Name = request.Name,
+            Classification = request.Classification.ToModel(),
+            UpdatedByUserId = User.GetUserId(),
+            UpdatedAt = clock.UtcNow,
+        };
+        await environmentRepository.UpdateAsync(organizationId, existing.ApplicationId, id, fields);
+        var updated = existing with
+        {
+            Name = fields.Name,
+            Classification = fields.Classification,
+            UpdatedByUserId = fields.UpdatedByUserId,
+            UpdatedAt = fields.UpdatedAt,
+        };
+        return Ok(await ToResponseAsync(updated));
+    }
+
+    /// <response code="400">key exceeds the maximum allowed length.</response>
+    /// <response code="404">No Environment with the given id exists in the caller's Organization.</response>
+    [HttpPut("environments/{id:guid}/variables/{key}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> SetVariable(
+        Guid id,
+        string key,
+        SetEnvironmentVariableRequest request
+    )
+    {
+        if (key.Length > MaxKeyLength)
+        {
+            return BadRequest(new { error = $"key must be at most {MaxKeyLength} characters." });
+        }
+
+        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
+        var environment = await environmentRepository.GetByIdAsync(organizationId, id);
+        if (environment is null)
+        {
+            return NotFound();
+        }
+
+        if (
+            !await environmentVariableRepository.TryUpdateAsync(
+                organizationId,
+                environment.ApplicationId,
+                id,
+                key,
+                request.Value,
+                User.GetUserId()
+            )
+        )
+        {
+            return NotFound();
+        }
+        return NoContent();
+    }
+
+    /// <response code="404">No Environment with the given id exists in the caller's Organization.</response>
+    [HttpDelete("environments/{id:guid}/variables/{key}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> DeleteVariable(Guid id, string key)
+    {
+        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
+        var environment = await environmentRepository.GetByIdAsync(organizationId, id);
+        if (environment is null)
+        {
+            return NotFound();
+        }
+
+        await environmentVariableRepository.DeleteAsync(organizationId, id, key);
+        return NoContent();
+    }
+
+    private async Task<EnvironmentResponse> ToResponseAsync(Environment environment)
+    {
+        var variables = await environmentVariableRepository.ListByEnvironmentAsync(
+            environment.OrganizationId,
+            environment.Id
+        );
+        return environment.ToResponse(variables);
+    }
+}

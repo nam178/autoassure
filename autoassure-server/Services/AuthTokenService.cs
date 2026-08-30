@@ -36,7 +36,7 @@ public class AuthTokenService(
 
         // Atomically claim the token so two concurrent refreshes of the same secret can't both
         // succeed. If we lose the race, someone else already revoked/used it — treat as invalid.
-        var claimed = await repository.TryRevokeAsync(refreshTokenSecretHash, clock.UtcNow);
+        var claimed = await repository.TryUpdateAsync(refreshTokenSecretHash, clock.UtcNow);
         if (!claimed)
         {
             return null;
@@ -51,15 +51,15 @@ public class AuthTokenService(
         return new IssuedTokens(accessToken, newRefreshTokenSecret);
     }
 
-    private AppToken GenerateNewAccessToken(string userId, string email)
+    private AppToken GenerateNewAccessToken(Guid userId, string email)
     {
         var expiresAt = clock.UtcNow.AddMinutes(authTokenOptions.Value.AccessTokenExpiryMinutes);
 
         var claims = new[]
         {
-            new Claim(JwtRegisteredClaimNames.Sub, userId),
+            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
         };
 
         var credentials = new SigningCredentials(
@@ -78,7 +78,7 @@ public class AuthTokenService(
         return new AppToken(new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
     }
 
-    private async Task<string> CreateRefreshTokenSecretAsync(string userId, string email)
+    private async Task<string> CreateRefreshTokenSecretAsync(Guid userId, string email)
     {
         var secret = Convert
             .ToBase64String(RandomNumberGenerator.GetBytes(32))
@@ -87,7 +87,7 @@ public class AuthTokenService(
             .Replace('/', '_');
         var now = clock.UtcNow;
 
-        await repository.AddAsync(
+        await repository.SaveAsync(
             new RefreshToken(
                 Hash(secret),
                 userId,

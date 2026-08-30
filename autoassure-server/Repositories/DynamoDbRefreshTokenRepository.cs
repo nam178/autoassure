@@ -28,10 +28,10 @@ public class DynamoDbRefreshTokenRepository(
             }
         );
 
-        return response.IsItemSet ? ToRefreshToken(response.Item) : null;
+        return response.IsItemSet ? response.Item.ToRefreshToken() : null;
     }
 
-    public Task AddAsync(RefreshToken token) =>
+    public Task SaveAsync(RefreshToken token) =>
         client.PutItemAsync(
             new PutItemRequest
             {
@@ -39,7 +39,7 @@ public class DynamoDbRefreshTokenRepository(
                 Item = new Dictionary<string, AttributeValue>
                 {
                     ["RefreshTokenSecretHash"] = new(token.RefreshTokenSecretHash),
-                    ["UserId"] = new(token.UserId),
+                    ["UserId"] = new(token.UserId.ToString()),
                     ["Email"] = new(token.Email),
                     ["ExpiresAt"] = new()
                     {
@@ -52,7 +52,7 @@ public class DynamoDbRefreshTokenRepository(
             }
         );
 
-    public async Task<bool> TryRevokeAsync(string refreshTokenSecretHash, DateTimeOffset revokedAt)
+    public async Task<bool> TryUpdateAsync(string refreshTokenSecretHash, DateTimeOffset revokedAt)
     {
         try
         {
@@ -79,18 +79,4 @@ public class DynamoDbRefreshTokenRepository(
             return false;
         }
     }
-
-    private static RefreshToken ToRefreshToken(Dictionary<string, AttributeValue> item) =>
-        new(
-            item["RefreshTokenSecretHash"].S,
-            item["UserId"].S,
-            item["Email"].S,
-            DateTimeOffset.FromUnixTimeSeconds(
-                long.Parse(item["ExpiresAt"].N, CultureInfo.InvariantCulture)
-            ),
-            DateTimeOffset.Parse(item["CreatedAt"].S, CultureInfo.InvariantCulture),
-            item.TryGetValue("RevokedAt", out var revokedAt)
-                ? DateTimeOffset.Parse(revokedAt.S, CultureInfo.InvariantCulture)
-                : null
-        );
 }

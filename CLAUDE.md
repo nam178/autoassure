@@ -1,4 +1,4 @@
-AutoAssure is a SaaS for automating web testing with AI agents.
+AutoAssure is a multi-tenant SaaS next-gen API automation test platform.
 
 This repository contains:
 

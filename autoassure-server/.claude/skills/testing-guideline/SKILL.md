@@ -1,12 +1,38 @@
 ---
 name: testing-guideline
-description: MUST load this BEFORE writing or editing any unit test or integration test in this repo.
+description:
+  MUST load this BEFORE writing or editing any unit test or integration test in
+  this repo.
 ---
 
-- Unit tests: pure functions/classes only. No controllers — use ASP.NET integration tests (`WebApplicationFactory`, real HTTP client).
-- Integration tests: fake downstream deps (realistic in-memory, no external calls), never mocks/stubs.
-- Use realistic test data — no nonsense inputs just to hit a path or coverage number.
-- Parameterize (`[Theory]`/`[InlineData]`/`[MemberData]`) for empty/too-long/negative/very-large/boundary cases.
-- Duplication across tests is fine — don't extract shared helpers to dedupe.
+## Overall
 
-New APIs: add `[Authorize]`, plus a local integration test proving unauthorized access is rejected.
+- Test method format: <MethodName>_When<SomeConditions>_<SomeExpectedResult>()
+- Setup-test-verify pattern. Use inline comment: // setup, // test, // verify
+
+## Unit Testing
+
+- Assemby: A2.Server.UnitTests
+- Not everything should be unit tested:
+  - Test only functions, methods that have well defined input, output or
+    behaviour.
+  - Test pure functions/classes only. No controllers
+
+## Local Integration Testing
+
+- Assemby: A2.Server.Tests
+- MUST use ASP.NET integration tests (`WebApplicationFactory`, real HTTP
+  client).
+- MUST fake downstream deps (realistic in-memory, no external calls), never
+  mocks/stubs.
+- Duplication across tests is fine — don't extract shared helpers to dedupe.
+  Except for generating the authenticated client.
+- MUST produce four types of tests:
+  - Type 1: Realistic test data, happy path.
+  - Type 2: Bad data: extra long string, too short, large integer, negative
+    integer.
+  - Type 3: Invalid shape data: nulls for required fields, (might need to send
+    RAW json), missing fields, wrong data types etc.
+  - Type 4: Unauthorized and/or unauthenticaed access.
+- For DynamoDB repos, Must add tests to prove the repos work with empty strings,
+  empty string within a set, a list, etc.

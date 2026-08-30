@@ -22,6 +22,8 @@ public class GoogleTokenExchangeService(
         [property: JsonPropertyName("error_description")] string? ErrorDescription
     );
 
+    /// <exception cref="GoogleTokenExchangeException">Google rejected the code or returned no ID token.</exception>
+    /// <exception cref="Google.Apis.Auth.InvalidJwtException">The returned ID token failed validation.</exception>
     public async Task<GoogleIdentity> ExchangeCodeAsync(string code, string codeVerifier)
     {
         var response = await httpClient.PostAsync(

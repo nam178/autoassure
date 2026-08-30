@@ -32,7 +32,42 @@ execution graph automatically. This supported the same underlying goal that
 Scenarios/Activities now serve directly: letting engineers describe **what**
 they want verified without having to manage **how** it is executed.
 
-### 3. Rust, Open Source, Cross-Platform Test Client
+### 3. Entity IDs are UUIDv7
+
+All entity `Id` fields (Organizations, Applications, Scenarios, Runs, etc.)
+are **UUIDv7**, generated via `Guid.CreateVersion7()` (native in .NET 9+;
+autoassure-server targets net10.0).
+
+UUIDv7 embeds a millisecond timestamp in its leading bits, so IDs sort
+lexicographically in creation order. Where `Id` is a DynamoDB sort key (the
+common pattern in this repo — see feature1.md), a plain partition query
+returns items in chronological order for free, with no extra `CreatedAt`
+GSI/sort needed.
+
+It stays a standard `Guid` in C# and a standard UUID string in JSON — no
+custom serialization, no new NuGet dependency (unlike ULID, which has no
+native .NET support).
+
+Domain models use the C# `Guid` type for every Id/foreign-key field, not
+`string`. This is a deliberate deviation from the current codebase, where
+`Models/User.cs.Id` and `Models/RefreshToken.cs.UserId` are `string`
+(populated via `Guid.NewGuid().ToString()`). Both are being migrated to
+`Guid` as part of this effort — see "ID migration" in Goal 1 of
+feature1.md — so the whole codebase ends up on one convention rather than
+`string` IDs on old models and `Guid` IDs on new ones.
+
+`Guid`-typed fields still serialize as plain UUID strings over JSON (see
+the earlier chat discussion — no custom converter needed), and DynamoDB
+repositories map `Guid <-> string` at the storage boundary
+(`ToItem`/`FromItem`, via `.ToString()` / `Guid.Parse()`), same as they do
+today for `User.Id`.
+
+**Migration note**: existing code (`GoogleUserSyncService.cs`,
+`AuthTokenService.cs`) still uses `Guid.NewGuid()` (UUIDv4, not
+time-sortable). These call sites should be updated to
+`Guid.CreateVersion7()` — tracked as part of Goal 1 in feature1.md.
+
+### 4. Rust, Open Source, Cross-Platform Test Client
 
 The AutoAssure **Test Client** will be implemented in **Rust** and released as
 open-source software.

@@ -5,7 +5,7 @@ using A2.Server.Repositories;
 using A2.Server.Services;
 using Microsoft.Extensions.Options;
 
-namespace A2.Server.Tests;
+namespace A2.Server.UnitTests;
 
 public class AuthTokenServiceTests
 {
@@ -24,13 +24,13 @@ public class AuthTokenServiceTests
                 Stored?.RefreshTokenSecretHash == refreshTokenSecretHash ? Stored : null
             );
 
-        public Task AddAsync(RefreshToken token)
+        public Task SaveAsync(RefreshToken token)
         {
             Stored = token;
             return Task.CompletedTask;
         }
 
-        public Task<bool> TryRevokeAsync(string refreshTokenSecretHash, DateTimeOffset revokedAt)
+        public Task<bool> TryUpdateAsync(string refreshTokenSecretHash, DateTimeOffset revokedAt)
         {
             if (
                 Stored?.RefreshTokenSecretHash != refreshTokenSecretHash
@@ -68,13 +68,15 @@ public class AuthTokenServiceTests
         );
 
     [Fact]
-    public async Task IssueAsync_ProducesJwtWithExpectedClaimsAndExpiry()
+    public async Task IssueAsync_WhenCalled_ProducesJwtWithExpectedClaimsAndExpiry()
     {
+        // setup
         var now = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
         var service = CreateService(new FakeRefreshTokenRepository(), now, jwtExpiryMinutes: 5);
+        var userId = Guid.CreateVersion7();
         var user = new User
         {
-            Id = "user-123",
+            Id = userId,
             GoogleUserId = "google-123",
             FirstName = "Test",
             LastName = "User",
@@ -82,10 +84,12 @@ public class AuthTokenServiceTests
             EmailVerified = true,
         };
 
+        // test
         var tokens = await service.IssueAsync(user);
 
+        // verify
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(tokens.AccessToken.Value);
-        Assert.Equal("user-123", jwt.Subject);
+        Assert.Equal(userId.ToString(), jwt.Subject);
         Assert.Equal(
             "user@example.com",
             jwt.Claims.Single(c => c.Type == JwtRegisteredClaimNames.Email).Value
@@ -97,36 +101,43 @@ public class AuthTokenServiceTests
     }
 
     [Fact]
-    public async Task RefreshAsync_ReturnsNull_WhenTokenNotFound()
+    public async Task RefreshAsync_WhenTokenNotFound_ReturnsNull()
     {
+        // setup
         var service = CreateService(new FakeRefreshTokenRepository(), DateTimeOffset.UtcNow);
 
+        // test
         var result = await service.RefreshAsync("unknown-token");
 
+        // verify
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task RefreshAsync_ReturnsNull_WhenTokenExpired()
+    public async Task RefreshAsync_WhenTokenExpired_ReturnsNull()
     {
+        // setup
         var now = DateTimeOffset.UtcNow;
         var repository = new FakeRefreshTokenRepository();
         var issueService = CreateService(repository, now.AddDays(-31));
         var refreshTokenSecret = await IssueRefreshTokenSecretAsync(issueService);
 
+        // test
         var result = await CreateService(repository, now).RefreshAsync(refreshTokenSecret);
 
+        // verify
         Assert.Null(result);
     }
 
     [Theory]
     [InlineData(0, true)]
     [InlineData(-1, false)]
-    public async Task RefreshAsync_HonorsExpiryBoundary(
+    public async Task RefreshAsync_WhenNearExpiryBoundary_HonorsExpiryBoundary(
         int secondsBeforeExpiryCutoff,
         bool expectValid
     )
     {
+        // setup
         var now = DateTimeOffset.UtcNow;
         var repository = new FakeRefreshTokenRepository();
         var issueService = CreateService(
@@ -136,49 +147,60 @@ public class AuthTokenServiceTests
         );
         var refreshTokenSecret = await IssueRefreshTokenSecretAsync(issueService);
 
+        // test
         var result = await CreateService(repository, now).RefreshAsync(refreshTokenSecret);
 
+        // verify
         Assert.Equal(expectValid, result is not null);
     }
 
     [Fact]
-    public async Task RefreshAsync_ReturnsNull_WhenTokenRevoked()
+    public async Task RefreshAsync_WhenTokenRevoked_ReturnsNull()
     {
+        // setup
         var now = DateTimeOffset.UtcNow;
         var repository = new FakeRefreshTokenRepository();
         var service = CreateService(repository, now);
         var refreshTokenSecret = await IssueRefreshTokenSecretAsync(service);
-        await repository.TryRevokeAsync(repository.Stored!.RefreshTokenSecretHash, now);
+        await repository.TryUpdateAsync(repository.Stored!.RefreshTokenSecretHash, now);
 
+        // test
         var result = await service.RefreshAsync(refreshTokenSecret);
 
+        // verify
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task RefreshAsync_ReturnsNewTokens_WhenTokenValid()
+    public async Task RefreshAsync_WhenTokenValid_ReturnsNewTokens()
     {
+        // setup
         var now = DateTimeOffset.UtcNow;
         var repository = new FakeRefreshTokenRepository();
         var service = CreateService(repository, now);
         var refreshTokenSecret = await IssueRefreshTokenSecretAsync(service);
 
+        // test
         var result = await service.RefreshAsync(refreshTokenSecret);
 
+        // verify
         Assert.NotNull(result);
         Assert.NotEqual(refreshTokenSecret, result.RefreshTokenSecret);
     }
 
     [Fact]
-    public async Task RefreshAsync_RevokesConsumedToken()
+    public async Task RefreshAsync_WhenTokenValid_RevokesConsumedToken()
     {
+        // setup
         var now = DateTimeOffset.UtcNow;
         var repository = new FakeRefreshTokenRepository();
         var service = CreateService(repository, now);
         var refreshTokenSecret = await IssueRefreshTokenSecretAsync(service);
 
+        // test
         await service.RefreshAsync(refreshTokenSecret);
 
+        // verify
         Assert.NotNull(repository.RevokedHash);
     }
 
@@ -186,7 +208,7 @@ public class AuthTokenServiceTests
     {
         var user = new User
         {
-            Id = "user-123",
+            Id = Guid.CreateVersion7(),
             GoogleUserId = "google-123",
             FirstName = "Test",
             LastName = "User",

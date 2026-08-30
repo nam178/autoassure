@@ -8,6 +8,7 @@ namespace A2.Server.Services;
 /// </summary>
 public interface IGoogleIdTokenValidator
 {
-    /// <summary>Validates <paramref name="idToken"/> and returns its decoded payload, or throws if invalid.</summary>
+    /// <summary>Validates <paramref name="idToken"/> and returns its decoded payload.</summary>
+    /// <exception cref="InvalidJwtException">The token's signature, audience, or claims failed validation.</exception>
     Task<GoogleJsonWebSignature.Payload> ValidateAsync(string idToken, string audience);
 }

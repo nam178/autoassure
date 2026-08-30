@@ -57,6 +57,7 @@ npx --yes swagger-typescript-api generate \
   -n Api.ts \
   --axios \
   --single-http-client \
+  --responses \
   --clean-output
 
 echo "==> Compiling SDK (tsc)"

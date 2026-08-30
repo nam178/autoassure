@@ -12,7 +12,7 @@ namespace A2.Server.Tests;
 /// <summary>Integration tests for <see cref="DynamoDbRefreshTokenRepository"/> against an in-memory
 /// TestDynamo database (no Docker/JVM required), covering read/write mapping only — TestDynamo doesn't
 /// faithfully emulate conditional-write semantics, so the atomic-revoke race is covered by the fakes in
-/// <see cref="AuthTokenServiceTests"/> instead.</summary>
+/// <c>AuthTokenServiceTests</c> (A2.Server.UnitTests) instead.</summary>
 public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
 {
     private const string TableName = "RefreshTokens";
@@ -49,37 +49,43 @@ public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task AddAsync_ThenGetByHashAsync_RoundTripsAllFields()
+    public async Task SaveAsync_WhenTokenHasAllFields_RoundTripsThroughGetByHash()
     {
+        // setup
         var token = new RefreshToken(
             "hash-1",
-            "user-1",
+            Guid.CreateVersion7(),
             "user@example.com",
             new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             null
         );
 
-        await _repository.AddAsync(token);
+        // test
+        await _repository.SaveAsync(token);
         var result = await _repository.GetByHashAsync("hash-1");
 
+        // verify
         Assert.Equal(token, result);
     }
 
     [Fact]
-    public async Task GetByHashAsync_ReturnsNull_WhenNotFound()
+    public async Task GetByHashAsync_WhenNotFound_ReturnsNull()
     {
+        // test
         var result = await _repository.GetByHashAsync("does-not-exist");
 
+        // verify
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task AddAsync_ThenGetByHashAsync_RoundTripsRevokedAt()
+    public async Task GetByHashAsync_WhenStoredTokenIsRevoked_RoundTripsRevokedAt()
     {
+        // setup
         var token = new RefreshToken(
             "hash-2",
-            "user-2",
+            Guid.CreateVersion7(),
             "revoked@example.com",
             new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
             new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
@@ -93,7 +99,7 @@ public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
                 Item = new Dictionary<string, AttributeValue>
                 {
                     ["RefreshTokenSecretHash"] = new(token.RefreshTokenSecretHash),
-                    ["UserId"] = new(token.UserId),
+                    ["UserId"] = new(token.UserId.ToString()),
                     ["Email"] = new(token.Email),
                     ["ExpiresAt"] = new()
                     {
@@ -107,8 +113,10 @@ public sealed class DynamoDbRefreshTokenRepositoryTests : IAsyncLifetime
             }
         );
 
+        // test
         var result = await _repository.GetByHashAsync("hash-2");
 
+        // verify
         Assert.Equal(token, result);
     }
 }

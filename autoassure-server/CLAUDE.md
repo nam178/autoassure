@@ -2,6 +2,10 @@
 
 Backend API project that serves autoassure-web.
 
+## Multi-tenancy:
+
+As AutoAssure is a multi-tenant SaaS. MUST include the tenant (OrganizationId) in ALL queries, operations and design.
+
 ## Structure
 
 - `Controllers/`
@@ -10,8 +14,7 @@ Backend API project that serves autoassure-web.
 - `Repositories/`
 - `Services/`
 - `Common/` — shared utilities
-- `Repositories/` — persistence, currently DynamoDB-backed. AWS infra (tables, etc.) is provisioned
-  via Terraform in `../autoassure-infra`, not created by the app at runtime.
+- `Repositories/` — persistence, currently DynamoDB-backed. AWS infra (tables, etc.) is provisioned via Terraform in
 
 ## After coding
 

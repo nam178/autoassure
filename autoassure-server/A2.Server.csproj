@@ -2,6 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <WarningsAsErrors>Nullable</WarningsAsErrors>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>A2.Server</RootNamespace>
     <AssemblyName>A2.Server</AssemblyName>
@@ -13,9 +14,13 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+  </PropertyGroup>
 
   <ItemGroup>
     <Compile Remove="A2.Server.Tests/**/*.cs" />
+    <Compile Remove="A2.Server.UnitTests/**/*.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,6 +1,6 @@
 using A2.Server.Models;
 
-namespace A2.Server.Tests;
+namespace A2.Server.UnitTests;
 
 /// <summary>Unit tests for <see cref="GoogleIdentity.IsEmailReallyVerified"/>.</summary>
 public sealed class GoogleIdentityTests
@@ -12,13 +12,14 @@ public sealed class GoogleIdentityTests
     [InlineData(true, "alice@acme.com", null, false)] // non-gmail, no hosted domain: can't prove it
     [InlineData(false, "alice@gmail.com", null, false)] // Google says not verified, even though gmail
     [InlineData(false, "alice@acme.com", "acme.com", false)] // Google says not verified, even though hosted domain
-    public void IsEmailReallyVerified_ReturnsExpected(
+    public void IsEmailReallyVerified_WhenGivenVariousInputs_ReturnsExpectedResult(
         bool emailVerified,
         string email,
         string? hostedDomain,
         bool expected
     )
     {
+        // setup
         var identity = new GoogleIdentity(
             "google-1",
             email,
@@ -28,6 +29,10 @@ public sealed class GoogleIdentityTests
             hostedDomain
         );
 
-        Assert.Equal(expected, identity.IsEmailReallyVerified());
+        // test
+        var result = identity.IsEmailReallyVerified();
+
+        // verify
+        Assert.Equal(expected, result);
     }
 }

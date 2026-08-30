@@ -1,6 +1,5 @@
 using A2.Server.Common;
 using A2.Server.Contracts;
-using A2.Server.Models;
 using A2.Server.Services;
 using Google.Apis.Auth;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +15,10 @@ public class AuthController(
     IClock clock
 ) : ControllerBase
 {
+    /// <response code="401">The Google authorization code or PKCE verifier is invalid or expired.</response>
     [HttpPost("google/token")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthTokenResponse>> ExchangeGoogleCode(
         ExchangeGoogleCodeRequest request
     )
@@ -34,7 +36,7 @@ public class AuthController(
                     tokens.AccessToken.Value,
                     ExpiresInSeconds(tokens.AccessToken.ExpiresAt),
                     tokens.RefreshTokenSecret,
-                    ToUserResponse(user)
+                    user.ToResponse()
                 )
             );
         }
@@ -44,10 +46,10 @@ public class AuthController(
         }
     }
 
-    private static UserResponse ToUserResponse(User user) =>
-        new(user.Id, user.FirstName, user.LastName, user.Email, user.EmailVerified);
-
+    /// <response code="401">The refresh token is invalid, expired, or revoked.</response>
     [HttpPost("refresh")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<RefreshTokenResponse>> Refresh(RefreshTokenRequest request)
     {
         var tokens = await authTokenService.RefreshAsync(request.RefreshTokenSecret);

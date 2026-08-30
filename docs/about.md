@@ -28,6 +28,10 @@ verifying software behavior; the machine handles the infrastructure.
 
 ## Glossary
 
+**Organization**. AutoAssure is a multi-tenant SaaS platform. Each user belongs
+to one or more AutoAssure customers, called Organization. Users can create
+organizations for their company and invite other users.
+
 **Scenario** The primary entity users create and manage. A description of a
 specific software behavior that AutoAssure should verify, made up of one or more
 **Activities**.

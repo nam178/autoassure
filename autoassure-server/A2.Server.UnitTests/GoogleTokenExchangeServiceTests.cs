@@ -6,7 +6,7 @@ using A2.Server.Services;
 using Google.Apis.Auth;
 using Microsoft.Extensions.Options;
 
-namespace A2.Server.Tests;
+namespace A2.Server.UnitTests;
 
 public class GoogleTokenExchangeServiceTests
 {
@@ -94,8 +94,9 @@ public class GoogleTokenExchangeServiceTests
         );
 
     [Fact]
-    public async Task ExchangeCodeAsync_ReturnsIdentity_WhenGoogleReturnsValidToken()
+    public async Task ExchangeCodeAsync_WhenGoogleReturnsValidToken_ReturnsIdentity()
     {
+        // setup
         var payload = new GoogleJsonWebSignature.Payload
         {
             Subject = "user-123",
@@ -106,8 +107,10 @@ public class GoogleTokenExchangeServiceTests
         };
         var service = CreateService("good-code", "fake-id-token", payload);
 
+        // test
         var identity = await service.ExchangeCodeAsync("good-code", "verifier");
 
+        // verify
         Assert.Equal(payload.Subject, identity.GoogleUserId);
         Assert.Equal(payload.Email, identity.Email);
         Assert.True(identity.EmailVerified);
@@ -116,13 +119,16 @@ public class GoogleTokenExchangeServiceTests
     }
 
     [Fact]
-    public async Task ExchangeCodeAsync_Throws_WhenGoogleReturnsError()
+    public async Task ExchangeCodeAsync_WhenGoogleReturnsError_Throws()
     {
+        // setup
         var payload = new GoogleJsonWebSignature.Payload { Subject = "unused" };
         var service = CreateService("good-code", "fake-id-token", payload);
 
-        await Assert.ThrowsAsync<GoogleTokenExchangeException>(() =>
-            service.ExchangeCodeAsync("bad-code", "verifier")
-        );
+        // test
+        var exchange = () => service.ExchangeCodeAsync("bad-code", "verifier");
+
+        // verify
+        await Assert.ThrowsAsync<GoogleTokenExchangeException>(exchange);
     }
 }
