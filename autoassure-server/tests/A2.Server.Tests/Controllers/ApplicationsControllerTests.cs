@@ -6,6 +6,7 @@ using System.Security.Claims;
 using System.Text;
 using A2.Server.Contracts;
 using A2.Server.Models;
+using A2.Server.Tests;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -14,7 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 
-namespace A2.Server.Tests;
+namespace A2.Server.Tests.Controllers;
 
 /// <summary>Integration tests for <see cref="A2.Server.Controllers.ApplicationsController"/> over real
 /// HTTP, against DynamoDB Local. Each Organization used by a test is pre-seeded with an

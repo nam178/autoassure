@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using A2.Server.Contracts;
+using A2.Server.Tests;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -13,7 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 
-namespace A2.Server.Tests;
+namespace A2.Server.Tests.Controllers;
 
 /// <summary>Integration tests for <see cref="A2.Server.Controllers.TriesController"/> and
 /// <see cref="A2.Server.Controllers.RunsController"/> over real HTTP, against DynamoDB Local. Covers only

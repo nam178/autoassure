@@ -5,12 +5,13 @@ using A2.Server.Common;
 using A2.Server.Contracts;
 using A2.Server.Models;
 using A2.Server.Services;
+using A2.Server.Tests;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace A2.Server.Tests;
+namespace A2.Server.Tests.Controllers;
 
 public class AuthControllerTests(WebApplicationFactory<Program> factory)
     : IClassFixture<WebApplicationFactory<Program>>

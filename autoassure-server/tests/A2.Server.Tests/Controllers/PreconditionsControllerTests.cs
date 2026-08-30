@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using A2.Server.Contracts;
+using A2.Server.Tests;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -13,12 +14,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 
-namespace A2.Server.Tests;
+namespace A2.Server.Tests.Controllers;
 
-/// <summary>Integration tests for <see cref="A2.Server.Controllers.EvidenceDefinitionsController"/> over
-/// real HTTP, against DynamoDB Local.</summary>
+/// <summary>Integration tests for <see cref="A2.Server.Controllers.PreconditionsController"/> over real
+/// HTTP, against DynamoDB Local.</summary>
 [Collection("DynamoDbLocal")]
-public sealed class EvidenceDefinitionsControllerTests
+public sealed class PreconditionsControllerTests
     : IClassFixture<WebApplicationFactory<Program>>,
         IAsyncLifetime
 {
@@ -29,7 +30,7 @@ public sealed class EvidenceDefinitionsControllerTests
     private readonly WebApplicationFactory<Program> _factory;
     private AmazonDynamoDBClient _client = null!;
 
-    public EvidenceDefinitionsControllerTests(
+    public PreconditionsControllerTests(
         WebApplicationFactory<Program> factory,
         DynamoDbLocalFixture dynamoDbLocalFixture
     )
@@ -43,7 +44,7 @@ public sealed class EvidenceDefinitionsControllerTests
                         {
                             ["Auth:SigningKey"] = SigningKey,
                             ["DynamoDb:ApplicationTableName"] = "Applications",
-                            ["DynamoDb:EvidenceDefinitionTableName"] = "EvidenceDefinitions",
+                            ["DynamoDb:PreconditionTableName"] = "Preconditions",
                             ["DynamoDb:OrganizationTableName"] = "Organizations",
                             ["DynamoDb:OrganizationUserTableName"] = "OrganizationUsers",
                         }
@@ -82,7 +83,7 @@ public sealed class EvidenceDefinitionsControllerTests
         await _client.CreateTableAsync(
             new CreateTableRequest
             {
-                TableName = "EvidenceDefinitions",
+                TableName = "Preconditions",
                 KeySchema =
                 [
                     new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
@@ -159,7 +160,7 @@ public sealed class EvidenceDefinitionsControllerTests
             var tableName in new[]
             {
                 "Applications",
-                "EvidenceDefinitions",
+                "Preconditions",
                 "Organizations",
                 "OrganizationUsers",
             }
@@ -254,44 +255,119 @@ public sealed class EvidenceDefinitionsControllerTests
 
         // test
         var createResponse = await client.PostAsJsonAsync(
-            $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest(
+            $"/applications/{appId}/preconditions",
+            new CreatePreconditionRequest(
                 "Order Confirmation ID",
-                "The confirmation id shown after checkout",
+                PreconditionValueSource.PriorActivity,
                 "ORD-12345"
             )
         );
 
         // verify
         Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
-        var created = await createResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>();
+        var created = await createResponse.Content.ReadFromJsonAsync<PreconditionResponse>();
         Assert.NotNull(created);
         Assert.Equal("Order Confirmation ID", created.Name);
 
         // test
         var patchResponse = await client.PatchAsJsonAsync(
-            $"/evidence-definitions/{created.Id}",
-            new UpdateEvidenceDefinitionRequest("Order ID", "Updated description", "ORD-99999")
+            $"/preconditions/{created.Id}",
+            new UpdatePreconditionRequest(
+                "Order ID",
+                PreconditionValueSource.AskAtRunTime,
+                "ORD-99999"
+            )
         );
 
         // verify
         Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
-        var updated = await patchResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>();
+        var updated = await patchResponse.Content.ReadFromJsonAsync<PreconditionResponse>();
         Assert.Equal("Order ID", updated!.Name);
-        Assert.Equal("Updated description", updated.Description);
+        Assert.Equal(PreconditionValueSource.AskAtRunTime, updated.ValueSource);
 
         // test
-        var deleteResponse = await client.DeleteAsync($"/evidence-definitions/{created.Id}");
+        var deleteResponse = await client.DeleteAsync($"/preconditions/{created.Id}");
 
         // verify
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
         // test
-        var listResponse = await client.GetAsync($"/applications/{appId}/evidence-definitions");
+        var listResponse = await client.GetAsync($"/applications/{appId}/preconditions");
 
         // verify
-        var list = await listResponse.Content.ReadFromJsonAsync<List<EvidenceDefinitionResponse>>();
+        var list = await listResponse.Content.ReadFromJsonAsync<List<PreconditionResponse>>();
         Assert.Empty(list!);
+    }
+
+    [Fact]
+    public async Task Create_WhenExampleValueIsEmpty_RoundTripsAsEmptyString()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+
+        // test
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/preconditions",
+            new CreatePreconditionRequest(
+                "Order Confirmation ID",
+                PreconditionValueSource.PriorActivity,
+                ""
+            )
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
+        var created = await createResponse.Content.ReadFromJsonAsync<PreconditionResponse>();
+        Assert.Equal("", created!.ExampleValue);
+
+        // test
+        var listResponse = await client.GetAsync($"/applications/{appId}/preconditions");
+
+        // verify
+        var list = await listResponse.Content.ReadFromJsonAsync<List<PreconditionResponse>>();
+        var precondition = Assert.Single(list!);
+        Assert.Equal("", precondition.ExampleValue);
+    }
+
+    [Fact]
+    public async Task Update_WhenExampleValueSetToEmpty_RoundTripsAsEmptyString()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/preconditions",
+            new CreatePreconditionRequest(
+                "Order Confirmation ID",
+                PreconditionValueSource.PriorActivity,
+                "ORD-12345"
+            )
+        );
+        var created = (await createResponse.Content.ReadFromJsonAsync<PreconditionResponse>())!;
+
+        // test
+        var updateResponse = await client.PatchAsJsonAsync(
+            $"/preconditions/{created.Id}",
+            new UpdatePreconditionRequest(
+                "Order Confirmation ID",
+                PreconditionValueSource.PriorActivity,
+                ""
+            )
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+        var updated = await updateResponse.Content.ReadFromJsonAsync<PreconditionResponse>();
+        Assert.Equal("", updated!.ExampleValue);
+
+        // test
+        var listResponse = await client.GetAsync($"/applications/{appId}/preconditions");
+
+        // verify
+        var list = await listResponse.Content.ReadFromJsonAsync<List<PreconditionResponse>>();
+        var precondition = Assert.Single(list!);
+        Assert.Equal("", precondition.ExampleValue);
     }
 
     [Fact]
@@ -303,90 +379,21 @@ public sealed class EvidenceDefinitionsControllerTests
         var appIdA = await CreateApplicationAsync(clientA);
         var appIdB = await CreateApplicationAsync(clientB);
         await clientA.PostAsJsonAsync(
-            $"/applications/{appIdA}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest("A", "", "")
+            $"/applications/{appIdA}/preconditions",
+            new CreatePreconditionRequest("A", PreconditionValueSource.SpecificValue, "1")
         );
         await clientB.PostAsJsonAsync(
-            $"/applications/{appIdB}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest("B", "", "")
+            $"/applications/{appIdB}/preconditions",
+            new CreatePreconditionRequest("B", PreconditionValueSource.SpecificValue, "2")
         );
 
         // test
-        var listResponse = await clientA.GetAsync($"/applications/{appIdA}/evidence-definitions");
+        var listResponse = await clientA.GetAsync($"/applications/{appIdA}/preconditions");
+        var list = await listResponse.Content.ReadFromJsonAsync<List<PreconditionResponse>>();
 
         // verify
-        var list = await listResponse.Content.ReadFromJsonAsync<List<EvidenceDefinitionResponse>>();
-        var evidence = Assert.Single(list!);
-        Assert.Equal("A", evidence.Name);
-    }
-
-    [Fact]
-    public async Task Create_WhenDescriptionAndExampleValueAreEmpty_RoundTripsAsEmptyString()
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-
-        // test
-        var createResponse = await client.PostAsJsonAsync(
-            $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest("Order Confirmation ID", "", "")
-        );
-
-        // verify
-        Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
-        var created = await createResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>();
-        Assert.Equal("", created!.Description);
-        Assert.Equal("", created.ExampleValue);
-
-        // test
-        var listResponse = await client.GetAsync($"/applications/{appId}/evidence-definitions");
-
-        // verify
-        var list = await listResponse.Content.ReadFromJsonAsync<List<EvidenceDefinitionResponse>>();
-        var evidence = Assert.Single(list!);
-        Assert.Equal("", evidence.Description);
-        Assert.Equal("", evidence.ExampleValue);
-    }
-
-    [Fact]
-    public async Task Update_WhenDescriptionAndExampleValueSetToEmpty_RoundTripsAsEmptyString()
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-        var createResponse = await client.PostAsJsonAsync(
-            $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest(
-                "Order Confirmation ID",
-                "Non-empty description",
-                "ORD-12345"
-            )
-        );
-        var created = (
-            await createResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>()
-        )!;
-
-        // test
-        var updateResponse = await client.PatchAsJsonAsync(
-            $"/evidence-definitions/{created.Id}",
-            new UpdateEvidenceDefinitionRequest("Order Confirmation ID", "", "")
-        );
-
-        // verify
-        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
-        var updated = await updateResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>();
-        Assert.Equal("", updated!.Description);
-        Assert.Equal("", updated.ExampleValue);
-
-        // test
-        var listResponse = await client.GetAsync($"/applications/{appId}/evidence-definitions");
-
-        // verify
-        var list = await listResponse.Content.ReadFromJsonAsync<List<EvidenceDefinitionResponse>>();
-        var evidence = Assert.Single(list!);
-        Assert.Equal("", evidence.Description);
-        Assert.Equal("", evidence.ExampleValue);
+        var precondition = Assert.Single(list!);
+        Assert.Equal("A", precondition.Name);
     }
 
     [Theory]
@@ -403,8 +410,12 @@ public sealed class EvidenceDefinitionsControllerTests
 
         // test
         var response = await client.PostAsJsonAsync(
-            $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest(new string('a', nameLength), "", "")
+            $"/applications/{appId}/preconditions",
+            new CreatePreconditionRequest(
+                new string('a', nameLength),
+                PreconditionValueSource.SpecificValue,
+                ""
+            )
         );
 
         // verify
@@ -424,8 +435,8 @@ public sealed class EvidenceDefinitionsControllerTests
         var response = await _factory
             .CreateClient()
             .PostAsJsonAsync(
-                $"/applications/{appId}/evidence-definitions",
-                new CreateEvidenceDefinitionRequest("X", "", "")
+                $"/applications/{appId}/preconditions",
+                new CreatePreconditionRequest("X", PreconditionValueSource.SpecificValue, "")
             );
 
         // verify
@@ -438,7 +449,7 @@ public sealed class EvidenceDefinitionsControllerTests
         // test
         var response = await _factory
             .CreateClient()
-            .GetAsync($"/applications/{Guid.CreateVersion7()}/evidence-definitions");
+            .GetAsync($"/applications/{Guid.CreateVersion7()}/preconditions");
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -451,8 +462,8 @@ public sealed class EvidenceDefinitionsControllerTests
         var response = await _factory
             .CreateClient()
             .PatchAsJsonAsync(
-                $"/evidence-definitions/{Guid.CreateVersion7()}",
-                new UpdateEvidenceDefinitionRequest("X", "", "")
+                $"/preconditions/{Guid.CreateVersion7()}",
+                new UpdatePreconditionRequest("X", PreconditionValueSource.SpecificValue, "")
             );
 
         // verify
@@ -465,7 +476,7 @@ public sealed class EvidenceDefinitionsControllerTests
         // test
         var response = await _factory
             .CreateClient()
-            .DeleteAsync($"/evidence-definitions/{Guid.CreateVersion7()}");
+            .DeleteAsync($"/preconditions/{Guid.CreateVersion7()}");
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -484,39 +495,23 @@ public sealed class EvidenceDefinitionsControllerTests
         var client = await CreateClientWithMembershipAsync();
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
-            $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest("Order Confirmation ID", "", "")
+            $"/applications/{appId}/preconditions",
+            new CreatePreconditionRequest(
+                "Order Confirmation ID",
+                PreconditionValueSource.SpecificValue,
+                ""
+            )
         );
-        var created = (
-            await createResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>()
-        )!;
+        var created = (await createResponse.Content.ReadFromJsonAsync<PreconditionResponse>())!;
 
         // test
         var response = await client.PatchAsJsonAsync(
-            $"/evidence-definitions/{created.Id}",
-            new UpdateEvidenceDefinitionRequest(new string('a', nameLength), "", "")
-        );
-
-        // verify
-        Assert.Equal(expectedStatus, response.StatusCode);
-    }
-
-    [Theory]
-    [InlineData(500, HttpStatusCode.OK)]
-    [InlineData(501, HttpStatusCode.BadRequest)]
-    public async Task Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
-        int descriptionLength,
-        HttpStatusCode expectedStatus
-    )
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-
-        // test
-        var response = await client.PostAsJsonAsync(
-            $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest("X", new string('a', descriptionLength), "")
+            $"/preconditions/{created.Id}",
+            new UpdatePreconditionRequest(
+                new string('a', nameLength),
+                PreconditionValueSource.SpecificValue,
+                ""
+            )
         );
 
         // verify
@@ -537,8 +532,12 @@ public sealed class EvidenceDefinitionsControllerTests
 
         // test
         var response = await client.PostAsJsonAsync(
-            $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest("X", "", new string('a', exampleValueLength))
+            $"/applications/{appId}/preconditions",
+            new CreatePreconditionRequest(
+                "X",
+                PreconditionValueSource.SpecificValue,
+                new string('a', exampleValueLength)
+            )
         );
 
         // verify
@@ -546,9 +545,10 @@ public sealed class EvidenceDefinitionsControllerTests
     }
 
     [Theory]
-    [InlineData("""{"description":"","exampleValue":""}""")] // name missing entirely
-    [InlineData("""{"name":null,"description":"","exampleValue":""}""")] // name explicitly null
-    [InlineData("""{"name":123,"description":"","exampleValue":""}""")] // name wrong type
+    [InlineData("""{"valueSource":0,"exampleValue":""}""")] // name missing entirely
+    [InlineData("""{"name":null,"valueSource":0,"exampleValue":""}""")] // name explicitly null
+    [InlineData("""{"name":123,"valueSource":0,"exampleValue":""}""")] // name wrong type
+    [InlineData("""{"name":"X","valueSource":99,"exampleValue":""}""")] // valueSource out of enum range
     public async Task Create_WhenNameHasInvalidShape_ReturnsBadRequest(string rawJson)
     {
         // setup
@@ -557,7 +557,7 @@ public sealed class EvidenceDefinitionsControllerTests
 
         // test
         var response = await client.PostAsync(
-            $"/applications/{appId}/evidence-definitions",
+            $"/applications/{appId}/preconditions",
             new StringContent(rawJson, Encoding.UTF8, "application/json")
         );
 
@@ -566,29 +566,9 @@ public sealed class EvidenceDefinitionsControllerTests
     }
 
     [Theory]
-    [InlineData("""{"name":"X","exampleValue":""}""")] // description missing entirely
-    [InlineData("""{"name":"X","description":null,"exampleValue":""}""")] // description explicitly null
-    [InlineData("""{"name":"X","description":123,"exampleValue":""}""")] // description wrong type
-    public async Task Create_WhenDescriptionHasInvalidShape_ReturnsBadRequest(string rawJson)
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-
-        // test
-        var response = await client.PostAsync(
-            $"/applications/{appId}/evidence-definitions",
-            new StringContent(rawJson, Encoding.UTF8, "application/json")
-        );
-
-        // verify
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Theory]
-    [InlineData("""{"name":"X","description":""}""")] // exampleValue missing entirely
-    [InlineData("""{"name":"X","description":"","exampleValue":null}""")] // exampleValue explicitly null
-    [InlineData("""{"name":"X","description":"","exampleValue":123}""")] // exampleValue wrong type
+    [InlineData("""{"name":"X","valueSource":0}""")] // exampleValue missing entirely
+    [InlineData("""{"name":"X","valueSource":0,"exampleValue":null}""")] // exampleValue explicitly null
+    [InlineData("""{"name":"X","valueSource":0,"exampleValue":123}""")] // exampleValue wrong type
     public async Task Create_WhenExampleValueHasInvalidShape_ReturnsBadRequest(string rawJson)
     {
         // setup
@@ -597,7 +577,7 @@ public sealed class EvidenceDefinitionsControllerTests
 
         // test
         var response = await client.PostAsync(
-            $"/applications/{appId}/evidence-definitions",
+            $"/applications/{appId}/preconditions",
             new StringContent(rawJson, Encoding.UTF8, "application/json")
         );
 
@@ -606,25 +586,28 @@ public sealed class EvidenceDefinitionsControllerTests
     }
 
     [Theory]
-    [InlineData("""{"description":"","exampleValue":""}""")] // name missing entirely
-    [InlineData("""{"name":null,"description":"","exampleValue":""}""")] // name explicitly null
-    [InlineData("""{"name":123,"description":"","exampleValue":""}""")] // name wrong type
+    [InlineData("""{"valueSource":0,"exampleValue":""}""")] // name missing entirely
+    [InlineData("""{"name":null,"valueSource":0,"exampleValue":""}""")] // name explicitly null
+    [InlineData("""{"name":123,"valueSource":0,"exampleValue":""}""")] // name wrong type
+    [InlineData("""{"name":"X","valueSource":99,"exampleValue":""}""")] // valueSource out of enum range
     public async Task Update_WhenNameHasInvalidShape_ReturnsBadRequest(string rawJson)
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
-            $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest("Order Confirmation ID", "", "")
+            $"/applications/{appId}/preconditions",
+            new CreatePreconditionRequest(
+                "Order Confirmation ID",
+                PreconditionValueSource.SpecificValue,
+                ""
+            )
         );
-        var created = (
-            await createResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>()
-        )!;
+        var created = (await createResponse.Content.ReadFromJsonAsync<PreconditionResponse>())!;
 
         // test
         var response = await client.PatchAsync(
-            $"/evidence-definitions/{created.Id}",
+            $"/preconditions/{created.Id}",
             new StringContent(rawJson, Encoding.UTF8, "application/json")
         );
 

@@ -2,11 +2,12 @@ using System.Globalization;
 using A2.Server.Common;
 using A2.Server.Models;
 using A2.Server.Repositories;
+using A2.Server.Tests;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.Options;
 
-namespace A2.Server.Tests;
+namespace A2.Server.Tests.Repositories;
 
 /// <summary>Integration tests for <see cref="DynamoDbRefreshTokenRepository"/> against DynamoDB Local,
 /// covering read/write mapping only — the atomic-revoke race is covered by the fakes in
