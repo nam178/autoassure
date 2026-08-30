@@ -9,7 +9,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
     <OpenApiGenerateDocumentsOnBuild>true</OpenApiGenerateDocumentsOnBuild>
-    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/../autoassure-server-sdk/.spec</OpenApiDocumentsDirectory>
+    <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/../../../autoassure-server-sdk/.spec</OpenApiDocumentsDirectory>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
@@ -17,11 +17,6 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <ServerGarbageCollection>false</ServerGarbageCollection>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Remove="A2.Server.Tests/**/*.cs" />
-    <Compile Remove="A2.Server.UnitTests/**/*.cs" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Amazon.Extensions.Configuration.SystemsManager" Version="7.0.0" />

@@ -25,8 +25,9 @@ description:
   client).
 - MUST fake downstream deps (realistic in-memory, no external calls), never
   mocks/stubs.
-- Duplication across tests is fine — don't extract shared helpers to dedupe.
-  Except for generating the authenticated client.
+- For DynamoDB, generate fake implementations, realistically simulate dynamodb
+  features like conditional checks failures.
+- Duplication across tests is fine — don't extract shared helpers.
 - MUST produce four types of tests:
   - Type 1: Realistic test data, happy path.
   - Type 2: Bad data: extra long string, too short, large integer, negative
@@ -34,5 +35,3 @@ description:
   - Type 3: Invalid shape data: nulls for required fields, (might need to send
     RAW json), missing fields, wrong data types etc.
   - Type 4: Unauthorized and/or unauthenticaed access.
-- For DynamoDB repos, Must add tests to prove the repos work with empty strings,
-  empty string within a set, a list, etc.

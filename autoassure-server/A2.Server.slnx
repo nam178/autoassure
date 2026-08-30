@@ -1,5 +1,5 @@
 <Solution>
-  <Project Path="A2.Server.csproj" />
-  <Project Path="A2.Server.Tests/A2.Server.Tests.csproj" />
-  <Project Path="A2.Server.UnitTests/A2.Server.UnitTests.csproj" />
+  <Project Path="src/A2.Server/A2.Server.csproj" />
+  <Project Path="tests/A2.Server.Tests/A2.Server.Tests.csproj" />
+  <Project Path="tests/A2.Server.UnitTests/A2.Server.UnitTests.csproj" />
 </Solution>
