@@ -63,7 +63,9 @@ export function generateCodeVerifier(): string {
 }
 
 /** Derives the PKCE code challenge to send Google for a given code verifier (RFC 7636). */
-export async function deriveCodeChallenge(codeVerifier: string): Promise<string> {
+export async function deriveCodeChallenge(
+  codeVerifier: string,
+): Promise<string> {
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(codeVerifier),
@@ -212,7 +214,7 @@ export class AuthenticationService {
     sessionStorage.removeItem(CODE_VERIFIER_STORAGE_KEY);
 
     const response = await this.autoAssureClient.auth
-      .googleTokenCreate({ code, codeVerifier })
+      .exchangeGoogleCode({ code, codeVerifier })
       .catch((error: unknown) => {
         throw ServiceError.fromSdkError(error);
       });
@@ -249,7 +251,7 @@ export class AuthenticationService {
     this.refreshInFlight = true;
     let response: { data: RefreshTokenResponse };
     try {
-      response = await this.autoAssureClient.auth.refreshCreate({
+      response = await this.autoAssureClient.auth.refreshToken({
         refreshTokenSecret,
       });
     } catch (error: unknown) {
