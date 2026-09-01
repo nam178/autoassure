@@ -7,6 +7,6 @@ public record UpdateScenarioRequest(
     [Required, MaxLength(200)] string Title,
     [Required, MaxLength(10000)] string Description,
     [Required, MaxLength(300)] string Folder,
-    IReadOnlyList<string>? Tags,
-    IReadOnlyList<ActivityRequest>? Activities
+    [MaxLength(20)] IReadOnlyList<string>? Tags,
+    [MaxLength(200)] IReadOnlyList<ActivityRequest>? Activities
 );

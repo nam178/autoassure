@@ -6,6 +6,6 @@ namespace A2.Server.Contracts;
 /// must reference existing library rows in the same Application.</summary>
 public record ActivityRequest(
     [Required, MaxLength(2000)] string Description,
-    IReadOnlyList<Guid>? PreconditionIds,
-    IReadOnlyList<Guid>? EvidenceIds
+    [MaxLength(50)] IReadOnlyList<Guid>? PreconditionIds,
+    [MaxLength(50)] IReadOnlyList<Guid>? EvidenceIds
 );
