@@ -21,7 +21,7 @@ public class EvidenceDefinitionsController(
     /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
     [HttpPost("applications/{appId:guid}/evidence-definitions", Name = "CreateEvidenceDefinition")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EvidenceDefinitionResponse>> Create(
         Guid appId,

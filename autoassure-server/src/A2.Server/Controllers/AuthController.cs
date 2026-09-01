@@ -18,7 +18,7 @@ public class AuthController(
     /// <response code="401">The Google authorization code or PKCE verifier is invalid or expired.</response>
     [HttpPost("google/token", Name = "ExchangeGoogleCode")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthTokenResponse>> ExchangeGoogleCode(
         ExchangeGoogleCodeRequest request
     )
@@ -49,7 +49,7 @@ public class AuthController(
     /// <response code="401">The refresh token is invalid, expired, or revoked.</response>
     [HttpPost("refresh", Name = "RefreshToken")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<RefreshTokenResponse>> Refresh(RefreshTokenRequest request)
     {
         var tokens = await authTokenService.RefreshAsync(request.RefreshTokenSecret);

@@ -35,7 +35,7 @@ public class ScenariosController(
     /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
     [HttpPost("applications/{appId:guid}/scenarios", Name = "CreateScenario")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ScenarioResponse>> Create(
         Guid appId,
@@ -106,7 +106,7 @@ public class ScenariosController(
     /// <response code="400">Both folder and tag were provided; they are mutually exclusive.</response>
     [HttpGet("applications/{appId:guid}/scenarios", Name = "ListScenarios")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<IReadOnlyList<ScenarioResponse>>> List(
         Guid appId,
         [FromQuery] string? folder,
@@ -146,7 +146,7 @@ public class ScenariosController(
     /// <response code="404">No Scenario with the given id exists in the caller's Organization.</response>
     [HttpPatch("scenarios/{id:guid}", Name = "UpdateScenario")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ScenarioResponse>> Update(Guid id, UpdateScenarioRequest request)
     {

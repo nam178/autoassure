@@ -20,7 +20,7 @@ public class ApplicationsController(
     /// <response code="400">The caller's Organization could not be found or has been deleted.</response>
     [HttpPost(Name = "CreateApplication")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApplicationResponse>> Create(CreateApplicationRequest request)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();

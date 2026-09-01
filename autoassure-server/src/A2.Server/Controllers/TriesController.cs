@@ -25,7 +25,7 @@ public class TriesController(
     /// <response code="404">No Scenario with the given id exists in the caller's Organization.</response>
     [HttpPost("scenarios/{id:guid}/try", Name = "CreateTry")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TryScenarioResponse>> Create(Guid id, CreateTryRequest request)
     {

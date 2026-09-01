@@ -128,6 +128,12 @@ export interface EnvironmentVariableResponse {
   value: string;
 }
 
+/** An error, as returned to the client on a non-success response. */
+export interface ErrorResponse {
+  /** User-friendly message for displaying to the caller. */
+  message: string;
+}
+
 /** An EvidenceDefinition library item, as returned to the client. */
 export interface EvidenceDefinitionResponse {
   /** @format uuid */
@@ -524,13 +530,13 @@ export class Api<SecurityDataType extends unknown> {
      * @name CreateApplication
      * @request POST:/applications
      * @response `200` `ApplicationResponse` OK
-     * @response `400` `ProblemDetails` The caller's Organization could not be found or has been deleted.
+     * @response `400` `ErrorResponse` The caller's Organization could not be found or has been deleted.
      */
     createApplication: (
       data: CreateApplicationRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<ApplicationResponse, ProblemDetails>({
+      this.http.request<ApplicationResponse, ErrorResponse>({
         path: `/applications`,
         method: "POST",
         body: data,
@@ -618,7 +624,7 @@ export class Api<SecurityDataType extends unknown> {
      * @name CreateEvidenceDefinition
      * @request POST:/applications/{appId}/evidence-definitions
      * @response `200` `EvidenceDefinitionResponse` OK
-     * @response `400` `ProblemDetails` The Application no longer exists (deleted after this request started).
+     * @response `400` `ErrorResponse` The Application no longer exists (deleted after this request started).
      * @response `404` `ProblemDetails` No Application with the given appId exists in the caller's Organization.
      */
     createEvidenceDefinition: (
@@ -626,7 +632,10 @@ export class Api<SecurityDataType extends unknown> {
       data: CreateEvidenceDefinitionRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<EvidenceDefinitionResponse, ProblemDetails>({
+      this.http.request<
+        EvidenceDefinitionResponse,
+        ErrorResponse | ProblemDetails
+      >({
         path: `/applications/${appId}/evidence-definitions`,
         method: "POST",
         body: data,
@@ -658,7 +667,7 @@ export class Api<SecurityDataType extends unknown> {
      * @name CreatePrecondition
      * @request POST:/applications/{appId}/preconditions
      * @response `200` `PreconditionResponse` OK
-     * @response `400` `ProblemDetails` The Application no longer exists (deleted after this request started).
+     * @response `400` `ErrorResponse` The Application no longer exists (deleted after this request started).
      * @response `404` `ProblemDetails` No Application with the given appId exists in the caller's Organization.
      */
     createPrecondition: (
@@ -666,7 +675,7 @@ export class Api<SecurityDataType extends unknown> {
       data: CreatePreconditionRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<PreconditionResponse, ProblemDetails>({
+      this.http.request<PreconditionResponse, ErrorResponse | ProblemDetails>({
         path: `/applications/${appId}/preconditions`,
         method: "POST",
         body: data,
@@ -698,7 +707,7 @@ export class Api<SecurityDataType extends unknown> {
      * @name CreateRun
      * @request POST:/applications/{appId}/runs
      * @response `200` `RunResponse` OK
-     * @response `400` `ProblemDetails` EnvironmentId does not reference an Environment belonging to this Application, or the Application/Environment no longer exists (deleted after this request started).
+     * @response `400` `ErrorResponse` EnvironmentId does not reference an Environment belonging to this Application, or the Application/Environment no longer exists (deleted after this request started).
      * @response `404` `ProblemDetails` No Application with the given appId exists in the caller's Organization.
      */
     createRun: (
@@ -706,7 +715,7 @@ export class Api<SecurityDataType extends unknown> {
       data: CreateRunRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<RunResponse, ProblemDetails>({
+      this.http.request<RunResponse, ErrorResponse | ProblemDetails>({
         path: `/applications/${appId}/runs`,
         method: "POST",
         body: data,
@@ -738,7 +747,7 @@ export class Api<SecurityDataType extends unknown> {
      * @name CreateScenario
      * @request POST:/applications/{appId}/scenarios
      * @response `200` `ScenarioResponse` OK
-     * @response `400` `ProblemDetails` Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not reference existing library rows, the total number of unique references exceeds the allowed maximum, or the Application no longer exists (deleted after this request started).
+     * @response `400` `ErrorResponse` Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not reference existing library rows, the total number of unique references exceeds the allowed maximum, or the Application no longer exists (deleted after this request started).
      * @response `404` `ProblemDetails` No Application with the given appId exists in the caller's Organization.
      */
     createScenario: (
@@ -746,7 +755,7 @@ export class Api<SecurityDataType extends unknown> {
       data: CreateScenarioRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<ScenarioResponse, ProblemDetails>({
+      this.http.request<ScenarioResponse, ErrorResponse | ProblemDetails>({
         path: `/applications/${appId}/scenarios`,
         method: "POST",
         body: data,
@@ -762,7 +771,7 @@ export class Api<SecurityDataType extends unknown> {
      * @name ListScenarios
      * @request GET:/applications/{appId}/scenarios
      * @response `200` `(ScenarioResponse)[]` OK
-     * @response `400` `ProblemDetails` Both folder and tag were provided; they are mutually exclusive.
+     * @response `400` `ErrorResponse` Both folder and tag were provided; they are mutually exclusive.
      */
     listScenarios: (
       appId: string,
@@ -772,7 +781,7 @@ export class Api<SecurityDataType extends unknown> {
       },
       params: RequestParams = {},
     ) =>
-      this.http.request<ScenarioResponse[], ProblemDetails>({
+      this.http.request<ScenarioResponse[], ErrorResponse>({
         path: `/applications/${appId}/scenarios`,
         method: "GET",
         query: query,
@@ -788,13 +797,13 @@ export class Api<SecurityDataType extends unknown> {
      * @name ExchangeGoogleCode
      * @request POST:/auth/google/token
      * @response `200` `AuthTokenResponse` OK
-     * @response `401` `ProblemDetails` The Google authorization code or PKCE verifier is invalid or expired.
+     * @response `401` `ErrorResponse` The Google authorization code or PKCE verifier is invalid or expired.
      */
     exchangeGoogleCode: (
       data: ExchangeGoogleCodeRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<AuthTokenResponse, ProblemDetails>({
+      this.http.request<AuthTokenResponse, ErrorResponse>({
         path: `/auth/google/token`,
         method: "POST",
         body: data,
@@ -810,10 +819,10 @@ export class Api<SecurityDataType extends unknown> {
      * @name RefreshToken
      * @request POST:/auth/refresh
      * @response `200` `RefreshTokenResponse` OK
-     * @response `401` `ProblemDetails` The refresh token is invalid, expired, or revoked.
+     * @response `401` `ErrorResponse` The refresh token is invalid, expired, or revoked.
      */
     refreshToken: (data: RefreshTokenRequest, params: RequestParams = {}) =>
-      this.http.request<RefreshTokenResponse, ProblemDetails>({
+      this.http.request<RefreshTokenResponse, ErrorResponse>({
         path: `/auth/refresh`,
         method: "POST",
         body: data,
@@ -870,7 +879,7 @@ export class Api<SecurityDataType extends unknown> {
      * @name SetEnvironmentVariable
      * @request PUT:/environments/{id}/variables/{key}
      * @response `204` `void` No Content
-     * @response `400` `ProblemDetails` key exceeds the maximum allowed length, key contains characters other than letters, digits, or underscores, or the Environment no longer exists (deleted after this request started).
+     * @response `400` `ErrorResponse` key exceeds the maximum allowed length, key contains characters other than letters, digits, or underscores, or the Environment no longer exists (deleted after this request started).
      * @response `404` `ProblemDetails` No Environment with the given id exists in the caller's Organization.
      */
     setEnvironmentVariable: (
@@ -879,7 +888,7 @@ export class Api<SecurityDataType extends unknown> {
       data: SetEnvironmentVariableRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<void, ProblemDetails>({
+      this.http.request<void, ErrorResponse | ProblemDetails>({
         path: `/environments/${id}/variables/${key}`,
         method: "PUT",
         body: data,
@@ -1028,7 +1037,7 @@ export class Api<SecurityDataType extends unknown> {
      * @name UpdateScenario
      * @request PATCH:/scenarios/{id}
      * @response `200` `ScenarioResponse` OK
-     * @response `400` `ProblemDetails` Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not reference existing library rows, the total number of unique references exceeds the allowed maximum, or the Application no longer exists (deleted after this request started).
+     * @response `400` `ErrorResponse` Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not reference existing library rows, the total number of unique references exceeds the allowed maximum, or the Application no longer exists (deleted after this request started).
      * @response `404` `ProblemDetails` No Scenario with the given id exists in the caller's Organization.
      */
     updateScenario: (
@@ -1036,7 +1045,7 @@ export class Api<SecurityDataType extends unknown> {
       data: UpdateScenarioRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<ScenarioResponse, ProblemDetails>({
+      this.http.request<ScenarioResponse, ErrorResponse | ProblemDetails>({
         path: `/scenarios/${id}`,
         method: "PATCH",
         body: data,
@@ -1068,7 +1077,7 @@ export class Api<SecurityDataType extends unknown> {
      * @name CreateTry
      * @request POST:/scenarios/{id}/try
      * @response `200` `TryScenarioResponse` OK
-     * @response `400` `ProblemDetails` EnvironmentId does not reference an Environment belonging to the Scenario's Application, or the Application/Environment no longer exists (deleted after this request started).
+     * @response `400` `ErrorResponse` EnvironmentId does not reference an Environment belonging to the Scenario's Application, or the Application/Environment no longer exists (deleted after this request started).
      * @response `404` `ProblemDetails` No Scenario with the given id exists in the caller's Organization.
      */
     createTry: (
@@ -1076,7 +1085,7 @@ export class Api<SecurityDataType extends unknown> {
       data: CreateTryRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<TryScenarioResponse, ProblemDetails>({
+      this.http.request<TryScenarioResponse, ErrorResponse | ProblemDetails>({
         path: `/scenarios/${id}/try`,
         method: "POST",
         body: data,
