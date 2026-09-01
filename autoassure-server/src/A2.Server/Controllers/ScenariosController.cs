@@ -33,7 +33,7 @@ public class ScenariosController(
     /// reference existing library rows, the total number of unique references exceeds the allowed
     /// maximum, or the Application no longer exists (deleted after this request started).</response>
     /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
-    [HttpPost("applications/{appId:guid}/scenarios")]
+    [HttpPost("applications/{appId:guid}/scenarios", Name = "CreateScenario")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -104,7 +104,7 @@ public class ScenariosController(
     }
 
     /// <response code="400">Both folder and tag were provided; they are mutually exclusive.</response>
-    [HttpGet("applications/{appId:guid}/scenarios")]
+    [HttpGet("applications/{appId:guid}/scenarios", Name = "ListScenarios")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<IReadOnlyList<ScenarioResponse>>> List(
@@ -130,7 +130,7 @@ public class ScenariosController(
     }
 
     /// <response code="404">No Scenario with the given id exists in the caller's Organization.</response>
-    [HttpGet("scenarios/{id:guid}")]
+    [HttpGet("scenarios/{id:guid}", Name = "GetScenarioById")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ScenarioResponse>> GetById(Guid id)
@@ -144,7 +144,7 @@ public class ScenariosController(
     /// reference existing library rows, the total number of unique references exceeds the allowed
     /// maximum, or the Application no longer exists (deleted after this request started).</response>
     /// <response code="404">No Scenario with the given id exists in the caller's Organization.</response>
-    [HttpPatch("scenarios/{id:guid}")]
+    [HttpPatch("scenarios/{id:guid}", Name = "UpdateScenario")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -213,7 +213,7 @@ public class ScenariosController(
     }
 
     /// <response code="404">No Scenario with the given id exists in the caller's Organization.</response>
-    [HttpDelete("scenarios/{id:guid}")]
+    [HttpDelete("scenarios/{id:guid}", Name = "DeleteScenario")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> Delete(Guid id)

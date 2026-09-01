@@ -24,7 +24,7 @@ public partial class EnvironmentsController(
     private static partial Regex ValidKeyRegex();
 
     /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
-    [HttpPost("applications/{appId:guid}/environments")]
+    [HttpPost("applications/{appId:guid}/environments", Name = "CreateEnvironment")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EnvironmentResponse>> Create(
@@ -58,7 +58,7 @@ public partial class EnvironmentsController(
         return Ok(await ToResponseAsync(environment));
     }
 
-    [HttpGet("applications/{appId:guid}/environments")]
+    [HttpGet("applications/{appId:guid}/environments", Name = "ListEnvironments")]
     public async Task<ActionResult<IReadOnlyList<EnvironmentResponse>>> List(Guid appId)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
@@ -75,7 +75,7 @@ public partial class EnvironmentsController(
     }
 
     /// <response code="404">No Environment with the given id exists in the caller's Organization.</response>
-    [HttpGet("environments/{id:guid}")]
+    [HttpGet("environments/{id:guid}", Name = "GetEnvironmentById")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EnvironmentResponse>> GetById(Guid id)
@@ -91,7 +91,7 @@ public partial class EnvironmentsController(
     }
 
     /// <response code="404">No Environment with the given id exists in the caller's Organization.</response>
-    [HttpPatch("environments/{id:guid}")]
+    [HttpPatch("environments/{id:guid}", Name = "UpdateEnvironment")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EnvironmentResponse>> Update(
@@ -139,7 +139,7 @@ public partial class EnvironmentsController(
     /// letters, digits, or underscores, or the Environment no longer exists (deleted after this request
     /// started).</response>
     /// <response code="404">No Environment with the given id exists in the caller's Organization.</response>
-    [HttpPut("environments/{id:guid}/variables/{key}")]
+    [HttpPut("environments/{id:guid}/variables/{key}", Name = "SetEnvironmentVariable")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -188,7 +188,7 @@ public partial class EnvironmentsController(
     }
 
     /// <response code="404">No Environment with the given id exists in the caller's Organization.</response>
-    [HttpDelete("environments/{id:guid}/variables/{key}")]
+    [HttpDelete("environments/{id:guid}/variables/{key}", Name = "DeleteEnvironmentVariable")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> DeleteVariable(Guid id, string key)

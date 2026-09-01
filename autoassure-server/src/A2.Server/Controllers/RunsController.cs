@@ -23,7 +23,7 @@ public class RunsController(
     /// Application, or the Application/Environment no longer exists (deleted after this request
     /// started).</response>
     /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
-    [HttpPost("applications/{appId:guid}/runs")]
+    [HttpPost("applications/{appId:guid}/runs", Name = "CreateRun")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -76,7 +76,7 @@ public class RunsController(
         return Ok(run.ToResponse());
     }
 
-    [HttpGet("applications/{appId:guid}/runs")]
+    [HttpGet("applications/{appId:guid}/runs", Name = "ListRuns")]
     public async Task<ActionResult<IReadOnlyList<RunResponse>>> List(Guid appId)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
@@ -85,7 +85,7 @@ public class RunsController(
     }
 
     /// <response code="404">No Run with the given id exists in the caller's Organization.</response>
-    [HttpGet("runs/{id:guid}")]
+    [HttpGet("runs/{id:guid}", Name = "GetRunById")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<RunResponse>> GetById(Guid id)

@@ -19,7 +19,7 @@ public class PreconditionsController(
 {
     /// <response code="400">The Application no longer exists (deleted after this request started).</response>
     /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
-    [HttpPost("applications/{appId:guid}/preconditions")]
+    [HttpPost("applications/{appId:guid}/preconditions", Name = "CreatePrecondition")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -61,7 +61,7 @@ public class PreconditionsController(
         return Ok(precondition.ToResponse());
     }
 
-    [HttpGet("applications/{appId:guid}/preconditions")]
+    [HttpGet("applications/{appId:guid}/preconditions", Name = "ListPreconditions")]
     public async Task<ActionResult<IReadOnlyList<PreconditionResponse>>> List(Guid appId)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
@@ -73,7 +73,7 @@ public class PreconditionsController(
     }
 
     /// <response code="404">No Precondition with the given id exists in the caller's Organization.</response>
-    [HttpPatch("preconditions/{id:guid}")]
+    [HttpPatch("preconditions/{id:guid}", Name = "UpdatePrecondition")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PreconditionResponse>> Update(
@@ -117,7 +117,7 @@ public class PreconditionsController(
         return Ok(updated.ToResponse());
     }
 
-    [HttpDelete("preconditions/{id:guid}")]
+    [HttpDelete("preconditions/{id:guid}", Name = "DeletePrecondition")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult> Delete(Guid id)
     {

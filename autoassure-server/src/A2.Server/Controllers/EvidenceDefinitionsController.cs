@@ -19,7 +19,7 @@ public class EvidenceDefinitionsController(
 {
     /// <response code="400">The Application no longer exists (deleted after this request started).</response>
     /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
-    [HttpPost("applications/{appId:guid}/evidence-definitions")]
+    [HttpPost("applications/{appId:guid}/evidence-definitions", Name = "CreateEvidenceDefinition")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -61,7 +61,7 @@ public class EvidenceDefinitionsController(
         return Ok(evidence.ToResponse());
     }
 
-    [HttpGet("applications/{appId:guid}/evidence-definitions")]
+    [HttpGet("applications/{appId:guid}/evidence-definitions", Name = "ListEvidenceDefinitions")]
     public async Task<ActionResult<IReadOnlyList<EvidenceDefinitionResponse>>> List(Guid appId)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
@@ -73,7 +73,7 @@ public class EvidenceDefinitionsController(
     }
 
     /// <response code="404">No EvidenceDefinition with the given id exists in the caller's Organization.</response>
-    [HttpPatch("evidence-definitions/{id:guid}")]
+    [HttpPatch("evidence-definitions/{id:guid}", Name = "UpdateEvidenceDefinition")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EvidenceDefinitionResponse>> Update(
@@ -117,7 +117,7 @@ public class EvidenceDefinitionsController(
         return Ok(updated.ToResponse());
     }
 
-    [HttpDelete("evidence-definitions/{id:guid}")]
+    [HttpDelete("evidence-definitions/{id:guid}", Name = "DeleteEvidenceDefinition")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<ActionResult> Delete(Guid id)
     {

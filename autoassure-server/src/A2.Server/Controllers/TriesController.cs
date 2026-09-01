@@ -23,7 +23,7 @@ public class TriesController(
     /// Scenario's Application, or the Application/Environment no longer exists (deleted after this
     /// request started).</response>
     /// <response code="404">No Scenario with the given id exists in the caller's Organization.</response>
-    [HttpPost("scenarios/{id:guid}/try")]
+    [HttpPost("scenarios/{id:guid}/try", Name = "CreateTry")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -79,7 +79,7 @@ public class TriesController(
     }
 
     /// <response code="404">No Try (Run) with the given id exists in the caller's Organization.</response>
-    [HttpGet("tries/{id:guid}")]
+    [HttpGet("tries/{id:guid}", Name = "GetTryById")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TryScenarioResponse>> GetById(Guid id)

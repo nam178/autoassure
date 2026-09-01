@@ -69,6 +69,7 @@ description:
 - Contract record definitions MUST not reference domain models.
 - Contract <-> Model mapping is a Controller job. MUST use extension methods in Controllers/ContractMapper.cs,
   ContractMapper.Environments.cs, etc. (mirrors DynamoDbMapper.cs).
+- Must specify operation name, example: [HttpPost(Name = "CreateApplication")]
 
 # Functions & Methods
 

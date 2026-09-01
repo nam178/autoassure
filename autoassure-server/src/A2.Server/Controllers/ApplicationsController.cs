@@ -18,7 +18,7 @@ public class ApplicationsController(
 ) : ControllerBase
 {
     /// <response code="400">The caller's Organization could not be found or has been deleted.</response>
-    [HttpPost]
+    [HttpPost(Name = "CreateApplication")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApplicationResponse>> Create(CreateApplicationRequest request)
@@ -50,7 +50,7 @@ public class ApplicationsController(
         return Ok(application.ToResponse());
     }
 
-    [HttpGet]
+    [HttpGet(Name = "ListApplications")]
     public async Task<ActionResult<IReadOnlyList<ApplicationResponse>>> List()
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
@@ -60,7 +60,7 @@ public class ApplicationsController(
     }
 
     /// <response code="404">No Application with the given id exists in the caller's Organization.</response>
-    [HttpGet("{id:guid}")]
+    [HttpGet("{id:guid}", Name = "GetApplicationById")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApplicationResponse>> GetById(Guid id)
