@@ -239,7 +239,7 @@ public sealed class PreconditionsControllerTests
     {
         var response = await client.PostAsJsonAsync(
             "/applications",
-            new CreateApplicationRequest("Test App", "")
+            new CreateApplicationRequest { Name = "Test App", Description = "" }
         );
         var application = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
         return application!.Id;
@@ -255,11 +255,12 @@ public sealed class PreconditionsControllerTests
         // test
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/preconditions",
-            new CreatePreconditionRequest(
-                "Order Confirmation ID",
-                PreconditionValueSource.PriorActivity,
-                "ORD-12345"
-            )
+            new CreatePreconditionRequest
+            {
+                Name = "Order Confirmation ID",
+                ValueSource = PreconditionValueSource.PriorActivity,
+                ExampleValue = "ORD-12345",
+            }
         );
 
         // verify
@@ -271,11 +272,12 @@ public sealed class PreconditionsControllerTests
         // test
         var patchResponse = await client.PatchAsJsonAsync(
             $"/preconditions/{created.Id}",
-            new UpdatePreconditionRequest(
-                "Order ID",
-                PreconditionValueSource.AskAtRunTime,
-                "ORD-99999"
-            )
+            new UpdatePreconditionRequest
+            {
+                Name = "Order ID",
+                ValueSource = PreconditionValueSource.AskAtRunTime,
+                ExampleValue = "ORD-99999",
+            }
         );
 
         // verify
@@ -308,11 +310,12 @@ public sealed class PreconditionsControllerTests
         // test
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/preconditions",
-            new CreatePreconditionRequest(
-                "Order Confirmation ID",
-                PreconditionValueSource.PriorActivity,
-                ""
-            )
+            new CreatePreconditionRequest
+            {
+                Name = "Order Confirmation ID",
+                ValueSource = PreconditionValueSource.PriorActivity,
+                ExampleValue = "",
+            }
         );
 
         // verify
@@ -337,22 +340,24 @@ public sealed class PreconditionsControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/preconditions",
-            new CreatePreconditionRequest(
-                "Order Confirmation ID",
-                PreconditionValueSource.PriorActivity,
-                "ORD-12345"
-            )
+            new CreatePreconditionRequest
+            {
+                Name = "Order Confirmation ID",
+                ValueSource = PreconditionValueSource.PriorActivity,
+                ExampleValue = "ORD-12345",
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<PreconditionResponse>())!;
 
         // test
         var updateResponse = await client.PatchAsJsonAsync(
             $"/preconditions/{created.Id}",
-            new UpdatePreconditionRequest(
-                "Order Confirmation ID",
-                PreconditionValueSource.PriorActivity,
-                ""
-            )
+            new UpdatePreconditionRequest
+            {
+                Name = "Order Confirmation ID",
+                ValueSource = PreconditionValueSource.PriorActivity,
+                ExampleValue = "",
+            }
         );
 
         // verify
@@ -378,7 +383,12 @@ public sealed class PreconditionsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{Guid.CreateVersion7()}/preconditions",
-            new CreatePreconditionRequest("X", PreconditionValueSource.SpecificValue, "")
+            new CreatePreconditionRequest
+            {
+                Name = "X",
+                ValueSource = PreconditionValueSource.SpecificValue,
+                ExampleValue = "",
+            }
         );
 
         // verify
@@ -394,7 +404,12 @@ public sealed class PreconditionsControllerTests
         // test
         var response = await client.PatchAsJsonAsync(
             $"/preconditions/{Guid.CreateVersion7()}",
-            new UpdatePreconditionRequest("X", PreconditionValueSource.SpecificValue, "")
+            new UpdatePreconditionRequest
+            {
+                Name = "X",
+                ValueSource = PreconditionValueSource.SpecificValue,
+                ExampleValue = "",
+            }
         );
 
         // verify
@@ -411,11 +426,21 @@ public sealed class PreconditionsControllerTests
         var appIdB = await CreateApplicationAsync(clientB);
         await clientA.PostAsJsonAsync(
             $"/applications/{appIdA}/preconditions",
-            new CreatePreconditionRequest("A", PreconditionValueSource.SpecificValue, "1")
+            new CreatePreconditionRequest
+            {
+                Name = "A",
+                ValueSource = PreconditionValueSource.SpecificValue,
+                ExampleValue = "1",
+            }
         );
         await clientB.PostAsJsonAsync(
             $"/applications/{appIdB}/preconditions",
-            new CreatePreconditionRequest("B", PreconditionValueSource.SpecificValue, "2")
+            new CreatePreconditionRequest
+            {
+                Name = "B",
+                ValueSource = PreconditionValueSource.SpecificValue,
+                ExampleValue = "2",
+            }
         );
 
         // test
@@ -442,11 +467,12 @@ public sealed class PreconditionsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/preconditions",
-            new CreatePreconditionRequest(
-                new string('a', nameLength),
-                PreconditionValueSource.SpecificValue,
-                ""
-            )
+            new CreatePreconditionRequest
+            {
+                Name = new string('a', nameLength),
+                ValueSource = PreconditionValueSource.SpecificValue,
+                ExampleValue = "",
+            }
         );
 
         // verify
@@ -467,7 +493,12 @@ public sealed class PreconditionsControllerTests
             .CreateClient()
             .PostAsJsonAsync(
                 $"/applications/{appId}/preconditions",
-                new CreatePreconditionRequest("X", PreconditionValueSource.SpecificValue, "")
+                new CreatePreconditionRequest
+                {
+                    Name = "X",
+                    ValueSource = PreconditionValueSource.SpecificValue,
+                    ExampleValue = "",
+                }
             );
 
         // verify
@@ -494,7 +525,12 @@ public sealed class PreconditionsControllerTests
             .CreateClient()
             .PatchAsJsonAsync(
                 $"/preconditions/{Guid.CreateVersion7()}",
-                new UpdatePreconditionRequest("X", PreconditionValueSource.SpecificValue, "")
+                new UpdatePreconditionRequest
+                {
+                    Name = "X",
+                    ValueSource = PreconditionValueSource.SpecificValue,
+                    ExampleValue = "",
+                }
             );
 
         // verify
@@ -527,22 +563,24 @@ public sealed class PreconditionsControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/preconditions",
-            new CreatePreconditionRequest(
-                "Order Confirmation ID",
-                PreconditionValueSource.SpecificValue,
-                ""
-            )
+            new CreatePreconditionRequest
+            {
+                Name = "Order Confirmation ID",
+                ValueSource = PreconditionValueSource.SpecificValue,
+                ExampleValue = "",
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<PreconditionResponse>())!;
 
         // test
         var response = await client.PatchAsJsonAsync(
             $"/preconditions/{created.Id}",
-            new UpdatePreconditionRequest(
-                new string('a', nameLength),
-                PreconditionValueSource.SpecificValue,
-                ""
-            )
+            new UpdatePreconditionRequest
+            {
+                Name = new string('a', nameLength),
+                ValueSource = PreconditionValueSource.SpecificValue,
+                ExampleValue = "",
+            }
         );
 
         // verify
@@ -564,11 +602,12 @@ public sealed class PreconditionsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/preconditions",
-            new CreatePreconditionRequest(
-                "X",
-                PreconditionValueSource.SpecificValue,
-                new string('a', exampleValueLength)
-            )
+            new CreatePreconditionRequest
+            {
+                Name = "X",
+                ValueSource = PreconditionValueSource.SpecificValue,
+                ExampleValue = new string('a', exampleValueLength),
+            }
         );
 
         // verify
@@ -628,11 +667,12 @@ public sealed class PreconditionsControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/preconditions",
-            new CreatePreconditionRequest(
-                "Order Confirmation ID",
-                PreconditionValueSource.SpecificValue,
-                ""
-            )
+            new CreatePreconditionRequest
+            {
+                Name = "Order Confirmation ID",
+                ValueSource = PreconditionValueSource.SpecificValue,
+                ExampleValue = "",
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<PreconditionResponse>())!;
 

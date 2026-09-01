@@ -208,7 +208,11 @@ public sealed class ApplicationsControllerTests
         // test
         var createResponse = await client.PostAsJsonAsync(
             "/applications",
-            new CreateApplicationRequest("Checkout Service", "Handles order checkout")
+            new CreateApplicationRequest
+            {
+                Name = "Checkout Service",
+                Description = "Handles order checkout",
+            }
         );
 
         // verify
@@ -237,7 +241,7 @@ public sealed class ApplicationsControllerTests
         // test
         var createResponse = await client.PostAsJsonAsync(
             "/applications",
-            new CreateApplicationRequest("Checkout Service", "")
+            new CreateApplicationRequest { Name = "Checkout Service", Description = "" }
         );
 
         // verify
@@ -264,7 +268,7 @@ public sealed class ApplicationsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             "/applications",
-            new CreateApplicationRequest("App", "")
+            new CreateApplicationRequest { Name = "App", Description = "" }
         );
 
         // verify
@@ -283,8 +287,14 @@ public sealed class ApplicationsControllerTests
         await SeedOrganizationMembershipAsync(userB);
         var clientA = CreateAuthenticatedClient(userA);
         var clientB = CreateAuthenticatedClient(userB);
-        await clientA.PostAsJsonAsync("/applications", new CreateApplicationRequest("App A", ""));
-        await clientB.PostAsJsonAsync("/applications", new CreateApplicationRequest("App B", ""));
+        await clientA.PostAsJsonAsync(
+            "/applications",
+            new CreateApplicationRequest { Name = "App A", Description = "" }
+        );
+        await clientB.PostAsJsonAsync(
+            "/applications",
+            new CreateApplicationRequest { Name = "App B", Description = "" }
+        );
 
         // test
         var listResponse = await clientA.GetAsync("/applications");
@@ -310,7 +320,7 @@ public sealed class ApplicationsControllerTests
         var clientB = CreateAuthenticatedClient(userB);
         var createResponse = await clientA.PostAsJsonAsync(
             "/applications",
-            new CreateApplicationRequest("App A", "")
+            new CreateApplicationRequest { Name = "App A", Description = "" }
         );
         var created = await createResponse.Content.ReadFromJsonAsync<ApplicationResponse>();
 
@@ -337,7 +347,10 @@ public sealed class ApplicationsControllerTests
         // test
         var response = await _factory
             .CreateClient()
-            .PostAsJsonAsync("/applications", new CreateApplicationRequest("App", ""));
+            .PostAsJsonAsync(
+                "/applications",
+                new CreateApplicationRequest { Name = "App", Description = "" }
+            );
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -360,7 +373,7 @@ public sealed class ApplicationsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             "/applications",
-            new CreateApplicationRequest(new string('a', nameLength), "")
+            new CreateApplicationRequest { Name = new string('a', nameLength), Description = "" }
         );
 
         // verify
@@ -383,7 +396,11 @@ public sealed class ApplicationsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             "/applications",
-            new CreateApplicationRequest("App", new string('a', descriptionLength))
+            new CreateApplicationRequest
+            {
+                Name = "App",
+                Description = new string('a', descriptionLength),
+            }
         );
 
         // verify

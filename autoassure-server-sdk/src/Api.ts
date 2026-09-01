@@ -15,9 +15,12 @@
  *     must reference existing library rows in the same Application.
  */
 export interface ActivityRequest {
+  /** @maxLength 2000 */
   description: string;
-  preconditionIds: null | string[];
-  evidenceIds: null | string[];
+  /** @maxItems 50 */
+  preconditionIds?: null | string[];
+  /** @maxItems 50 */
+  evidenceIds?: null | string[];
 }
 
 /** A single step within a Scenario, as returned to the client. */
@@ -55,7 +58,9 @@ export interface AuthTokenResponse {
 
 /** Request body to create a new Application in the caller's Organization. */
 export interface CreateApplicationRequest {
+  /** @maxLength 100 */
   name: string;
+  /** @maxLength 1000 */
   description: string;
 }
 
@@ -64,6 +69,7 @@ export interface CreateApplicationRequest {
  *     set those afterward via `PUT /environments/{id}/variables/{key}`.
  */
 export interface CreateEnvironmentRequest {
+  /** @maxLength 100 */
   name: string;
   /** Whether an Environment is a live Production system or a non-production one (staging, dev, ...). */
   classification: EnvironmentClassification;
@@ -71,21 +77,30 @@ export interface CreateEnvironmentRequest {
 
 /** Request body to add an EvidenceDefinition to an Application's library. */
 export interface CreateEvidenceDefinitionRequest {
+  /** @maxLength 200 */
   name: string;
+  /** @maxLength 500 */
   description: string;
+  /** @maxLength 500 */
   exampleValue: string;
 }
 
 /** Request body to add a Precondition to an Application's library. */
 export interface CreatePreconditionRequest {
+  /** @maxLength 200 */
   name: string;
   /** Where a Precondition's value comes from at execution time. */
   valueSource: PreconditionValueSource;
+  /** @maxLength 500 */
   exampleValue: string;
 }
 
 /** Request body to start a Run of one or more Scenarios against an Environment. */
 export interface CreateRunRequest {
+  /**
+   * @maxItems 100
+   * @minItems 1
+   */
   scenarioIds: string[];
   /** @format uuid */
   environmentId: string;
@@ -96,11 +111,16 @@ export interface CreateRunRequest {
  *     not given; Tags default to empty.
  */
 export interface CreateScenarioRequest {
+  /** @maxLength 200 */
   title: string;
+  /** @maxLength 10000 */
   description: string;
-  folder: null | string;
-  tags: null | string[];
-  activities: null | ActivityRequest[];
+  /** @maxLength 300 */
+  folder?: null | string;
+  /** @maxItems 20 */
+  tags?: null | string[];
+  /** @maxItems 200 */
+  activities?: null | ActivityRequest[];
 }
 
 /** Request body to Try a single Scenario against an Environment. */
@@ -148,9 +168,15 @@ export interface EvidenceDefinitionResponse {
  *     the user's Google identity.
  */
 export interface ExchangeGoogleCodeRequest {
-  /** The authorization code returned by Google after the user consents. */
+  /**
+   * The authorization code returned by Google after the user consents.
+   * @maxLength 2000
+   */
   code: string;
-  /** The PKCE code verifier the client generated for this authorization request. */
+  /**
+   * The PKCE code verifier the client generated for this authorization request.
+   * @maxLength 200
+   */
   codeVerifier: string;
 }
 
@@ -181,7 +207,10 @@ export interface ProblemDetails {
 
 /** Requests a new access token using a previously issued refresh token. */
 export interface RefreshTokenRequest {
-  /** The raw refresh token secret previously issued to the client, to be exchanged for a new access token. */
+  /**
+   * The raw refresh token secret previously issued to the client, to be exchanged for a new access token.
+   * @maxLength 500
+   */
   refreshTokenSecret: string;
 }
 
@@ -253,6 +282,7 @@ export interface ScenarioResponse {
 
 /** Request body to upsert a single Environment variable's value. */
 export interface SetEnvironmentVariableRequest {
+  /** @maxLength 4000 */
   value: string;
 }
 
@@ -297,6 +327,7 @@ export interface TryScenarioResponse {
 
 /** Request body to update an existing Environment's Name/Classification. */
 export interface UpdateEnvironmentRequest {
+  /** @maxLength 100 */
   name: string;
   /** Whether an Environment is a live Production system or a non-production one (staging, dev, ...). */
   classification: EnvironmentClassification;
@@ -304,26 +335,36 @@ export interface UpdateEnvironmentRequest {
 
 /** Request body to edit an existing EvidenceDefinition. */
 export interface UpdateEvidenceDefinitionRequest {
+  /** @maxLength 200 */
   name: string;
+  /** @maxLength 500 */
   description: string;
+  /** @maxLength 500 */
   exampleValue: string;
 }
 
 /** Request body to edit an existing Precondition. */
 export interface UpdatePreconditionRequest {
+  /** @maxLength 200 */
   name: string;
   /** Where a Precondition's value comes from at execution time. */
   valueSource: PreconditionValueSource;
+  /** @maxLength 500 */
   exampleValue: string;
 }
 
 /** Request body to edit an existing Scenario's Title/Description/Folder/Tags/Activities. */
 export interface UpdateScenarioRequest {
+  /** @maxLength 200 */
   title: string;
+  /** @maxLength 10000 */
   description: string;
+  /** @maxLength 300 */
   folder: string;
-  tags: null | string[];
-  activities: null | ActivityRequest[];
+  /** @maxItems 20 */
+  tags?: null | string[];
+  /** @maxItems 200 */
+  activities?: null | ActivityRequest[];
 }
 
 /** The signed-in AutoAssure user, as returned to the client after authentication. */

@@ -364,7 +364,7 @@ public sealed class TriesAndRunsControllerTests
     {
         var response = await client.PostAsJsonAsync(
             "/applications",
-            new CreateApplicationRequest("Test App", "")
+            new CreateApplicationRequest { Name = "Test App", Description = "" }
         );
         var application = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
         return application!.Id;
@@ -374,7 +374,14 @@ public sealed class TriesAndRunsControllerTests
     {
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest("Title", "Description", null, null, null)
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+                Activities = null,
+            }
         );
         var scenario = await response.Content.ReadFromJsonAsync<ScenarioResponse>();
         return scenario!.Id;
@@ -384,7 +391,11 @@ public sealed class TriesAndRunsControllerTests
     {
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
         var environment = await response.Content.ReadFromJsonAsync<EnvironmentResponse>();
         return environment!.Id;
@@ -402,7 +413,7 @@ public sealed class TriesAndRunsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/scenarios/{scenarioId}/try",
-            new CreateTryRequest(environmentId)
+            new CreateTryRequest { EnvironmentId = environmentId }
         );
 
         // verify
@@ -439,7 +450,7 @@ public sealed class TriesAndRunsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",
-            new CreateRunRequest([scenarioId], environmentId)
+            new CreateRunRequest { ScenarioIds = [scenarioId], EnvironmentId = environmentId }
         );
 
         // verify
@@ -469,11 +480,11 @@ public sealed class TriesAndRunsControllerTests
         var environmentId = await CreateEnvironmentAsync(client, appId);
         await client.PostAsJsonAsync(
             $"/scenarios/{scenarioId}/try",
-            new CreateTryRequest(environmentId)
+            new CreateTryRequest { EnvironmentId = environmentId }
         );
         await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",
-            new CreateRunRequest([scenarioId], environmentId)
+            new CreateRunRequest { ScenarioIds = [scenarioId], EnvironmentId = environmentId }
         );
 
         // test
@@ -493,7 +504,11 @@ public sealed class TriesAndRunsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{Guid.CreateVersion7()}/runs",
-            new CreateRunRequest([Guid.CreateVersion7()], Guid.CreateVersion7())
+            new CreateRunRequest
+            {
+                ScenarioIds = [Guid.CreateVersion7()],
+                EnvironmentId = Guid.CreateVersion7(),
+            }
         );
 
         // verify
@@ -509,7 +524,7 @@ public sealed class TriesAndRunsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/scenarios/{Guid.CreateVersion7()}/try",
-            new CreateTryRequest(Guid.CreateVersion7())
+            new CreateTryRequest { EnvironmentId = Guid.CreateVersion7() }
         );
 
         // verify
@@ -546,7 +561,11 @@ public sealed class TriesAndRunsControllerTests
             .CreateClient()
             .PostAsJsonAsync(
                 $"/applications/{Guid.CreateVersion7()}/runs",
-                new CreateRunRequest([Guid.CreateVersion7()], Guid.CreateVersion7())
+                new CreateRunRequest
+                {
+                    ScenarioIds = [Guid.CreateVersion7()],
+                    EnvironmentId = Guid.CreateVersion7(),
+                }
             );
 
         // verify
@@ -585,7 +604,7 @@ public sealed class TriesAndRunsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",
-            new CreateRunRequest([], Guid.CreateVersion7())
+            new CreateRunRequest { ScenarioIds = [], EnvironmentId = Guid.CreateVersion7() }
         );
 
         // verify
@@ -603,7 +622,11 @@ public sealed class TriesAndRunsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",
-            new CreateRunRequest([scenarioId], Guid.CreateVersion7())
+            new CreateRunRequest
+            {
+                ScenarioIds = [scenarioId],
+                EnvironmentId = Guid.CreateVersion7(),
+            }
         );
 
         // verify
@@ -623,7 +646,7 @@ public sealed class TriesAndRunsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",
-            new CreateRunRequest([scenarioId], environmentId)
+            new CreateRunRequest { ScenarioIds = [scenarioId], EnvironmentId = environmentId }
         );
 
         // verify
@@ -641,7 +664,7 @@ public sealed class TriesAndRunsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/scenarios/{scenarioId}/try",
-            new CreateTryRequest(Guid.CreateVersion7())
+            new CreateTryRequest { EnvironmentId = Guid.CreateVersion7() }
         );
 
         // verify
@@ -661,7 +684,7 @@ public sealed class TriesAndRunsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/scenarios/{scenarioId}/try",
-            new CreateTryRequest(environmentId)
+            new CreateTryRequest { EnvironmentId = environmentId }
         );
 
         // verify

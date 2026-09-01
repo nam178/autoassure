@@ -1991,16 +1991,16 @@
     "schemas": {
       "ActivityRequest": {
         "required": [
-          "description",
-          "preconditionIds",
-          "evidenceIds"
+          "description"
         ],
         "type": "object",
         "properties": {
           "description": {
+            "maxLength": 2000,
             "type": "string"
           },
           "preconditionIds": {
+            "maxItems": 50,
             "type": [
               "null",
               "array"
@@ -2011,6 +2011,7 @@
             }
           },
           "evidenceIds": {
+            "maxItems": 50,
             "type": [
               "null",
               "array"
@@ -2115,9 +2116,11 @@
         "type": "object",
         "properties": {
           "name": {
+            "maxLength": 100,
             "type": "string"
           },
           "description": {
+            "maxLength": 1000,
             "type": "string"
           }
         },
@@ -2131,6 +2134,7 @@
         "type": "object",
         "properties": {
           "name": {
+            "maxLength": 100,
             "type": "string"
           },
           "classification": {
@@ -2148,12 +2152,15 @@
         "type": "object",
         "properties": {
           "name": {
+            "maxLength": 200,
             "type": "string"
           },
           "description": {
+            "maxLength": 500,
             "type": "string"
           },
           "exampleValue": {
+            "maxLength": 500,
             "type": "string"
           }
         },
@@ -2168,12 +2175,14 @@
         "type": "object",
         "properties": {
           "name": {
+            "maxLength": 200,
             "type": "string"
           },
           "valueSource": {
             "$ref": "#/components/schemas/PreconditionValueSource"
           },
           "exampleValue": {
+            "maxLength": 500,
             "type": "string"
           }
         },
@@ -2187,6 +2196,8 @@
         "type": "object",
         "properties": {
           "scenarioIds": {
+            "maxItems": 100,
+            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
@@ -2203,26 +2214,27 @@
       "CreateScenarioRequest": {
         "required": [
           "title",
-          "description",
-          "folder",
-          "tags",
-          "activities"
+          "description"
         ],
         "type": "object",
         "properties": {
           "title": {
+            "maxLength": 200,
             "type": "string"
           },
           "description": {
+            "maxLength": 10000,
             "type": "string"
           },
           "folder": {
+            "maxLength": 300,
             "type": [
               "null",
               "string"
             ]
           },
           "tags": {
+            "maxItems": 20,
             "type": [
               "null",
               "array"
@@ -2232,6 +2244,7 @@
             }
           },
           "activities": {
+            "maxItems": 200,
             "type": [
               "null",
               "array"
@@ -2350,10 +2363,12 @@
         "type": "object",
         "properties": {
           "code": {
+            "maxLength": 2000,
             "type": "string",
             "description": "The authorization code returned by Google after the user consents."
           },
           "codeVerifier": {
+            "maxLength": 200,
             "type": "string",
             "description": "The PKCE code verifier the client generated for this authorization request."
           }
@@ -2434,6 +2449,7 @@
         "type": "object",
         "properties": {
           "refreshTokenSecret": {
+            "maxLength": 500,
             "type": "string",
             "description": "The raw refresh token secret previously issued to the client, to be exchanged for a new access token."
           }
@@ -2598,6 +2614,7 @@
         "type": "object",
         "properties": {
           "value": {
+            "maxLength": 4000,
             "type": "string"
           }
         },
@@ -2690,6 +2707,7 @@
         "type": "object",
         "properties": {
           "name": {
+            "maxLength": 100,
             "type": "string"
           },
           "classification": {
@@ -2707,12 +2725,15 @@
         "type": "object",
         "properties": {
           "name": {
+            "maxLength": 200,
             "type": "string"
           },
           "description": {
+            "maxLength": 500,
             "type": "string"
           },
           "exampleValue": {
+            "maxLength": 500,
             "type": "string"
           }
         },
@@ -2727,12 +2748,14 @@
         "type": "object",
         "properties": {
           "name": {
+            "maxLength": 200,
             "type": "string"
           },
           "valueSource": {
             "$ref": "#/components/schemas/PreconditionValueSource"
           },
           "exampleValue": {
+            "maxLength": 500,
             "type": "string"
           }
         },
@@ -2742,22 +2765,24 @@
         "required": [
           "title",
           "description",
-          "folder",
-          "tags",
-          "activities"
+          "folder"
         ],
         "type": "object",
         "properties": {
           "title": {
+            "maxLength": 200,
             "type": "string"
           },
           "description": {
+            "maxLength": 10000,
             "type": "string"
           },
           "folder": {
+            "maxLength": 300,
             "type": "string"
           },
           "tags": {
+            "maxItems": 20,
             "type": [
               "null",
               "array"
@@ -2767,6 +2792,7 @@
             }
           },
           "activities": {
+            "maxItems": 200,
             "type": [
               "null",
               "array"

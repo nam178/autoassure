@@ -309,7 +309,7 @@ public sealed class ScenariosControllerTests
     {
         var response = await client.PostAsJsonAsync(
             "/applications",
-            new CreateApplicationRequest("Test App", "")
+            new CreateApplicationRequest { Name = "Test App", Description = "" }
         );
         var application = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
         return application!.Id;
@@ -319,11 +319,12 @@ public sealed class ScenariosControllerTests
     {
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/preconditions",
-            new CreatePreconditionRequest(
-                "Order ID",
-                PreconditionValueSource.SpecificValue,
-                "ORD-1"
-            )
+            new CreatePreconditionRequest
+            {
+                Name = "Order ID",
+                ValueSource = PreconditionValueSource.SpecificValue,
+                ExampleValue = "ORD-1",
+            }
         );
         var precondition = await response.Content.ReadFromJsonAsync<PreconditionResponse>();
         return precondition!.Id;
@@ -359,13 +360,22 @@ public sealed class ScenariosControllerTests
         // test
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest(
-                "Checkout completes",
-                "Verify a user can complete checkout",
-                "/Checkout",
-                ["smoke"],
-                [new ActivityRequest("Add item to cart", [preconditionId], [])]
-            )
+            new CreateScenarioRequest
+            {
+                Title = "Checkout completes",
+                Description = "Verify a user can complete checkout",
+                Folder = "/Checkout",
+                Tags = ["smoke"],
+                Activities =
+                [
+                    new ActivityRequest
+                    {
+                        Description = "Add item to cart",
+                        PreconditionIds = [preconditionId],
+                        EvidenceIds = [],
+                    },
+                ],
+            }
         );
 
         // verify
@@ -396,7 +406,14 @@ public sealed class ScenariosControllerTests
         // test
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest("Checkout completes", "Description", null, [""], null)
+            new CreateScenarioRequest
+            {
+                Title = "Checkout completes",
+                Description = "Description",
+                Folder = null,
+                Tags = [""],
+                Activities = null,
+            }
         );
 
         // verify
@@ -422,7 +439,14 @@ public sealed class ScenariosControllerTests
         // test
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest("Untitled", "Description", null, null, null)
+            new CreateScenarioRequest
+            {
+                Title = "Untitled",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+                Activities = null,
+            }
         );
 
         // verify
@@ -440,13 +464,22 @@ public sealed class ScenariosControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest(
-                "Title",
-                "Description",
-                null,
-                null,
-                [new ActivityRequest("Step", [Guid.CreateVersion7()], [])]
-            )
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+                Activities =
+                [
+                    new ActivityRequest
+                    {
+                        Description = "Step",
+                        PreconditionIds = [Guid.CreateVersion7()],
+                        EvidenceIds = [],
+                    },
+                ],
+            }
         );
 
         // verify
@@ -462,7 +495,14 @@ public sealed class ScenariosControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{Guid.CreateVersion7()}/scenarios",
-            new CreateScenarioRequest("Title", "Description", null, null, null)
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+                Activities = null,
+            }
         );
 
         // verify
@@ -486,13 +526,25 @@ public sealed class ScenariosControllerTests
             preconditionIds.Add(await CreatePreconditionAsync(client, appId));
         }
         var activities = preconditionIds
-            .Select(preconditionId => new ActivityRequest("Step", [preconditionId], []))
+            .Select(preconditionId => new ActivityRequest
+            {
+                Description = "Step",
+                PreconditionIds = [preconditionId],
+                EvidenceIds = [],
+            })
             .ToList();
 
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest("Title", "Description", null, null, activities)
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+                Activities = activities,
+            }
         );
 
         // verify
@@ -507,14 +559,28 @@ public sealed class ScenariosControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest("Title", "Description", "/OldFolder", null, null)
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/OldFolder",
+                Tags = null,
+                Activities = null,
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
 
         // test
         var patchResponse = await client.PatchAsJsonAsync(
             $"/scenarios/{created.Id}",
-            new UpdateScenarioRequest("Title", "Description", "/NewFolder", null, null)
+            new UpdateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/NewFolder",
+                Tags = null,
+                Activities = null,
+            }
         );
 
         // verify
@@ -552,14 +618,28 @@ public sealed class ScenariosControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest("Title", "Description", null, [], null)
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = [],
+                Activities = null,
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
 
         // test
         await client.PatchAsJsonAsync(
             $"/scenarios/{created.Id}",
-            new UpdateScenarioRequest("Title", "Description", "/", ["regression"], null)
+            new UpdateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/",
+                Tags = ["regression"],
+                Activities = null,
+            }
         );
         var listWithTag = await client.GetAsync($"/applications/{appId}/scenarios?tag=regression");
 
@@ -570,7 +650,14 @@ public sealed class ScenariosControllerTests
         // test
         await client.PatchAsJsonAsync(
             $"/scenarios/{created.Id}",
-            new UpdateScenarioRequest("Title", "Description", "/", [], null)
+            new UpdateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/",
+                Tags = [],
+                Activities = null,
+            }
         );
         var listWithoutTag = await client.GetAsync(
             $"/applications/{appId}/scenarios?tag=regression"
@@ -590,7 +677,14 @@ public sealed class ScenariosControllerTests
         // test
         var response = await client.PatchAsJsonAsync(
             $"/scenarios/{Guid.CreateVersion7()}",
-            new UpdateScenarioRequest("Title", "Description", "/", null, null)
+            new UpdateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/",
+                Tags = null,
+                Activities = null,
+            }
         );
 
         // verify
@@ -607,7 +701,14 @@ public sealed class ScenariosControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest("Title", "Description", null, null, null)
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+                Activities = null,
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
 
@@ -630,7 +731,14 @@ public sealed class ScenariosControllerTests
         // test
         var response = await client.PatchAsJsonAsync(
             $"/scenarios/{created.Id}",
-            new UpdateScenarioRequest("Title", "Description", "/", null, null)
+            new UpdateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/",
+                Tags = null,
+                Activities = null,
+            }
         );
 
         // verify
@@ -645,7 +753,14 @@ public sealed class ScenariosControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest("Title", "Description", null, ["tag1"], null)
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = ["tag1"],
+                Activities = null,
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
 
@@ -699,7 +814,14 @@ public sealed class ScenariosControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest(new string('a', titleLength), "Description", null, null, null)
+            new CreateScenarioRequest
+            {
+                Title = new string('a', titleLength),
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+                Activities = null,
+            }
         );
 
         // verify
@@ -722,7 +844,14 @@ public sealed class ScenariosControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest("Title", new string('a', descriptionLength), null, null, null)
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = new string('a', descriptionLength),
+                Folder = null,
+                Tags = null,
+                Activities = null,
+            }
         );
 
         // verify
@@ -744,13 +873,14 @@ public sealed class ScenariosControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest(
-                "Title",
-                "Description",
-                new string('a', folderLength),
-                null,
-                null
-            )
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = new string('a', folderLength),
+                Tags = null,
+                Activities = null,
+            }
         );
 
         // verify
@@ -772,13 +902,14 @@ public sealed class ScenariosControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest(
-                "Title",
-                "Description",
-                null,
-                Enumerable.Range(0, tagCount).Select(i => $"tag{i}").ToList(),
-                null
-            )
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = Enumerable.Range(0, tagCount).Select(i => $"tag{i}").ToList(),
+                Activities = null,
+            }
         );
 
         // verify
@@ -800,13 +931,14 @@ public sealed class ScenariosControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest(
-                "Title",
-                "Description",
-                null,
-                [new string('a', tagLength)],
-                null
-            )
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = [new string('a', tagLength)],
+                Activities = null,
+            }
         );
 
         // verify
@@ -829,13 +961,22 @@ public sealed class ScenariosControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest(
-                "Title",
-                "Description",
-                null,
-                null,
-                [new ActivityRequest(new string('a', descriptionLength), [], [])]
-            )
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+                Activities =
+                [
+                    new ActivityRequest
+                    {
+                        Description = new string('a', descriptionLength),
+                        PreconditionIds = [],
+                        EvidenceIds = [],
+                    },
+                ],
+            }
         );
 
         // verify
@@ -850,7 +991,14 @@ public sealed class ScenariosControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest("Title", "Description", "/Folder", null, null)
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/Folder",
+                Tags = null,
+                Activities = null,
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
 
@@ -907,7 +1055,14 @@ public sealed class ScenariosControllerTests
             .CreateClient()
             .PostAsJsonAsync(
                 $"/applications/{appId}/scenarios",
-                new CreateScenarioRequest("Title", "Description", null, null, null)
+                new CreateScenarioRequest
+                {
+                    Title = "Title",
+                    Description = "Description",
+                    Folder = null,
+                    Tags = null,
+                    Activities = null,
+                }
             );
 
         // verify
@@ -946,7 +1101,14 @@ public sealed class ScenariosControllerTests
             .CreateClient()
             .PatchAsJsonAsync(
                 $"/scenarios/{Guid.CreateVersion7()}",
-                new UpdateScenarioRequest("Title", "Description", "/", null, null)
+                new UpdateScenarioRequest
+                {
+                    Title = "Title",
+                    Description = "Description",
+                    Folder = "/",
+                    Tags = null,
+                    Activities = null,
+                }
             );
 
         // verify

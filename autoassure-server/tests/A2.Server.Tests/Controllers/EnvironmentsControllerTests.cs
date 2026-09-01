@@ -260,7 +260,7 @@ public sealed class EnvironmentsControllerTests
     {
         var response = await client.PostAsJsonAsync(
             "/applications",
-            new CreateApplicationRequest("Test App", "")
+            new CreateApplicationRequest { Name = "Test App", Description = "" }
         );
         var application = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
         return application!.Id;
@@ -276,7 +276,11 @@ public sealed class EnvironmentsControllerTests
         // test
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
 
         // verify
@@ -305,12 +309,16 @@ public sealed class EnvironmentsControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_URL",
-            new SetEnvironmentVariableRequest("https://staging.example.com")
+            new SetEnvironmentVariableRequest { Value = "https://staging.example.com" }
         );
 
         // test
@@ -339,7 +347,11 @@ public sealed class EnvironmentsControllerTests
         var appId = await CreateApplicationAsync(clientA);
         var createResponse = await clientA.PostAsJsonAsync(
             $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
 
@@ -358,14 +370,22 @@ public sealed class EnvironmentsControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
 
         // test
         var patchResponse = await client.PatchAsJsonAsync(
             $"/environments/{created.Id}",
-            new UpdateEnvironmentRequest("Production", EnvironmentClassification.Production)
+            new UpdateEnvironmentRequest
+            {
+                Name = "Production",
+                Classification = EnvironmentClassification.Production,
+            }
         );
 
         // verify
@@ -383,22 +403,26 @@ public sealed class EnvironmentsControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
 
         // test
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_URL",
-            new SetEnvironmentVariableRequest("https://staging.example.com")
+            new SetEnvironmentVariableRequest { Value = "https://staging.example.com" }
         );
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_KEY",
-            new SetEnvironmentVariableRequest("secret-1")
+            new SetEnvironmentVariableRequest { Value = "secret-1" }
         );
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_KEY",
-            new SetEnvironmentVariableRequest("secret-2")
+            new SetEnvironmentVariableRequest { Value = "secret-2" }
         );
 
         // verify
@@ -421,16 +445,20 @@ public sealed class EnvironmentsControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_URL",
-            new SetEnvironmentVariableRequest("https://staging.example.com")
+            new SetEnvironmentVariableRequest { Value = "https://staging.example.com" }
         );
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_KEY",
-            new SetEnvironmentVariableRequest("secret-1")
+            new SetEnvironmentVariableRequest { Value = "secret-1" }
         );
 
         // test
@@ -457,7 +485,11 @@ public sealed class EnvironmentsControllerTests
             .CreateClient()
             .PostAsJsonAsync(
                 $"/applications/{appId}/environments",
-                new CreateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+                new CreateEnvironmentRequest
+                {
+                    Name = "Staging",
+                    Classification = EnvironmentClassification.NonProduction,
+                }
             );
 
         // verify
@@ -479,7 +511,11 @@ public sealed class EnvironmentsControllerTests
         // test
         var createResponseA = await clientA.PostAsJsonAsync(
             $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
 
         // verify
@@ -488,7 +524,11 @@ public sealed class EnvironmentsControllerTests
         // test
         var createResponseB = await clientB.PostAsJsonAsync(
             $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
 
         // verify
@@ -524,7 +564,11 @@ public sealed class EnvironmentsControllerTests
             .CreateClient()
             .PatchAsJsonAsync(
                 $"/environments/{Guid.CreateVersion7()}",
-                new UpdateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+                new UpdateEnvironmentRequest
+                {
+                    Name = "Staging",
+                    Classification = EnvironmentClassification.NonProduction,
+                }
             );
 
         // verify
@@ -539,7 +583,7 @@ public sealed class EnvironmentsControllerTests
             .CreateClient()
             .PutAsJsonAsync(
                 $"/environments/{Guid.CreateVersion7()}/variables/API_URL",
-                new SetEnvironmentVariableRequest("x")
+                new SetEnvironmentVariableRequest { Value = "x" }
             );
 
         // verify
@@ -586,10 +630,11 @@ public sealed class EnvironmentsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest(
-                new string('a', nameLength),
-                EnvironmentClassification.NonProduction
-            )
+            new CreateEnvironmentRequest
+            {
+                Name = new string('a', nameLength),
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
 
         // verify
@@ -610,17 +655,22 @@ public sealed class EnvironmentsControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
 
         // test
         var response = await client.PatchAsJsonAsync(
             $"/environments/{created.Id}",
-            new UpdateEnvironmentRequest(
-                new string('a', nameLength),
-                EnvironmentClassification.NonProduction
-            )
+            new UpdateEnvironmentRequest
+            {
+                Name = new string('a', nameLength),
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
 
         // verify
@@ -641,14 +691,18 @@ public sealed class EnvironmentsControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
 
         // test
         var response = await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_URL",
-            new SetEnvironmentVariableRequest(new string('a', valueLength))
+            new SetEnvironmentVariableRequest { Value = new string('a', valueLength) }
         );
 
         // verify
@@ -668,14 +722,18 @@ public sealed class EnvironmentsControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
 
         // test
         var response = await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/{new string('k', keyLength)}",
-            new SetEnvironmentVariableRequest("x")
+            new SetEnvironmentVariableRequest { Value = "x" }
         );
 
         // verify
@@ -715,7 +773,11 @@ public sealed class EnvironmentsControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
 
@@ -740,7 +802,11 @@ public sealed class EnvironmentsControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest("Staging", EnvironmentClassification.NonProduction)
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
 

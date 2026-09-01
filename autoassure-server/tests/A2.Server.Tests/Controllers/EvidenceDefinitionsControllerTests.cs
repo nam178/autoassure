@@ -239,7 +239,7 @@ public sealed class EvidenceDefinitionsControllerTests
     {
         var response = await client.PostAsJsonAsync(
             "/applications",
-            new CreateApplicationRequest("Test App", "")
+            new CreateApplicationRequest { Name = "Test App", Description = "" }
         );
         var application = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
         return application!.Id;
@@ -255,11 +255,12 @@ public sealed class EvidenceDefinitionsControllerTests
         // test
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest(
-                "Order Confirmation ID",
-                "The confirmation id shown after checkout",
-                "ORD-12345"
-            )
+            new CreateEvidenceDefinitionRequest
+            {
+                Name = "Order Confirmation ID",
+                Description = "The confirmation id shown after checkout",
+                ExampleValue = "ORD-12345",
+            }
         );
 
         // verify
@@ -271,7 +272,12 @@ public sealed class EvidenceDefinitionsControllerTests
         // test
         var patchResponse = await client.PatchAsJsonAsync(
             $"/evidence-definitions/{created.Id}",
-            new UpdateEvidenceDefinitionRequest("Order ID", "Updated description", "ORD-99999")
+            new UpdateEvidenceDefinitionRequest
+            {
+                Name = "Order ID",
+                Description = "Updated description",
+                ExampleValue = "ORD-99999",
+            }
         );
 
         // verify
@@ -303,7 +309,12 @@ public sealed class EvidenceDefinitionsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{Guid.CreateVersion7()}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest("X", "", "")
+            new CreateEvidenceDefinitionRequest
+            {
+                Name = "X",
+                Description = "",
+                ExampleValue = "",
+            }
         );
 
         // verify
@@ -319,7 +330,12 @@ public sealed class EvidenceDefinitionsControllerTests
         // test
         var response = await client.PatchAsJsonAsync(
             $"/evidence-definitions/{Guid.CreateVersion7()}",
-            new UpdateEvidenceDefinitionRequest("X", "", "")
+            new UpdateEvidenceDefinitionRequest
+            {
+                Name = "X",
+                Description = "",
+                ExampleValue = "",
+            }
         );
 
         // verify
@@ -336,11 +352,21 @@ public sealed class EvidenceDefinitionsControllerTests
         var appIdB = await CreateApplicationAsync(clientB);
         await clientA.PostAsJsonAsync(
             $"/applications/{appIdA}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest("A", "", "")
+            new CreateEvidenceDefinitionRequest
+            {
+                Name = "A",
+                Description = "",
+                ExampleValue = "",
+            }
         );
         await clientB.PostAsJsonAsync(
             $"/applications/{appIdB}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest("B", "", "")
+            new CreateEvidenceDefinitionRequest
+            {
+                Name = "B",
+                Description = "",
+                ExampleValue = "",
+            }
         );
 
         // test
@@ -362,7 +388,12 @@ public sealed class EvidenceDefinitionsControllerTests
         // test
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest("Order Confirmation ID", "", "")
+            new CreateEvidenceDefinitionRequest
+            {
+                Name = "Order Confirmation ID",
+                Description = "",
+                ExampleValue = "",
+            }
         );
 
         // verify
@@ -389,11 +420,12 @@ public sealed class EvidenceDefinitionsControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest(
-                "Order Confirmation ID",
-                "Non-empty description",
-                "ORD-12345"
-            )
+            new CreateEvidenceDefinitionRequest
+            {
+                Name = "Order Confirmation ID",
+                Description = "Non-empty description",
+                ExampleValue = "ORD-12345",
+            }
         );
         var created = (
             await createResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>()
@@ -402,7 +434,12 @@ public sealed class EvidenceDefinitionsControllerTests
         // test
         var updateResponse = await client.PatchAsJsonAsync(
             $"/evidence-definitions/{created.Id}",
-            new UpdateEvidenceDefinitionRequest("Order Confirmation ID", "", "")
+            new UpdateEvidenceDefinitionRequest
+            {
+                Name = "Order Confirmation ID",
+                Description = "",
+                ExampleValue = "",
+            }
         );
 
         // verify
@@ -436,7 +473,12 @@ public sealed class EvidenceDefinitionsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest(new string('a', nameLength), "", "")
+            new CreateEvidenceDefinitionRequest
+            {
+                Name = new string('a', nameLength),
+                Description = "",
+                ExampleValue = "",
+            }
         );
 
         // verify
@@ -457,7 +499,12 @@ public sealed class EvidenceDefinitionsControllerTests
             .CreateClient()
             .PostAsJsonAsync(
                 $"/applications/{appId}/evidence-definitions",
-                new CreateEvidenceDefinitionRequest("X", "", "")
+                new CreateEvidenceDefinitionRequest
+                {
+                    Name = "X",
+                    Description = "",
+                    ExampleValue = "",
+                }
             );
 
         // verify
@@ -484,7 +531,12 @@ public sealed class EvidenceDefinitionsControllerTests
             .CreateClient()
             .PatchAsJsonAsync(
                 $"/evidence-definitions/{Guid.CreateVersion7()}",
-                new UpdateEvidenceDefinitionRequest("X", "", "")
+                new UpdateEvidenceDefinitionRequest
+                {
+                    Name = "X",
+                    Description = "",
+                    ExampleValue = "",
+                }
             );
 
         // verify
@@ -517,7 +569,12 @@ public sealed class EvidenceDefinitionsControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest("Order Confirmation ID", "", "")
+            new CreateEvidenceDefinitionRequest
+            {
+                Name = "Order Confirmation ID",
+                Description = "",
+                ExampleValue = "",
+            }
         );
         var created = (
             await createResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>()
@@ -526,7 +583,12 @@ public sealed class EvidenceDefinitionsControllerTests
         // test
         var response = await client.PatchAsJsonAsync(
             $"/evidence-definitions/{created.Id}",
-            new UpdateEvidenceDefinitionRequest(new string('a', nameLength), "", "")
+            new UpdateEvidenceDefinitionRequest
+            {
+                Name = new string('a', nameLength),
+                Description = "",
+                ExampleValue = "",
+            }
         );
 
         // verify
@@ -548,7 +610,12 @@ public sealed class EvidenceDefinitionsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest("X", new string('a', descriptionLength), "")
+            new CreateEvidenceDefinitionRequest
+            {
+                Name = "X",
+                Description = new string('a', descriptionLength),
+                ExampleValue = "",
+            }
         );
 
         // verify
@@ -570,7 +637,12 @@ public sealed class EvidenceDefinitionsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest("X", "", new string('a', exampleValueLength))
+            new CreateEvidenceDefinitionRequest
+            {
+                Name = "X",
+                Description = "",
+                ExampleValue = new string('a', exampleValueLength),
+            }
         );
 
         // verify
@@ -648,7 +720,12 @@ public sealed class EvidenceDefinitionsControllerTests
         var appId = await CreateApplicationAsync(client);
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/evidence-definitions",
-            new CreateEvidenceDefinitionRequest("Order Confirmation ID", "", "")
+            new CreateEvidenceDefinitionRequest
+            {
+                Name = "Order Confirmation ID",
+                Description = "",
+                ExampleValue = "",
+            }
         );
         var created = (
             await createResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>()
