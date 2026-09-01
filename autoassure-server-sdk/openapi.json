@@ -10,6 +10,7 @@
         "tags": [
           "Applications"
         ],
+        "operationId": "CreateApplication",
         "requestBody": {
           "content": {
             "application/json": {
@@ -50,6 +51,26 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "The caller's Organization could not be found or has been deleted.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       },
@@ -57,6 +78,7 @@
         "tags": [
           "Applications"
         ],
+        "operationId": "ListApplications",
         "responses": {
           "200": {
             "description": "OK",
@@ -95,6 +117,7 @@
         "tags": [
           "Applications"
         ],
+        "operationId": "GetApplicationById",
         "parameters": [
           {
             "name": "id",
@@ -155,6 +178,7 @@
         "tags": [
           "Auth"
         ],
+        "operationId": "ExchangeGoogleCode",
         "requestBody": {
           "content": {
             "application/json": {
@@ -224,6 +248,7 @@
         "tags": [
           "Auth"
         ],
+        "operationId": "RefreshToken",
         "requestBody": {
           "content": {
             "application/json": {
@@ -293,6 +318,7 @@
         "tags": [
           "Environments"
         ],
+        "operationId": "CreateEnvironment",
         "parameters": [
           {
             "name": "appId",
@@ -371,6 +397,7 @@
         "tags": [
           "Environments"
         ],
+        "operationId": "ListEnvironments",
         "parameters": [
           {
             "name": "appId",
@@ -420,6 +447,7 @@
         "tags": [
           "Environments"
         ],
+        "operationId": "GetEnvironmentById",
         "parameters": [
           {
             "name": "id",
@@ -478,6 +506,7 @@
         "tags": [
           "Environments"
         ],
+        "operationId": "UpdateEnvironment",
         "parameters": [
           {
             "name": "id",
@@ -558,6 +587,7 @@
         "tags": [
           "Environments"
         ],
+        "operationId": "SetEnvironmentVariable",
         "parameters": [
           {
             "name": "id",
@@ -571,6 +601,7 @@
           {
             "name": "key",
             "in": "path",
+            "description": "Variable name. Must be 1-200 characters, using only letters, digits, and\n    underscores.",
             "required": true,
             "schema": {
               "type": "string"
@@ -602,7 +633,7 @@
             "description": "No Content"
           },
           "400": {
-            "description": "key exceeds the maximum allowed length.",
+            "description": "key exceeds the maximum allowed length, key contains characters other than\n    letters, digits, or underscores, or the Environment no longer exists (deleted after this request\n    started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -647,6 +678,7 @@
         "tags": [
           "Environments"
         ],
+        "operationId": "DeleteEnvironmentVariable",
         "parameters": [
           {
             "name": "id",
@@ -698,6 +730,7 @@
         "tags": [
           "EvidenceDefinitions"
         ],
+        "operationId": "CreateEvidenceDefinition",
         "parameters": [
           {
             "name": "appId",
@@ -750,6 +783,26 @@
               }
             }
           },
+          "400": {
+            "description": "The Application no longer exists (deleted after this request started).",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No Application with the given appId exists in the caller's Organization.",
             "content": {
@@ -776,6 +829,7 @@
         "tags": [
           "EvidenceDefinitions"
         ],
+        "operationId": "ListEvidenceDefinitions",
         "parameters": [
           {
             "name": "appId",
@@ -825,6 +879,7 @@
         "tags": [
           "EvidenceDefinitions"
         ],
+        "operationId": "UpdateEvidenceDefinition",
         "parameters": [
           {
             "name": "id",
@@ -903,6 +958,7 @@
         "tags": [
           "EvidenceDefinitions"
         ],
+        "operationId": "DeleteEvidenceDefinition",
         "parameters": [
           {
             "name": "id",
@@ -926,6 +982,7 @@
         "tags": [
           "Preconditions"
         ],
+        "operationId": "CreatePrecondition",
         "parameters": [
           {
             "name": "appId",
@@ -978,6 +1035,26 @@
               }
             }
           },
+          "400": {
+            "description": "The Application no longer exists (deleted after this request started).",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "404": {
             "description": "No Application with the given appId exists in the caller's Organization.",
             "content": {
@@ -1004,6 +1081,7 @@
         "tags": [
           "Preconditions"
         ],
+        "operationId": "ListPreconditions",
         "parameters": [
           {
             "name": "appId",
@@ -1053,6 +1131,7 @@
         "tags": [
           "Preconditions"
         ],
+        "operationId": "UpdatePrecondition",
         "parameters": [
           {
             "name": "id",
@@ -1131,6 +1210,7 @@
         "tags": [
           "Preconditions"
         ],
+        "operationId": "DeletePrecondition",
         "parameters": [
           {
             "name": "id",
@@ -1154,6 +1234,7 @@
         "tags": [
           "Runs"
         ],
+        "operationId": "CreateRun",
         "parameters": [
           {
             "name": "appId",
@@ -1207,7 +1288,7 @@
             }
           },
           "400": {
-            "description": "EnvironmentId does not reference an Environment belonging to this Application.",
+            "description": "EnvironmentId does not reference an Environment belonging to this\n    Application, or the Application/Environment no longer exists (deleted after this request\n    started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1252,6 +1333,7 @@
         "tags": [
           "Runs"
         ],
+        "operationId": "ListRuns",
         "parameters": [
           {
             "name": "appId",
@@ -1301,6 +1383,7 @@
         "tags": [
           "Runs"
         ],
+        "operationId": "GetRunById",
         "parameters": [
           {
             "name": "id",
@@ -1361,6 +1444,7 @@
         "tags": [
           "Scenarios"
         ],
+        "operationId": "CreateScenario",
         "parameters": [
           {
             "name": "appId",
@@ -1414,7 +1498,7 @@
             }
           },
           "400": {
-            "description": "Tags are invalid, or an Activity's PreconditionIds/EvidenceIds do not reference existing library rows.",
+            "description": "Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not\n    reference existing library rows, the total number of unique references exceeds the allowed\n    maximum, or the Application no longer exists (deleted after this request started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1459,6 +1543,7 @@
         "tags": [
           "Scenarios"
         ],
+        "operationId": "ListScenarios",
         "parameters": [
           {
             "name": "appId",
@@ -1542,6 +1627,7 @@
         "tags": [
           "Scenarios"
         ],
+        "operationId": "GetScenarioById",
         "parameters": [
           {
             "name": "id",
@@ -1600,6 +1686,7 @@
         "tags": [
           "Scenarios"
         ],
+        "operationId": "UpdateScenario",
         "parameters": [
           {
             "name": "id",
@@ -1653,7 +1740,7 @@
             }
           },
           "400": {
-            "description": "Tags are invalid, or an Activity's PreconditionIds/EvidenceIds do not reference existing library rows.",
+            "description": "Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not\n    reference existing library rows, the total number of unique references exceeds the allowed\n    maximum, or the Application no longer exists (deleted after this request started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1698,6 +1785,7 @@
         "tags": [
           "Scenarios"
         ],
+        "operationId": "DeleteScenario",
         "parameters": [
           {
             "name": "id",
@@ -1741,6 +1829,7 @@
         "tags": [
           "Tries"
         ],
+        "operationId": "CreateTry",
         "parameters": [
           {
             "name": "id",
@@ -1794,7 +1883,7 @@
             }
           },
           "400": {
-            "description": "EnvironmentId does not reference an Environment belonging to the Scenario's Application.",
+            "description": "EnvironmentId does not reference an Environment belonging to the\n    Scenario's Application, or the Application/Environment no longer exists (deleted after this\n    request started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1841,6 +1930,7 @@
         "tags": [
           "Tries"
         ],
+        "operationId": "GetTryById",
         "parameters": [
           {
             "name": "id",
