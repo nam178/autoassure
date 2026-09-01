@@ -67,6 +67,7 @@ description:
     - MUST have a reasonable length, range, and/or regex limits for EVERY parameter.
     - Contract <-> Model mapping is a Controller job. MUST use extension methods in Controllers/ContractMapper.cs,
       ContractMapper.Environments.cs, etc. (mirrors DynamoDbMapper.cs).
+    - MUST use C# records using get/init accessors (NOT positional record style).
 - Controllers:
     - Must specify operation name, example: [HttpPost (Name = "CreateApplication")]
     - Non-success HTTP status codes:
