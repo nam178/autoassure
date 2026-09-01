@@ -61,15 +61,18 @@ description:
 # Controllers & Contracts (API Layer)
 
 - MUST be well documented (XML doc) similar to AWS API Docs.
-- Non-success HTTP status codes:
-    - MUST use ErrorResponse for response body, with user friendly message.
-    - Must document with [ProducesResponseType (typeof (ErrorResponse), ...]
-    - MUST document with XML, specify when they occur, e.g. "Returns 400 when username is shorter than 20 chars".
-- MUST be pure, easy to understand, friendly naming.
-- Contract record definitions MUST not reference domain models.
-- Contract <-> Model mapping is a Controller job. MUST use extension methods in Controllers/ContractMapper.cs,
-  ContractMapper.Environments.cs, etc. (mirrors DynamoDbMapper.cs).
-- Must specify operation name, example: [HttpPost (Name = "CreateApplication")]
+- Contracts:
+    - MUST be pure, easy to understand, friendly naming.
+    - MUST NOT reference domain models.
+    - MUST have a reasonable length, range, and/or regex limits for EVERY parameter.
+    - Contract <-> Model mapping is a Controller job. MUST use extension methods in Controllers/ContractMapper.cs,
+      ContractMapper.Environments.cs, etc. (mirrors DynamoDbMapper.cs).
+- Controllers:
+    - Must specify operation name, example: [HttpPost (Name = "CreateApplication")]
+    - Non-success HTTP status codes:
+        - MUST use ErrorResponse for response body, with user friendly message.
+        - Must document with [ProducesResponseType (typeof (ErrorResponse), ...]
+        - MUST document with XML, specify when they occur, e.g. "Returns 400 when username is shorter than 20 chars".
 
 # Functions & Methods
 
