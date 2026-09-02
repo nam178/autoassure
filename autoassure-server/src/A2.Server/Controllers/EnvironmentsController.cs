@@ -135,10 +135,10 @@ public partial class EnvironmentsController(
 
     /// <param name="key">Variable name. Must be 1-200 characters, using only letters, digits, and
     /// underscores.</param>
-    /// <response code="400">key exceeds the maximum allowed length, key contains characters other than
-    /// letters, digits, or underscores, or the Environment no longer exists (deleted after this request
-    /// started).</response>
-    /// <response code="404">No Environment with the given id exists in the caller's Organization.</response>
+    /// <response code="400">key exceeds the maximum allowed length, or key contains characters other
+    /// than letters, digits, or underscores.</response>
+    /// <response code="404">No Environment with the given id exists in the caller's Organization, or it
+    /// no longer exists (deleted after this request started).</response>
     [HttpPut("environments/{id:guid}/variables/{key}", Name = "SetEnvironmentVariable")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -167,8 +167,8 @@ public partial class EnvironmentsController(
             return NotFound();
         }
 
-        // The Environment existed above but may have been deleted since -- not the client-facing
-        // "resource" they asked for, so this is a 400, not a 404.
+        // The Environment existed above but may have been deleted since -- still the same
+        // client-facing resource the caller asked for, so this is a 404, same as the check above.
         if (
             !await environmentVariableRepository.TryUpdateAsync(
                 organizationId,
@@ -180,9 +180,7 @@ public partial class EnvironmentsController(
             )
         )
         {
-            return BadRequest(
-                new ErrorResponse("Environment could not be found or has been deleted.")
-            );
+            return NotFound();
         }
         return NoContent();
     }

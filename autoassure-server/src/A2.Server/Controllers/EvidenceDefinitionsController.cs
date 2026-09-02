@@ -11,17 +11,14 @@ namespace A2.Server.Controllers;
 [ApiController]
 [Authorize]
 public class EvidenceDefinitionsController(
-    IApplicationRepository applicationRepository,
     IEvidenceDefinitionRepository evidenceDefinitionRepository,
     ICallerOrganizationService callerOrganizationService,
     IClock clock
 ) : ControllerBase
 {
-    /// <response code="400">The Application no longer exists (deleted after this request started).</response>
     /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
     [HttpPost("applications/{appId:guid}/evidence-definitions", Name = "CreateEvidenceDefinition")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EvidenceDefinitionResponse>> Create(
         Guid appId,
@@ -29,11 +26,6 @@ public class EvidenceDefinitionsController(
     )
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        if (await applicationRepository.GetByIdAsync(organizationId, appId) is null)
-        {
-            return NotFound();
-        }
-
         var userId = User.GetUserId();
         var now = clock.UtcNow;
         var evidence = new EvidenceDefinition
@@ -50,13 +42,11 @@ public class EvidenceDefinitionsController(
             UpdatedAt = now,
         };
 
-        // The Application existed above but may have been deleted since -- not the client-facing
-        // "resource" they asked for, so this is a 400, not a 404.
+        // Application existence is checked here via the save's condition expression instead of a
+        // separate lookup, so there's no gap for the app to be deleted in between.
         if (!await evidenceDefinitionRepository.TrySaveAsync(evidence))
         {
-            return BadRequest(
-                new ErrorResponse("Application could not be found or has been deleted.")
-            );
+            return NotFound();
         }
         return Ok(evidence.ToResponse());
     }

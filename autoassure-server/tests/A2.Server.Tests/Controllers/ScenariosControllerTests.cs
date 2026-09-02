@@ -692,7 +692,7 @@ public sealed class ScenariosControllerTests
     }
 
     [Fact]
-    public async Task Update_WhenApplicationDeletedMidRequest_ReturnsBadRequest()
+    public async Task Update_WhenApplicationDeletedMidRequest_ReturnsNotFound()
     {
         // setup
         var userId = Guid.CreateVersion7();
@@ -742,7 +742,7 @@ public sealed class ScenariosControllerTests
         );
 
         // verify
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]

@@ -30,9 +30,10 @@ public class ScenariosController(
     private const int MaxActivityReferenceCount = 50;
 
     /// <response code="400">Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not
-    /// reference existing library rows, the total number of unique references exceeds the allowed
-    /// maximum, or the Application no longer exists (deleted after this request started).</response>
-    /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
+    /// reference existing library rows, or the total number of unique references exceeds the allowed
+    /// maximum.</response>
+    /// <response code="404">No Application with the given appId exists in the caller's Organization,
+    /// or it no longer exists (deleted after this request started).</response>
     [HttpPost("applications/{appId:guid}/scenarios", Name = "CreateScenario")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -43,6 +44,9 @@ public class ScenariosController(
     )
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
+
+        // The Application is the URL resource -- its non-existence must win as a 404 over a 400 for
+        // an invalid request body, so it's checked before validating tags/activities below.
         if (await applicationRepository.GetByIdAsync(organizationId, appId) is null)
         {
             return NotFound();
@@ -86,15 +90,13 @@ public class ScenariosController(
             UpdatedAt = now,
         };
 
-        // The Application existed above but may have been deleted since -- not the client-facing
-        // "resource" they asked for, so this is a 400, not a 404.
+        // Application existence is checked here via the save's condition expression instead of a
+        // separate lookup, so there's no gap for the app to be deleted in between.
         var result = await scenarioRepository.TrySaveAsync(scenario);
         return result switch
         {
             ScenarioWriteResult.Success => Ok(scenario.ToResponse()),
-            ScenarioWriteResult.ApplicationNotFound => BadRequest(
-                new ErrorResponse("Application could not be found or has been deleted.")
-            ),
+            ScenarioWriteResult.ApplicationNotFound => NotFound(),
             _ => BadRequest(
                 new ErrorResponse(
                     "PreconditionIds/EvidenceIds must reference existing library rows."
@@ -141,9 +143,10 @@ public class ScenariosController(
     }
 
     /// <response code="400">Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not
-    /// reference existing library rows, the total number of unique references exceeds the allowed
-    /// maximum, or the Application no longer exists (deleted after this request started).</response>
-    /// <response code="404">No Scenario with the given id exists in the caller's Organization.</response>
+    /// reference existing library rows, or the total number of unique references exceeds the allowed
+    /// maximum.</response>
+    /// <response code="404">No Scenario with the given id exists in the caller's Organization, or its
+    /// Application no longer exists (deleted after this request started).</response>
     [HttpPatch("scenarios/{id:guid}", Name = "UpdateScenario")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -192,18 +195,14 @@ public class ScenariosController(
             UpdatedAt = clock.UtcNow,
         };
 
-        // The Scenario existed above but may have been deleted since (by a concurrent request) -- the
-        // client-facing "resource" they asked for is gone, so this is a 404, same as the check above.
-        // Its Application existed when it was created but may have been deleted since -- not the
-        // client-facing resource, so that's a 400, not a 404.
+        // Scenario/Application existence is checked here via the update's condition expression
+        // instead of a separate lookup, so there's no gap for either to be deleted in between.
         var result = await scenarioRepository.TryUpdateAsync(updated, previous);
         return result switch
         {
             ScenarioWriteResult.Success => Ok(updated.ToResponse()),
-            ScenarioWriteResult.ScenarioNotFound => NotFound(),
-            ScenarioWriteResult.ApplicationNotFound => BadRequest(
-                new ErrorResponse("Application could not be found or has been deleted.")
-            ),
+            ScenarioWriteResult.ScenarioNotFound or ScenarioWriteResult.ApplicationNotFound =>
+                NotFound(),
             _ => BadRequest(
                 new ErrorResponse(
                     "PreconditionIds/EvidenceIds must reference existing library rows."

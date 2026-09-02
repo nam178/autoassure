@@ -20,9 +20,9 @@ public class TriesController(
 ) : ControllerBase
 {
     /// <response code="400">EnvironmentId does not reference an Environment belonging to the
-    /// Scenario's Application, or the Application/Environment no longer exists (deleted after this
-    /// request started).</response>
-    /// <response code="404">No Scenario with the given id exists in the caller's Organization.</response>
+    /// Scenario's Application.</response>
+    /// <response code="404">No Scenario with the given id exists in the caller's Organization, or the
+    /// Scenario/Environment no longer exists (deleted after this request started).</response>
     [HttpPost("scenarios/{id:guid}/try", Name = "CreateTry")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -65,15 +65,11 @@ public class TriesController(
             UpdatedByUserId = userId,
         };
 
-        // The Scenario/Environment existed above but may have been deleted since -- not the
-        // client-facing "resource" they asked for, so this is a 400, not a 404.
+        // Scenario/Environment existence is checked here via the save's condition expression
+        // instead of a separate lookup, so there's no gap for either to be deleted in between.
         if (!await runRepository.TrySaveAsync(run))
         {
-            return BadRequest(
-                new ErrorResponse(
-                    "Application or Environment could not be found or has been deleted."
-                )
-            );
+            return NotFound();
         }
         return Ok(run.ToTryResponse());
     }

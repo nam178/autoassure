@@ -18,8 +18,8 @@ description:
 
 - MUST add docs for interfaces, classes, and methods. Skip for impls behind an interface. Format: What do they
   represent? When to use it? MUST keep it simple, 1-2. sentences.
-- MUST add SHORT inline comment (1-2 sentence) for each code block. Good: "// Add user to the database. No need to check
-  the result because.." (explained the INTENTION, then the WHY).
+- MUST add SHORT inline comment (1-2 sentences) for each code block.
+- Inline comment MUST follow format: "When <something occurs...> Then <do this..>"
 - If a function/method/interfaces throws, MUST document the throw, including throws from downstream services. BOTH in
   interfaces and implementation.
 - When invoking functions with documented throw: 1/ avoid invoking it in the way that cause it to throw. 2/

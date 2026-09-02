@@ -20,9 +20,9 @@ public class RunsController(
 ) : ControllerBase
 {
     /// <response code="400">EnvironmentId does not reference an Environment belonging to this
-    /// Application, or the Application/Environment no longer exists (deleted after this request
-    /// started).</response>
-    /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
+    /// Application.</response>
+    /// <response code="404">No Application with the given appId exists in the caller's Organization,
+    /// or the Application/Environment no longer exists (deleted after this request started).</response>
     [HttpPost("applications/{appId:guid}/runs", Name = "CreateRun")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
@@ -30,6 +30,9 @@ public class RunsController(
     public async Task<ActionResult<RunResponse>> Create(Guid appId, CreateRunRequest request)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
+
+        // The Application is the URL resource -- its non-existence must win as a 404 over a 400 for
+        // an invalid request body, so it's checked before validating EnvironmentId below.
         if (await applicationRepository.GetByIdAsync(organizationId, appId) is null)
         {
             return NotFound();
@@ -63,15 +66,11 @@ public class RunsController(
             UpdatedByUserId = userId,
         };
 
-        // The Application/Environment existed above but may have been deleted since -- not the
-        // client-facing "resource" they asked for, so this is a 400, not a 404.
+        // Application/Environment existence is checked here via the save's condition expression
+        // instead of a separate lookup, so there's no gap for either to be deleted in between.
         if (!await runRepository.TrySaveAsync(run))
         {
-            return BadRequest(
-                new ErrorResponse(
-                    "Application or Environment could not be found or has been deleted."
-                )
-            );
+            return NotFound();
         }
         return Ok(run.ToResponse());
     }
