@@ -106,9 +106,9 @@ function fakeJwt(payload: Record<string, unknown>): string {
 
 type AuthModule = Api<unknown>["auth"];
 type GoogleTokenCreateResponse = Awaited<
-  ReturnType<AuthModule["googleTokenCreate"]>
+  ReturnType<AuthModule["exchangeGoogleCode"]>
 >;
-type RefreshCreateResponse = Awaited<ReturnType<AuthModule["refreshCreate"]>>;
+type RefreshCreateResponse = Awaited<ReturnType<AuthModule["refreshToken"]>>;
 
 describe("toBase64Url", () => {
   it.each([
@@ -350,7 +350,7 @@ describe("AuthenticationService", () => {
 
       const mockedAuthModule = mock<AuthModule>();
       when(
-        mockedAuthModule.googleTokenCreate(
+        mockedAuthModule.exchangeGoogleCode(
           deepEqual({ code: "auth-code-123", codeVerifier: "verifier-abc" }),
         ),
       ).thenResolve({
@@ -398,7 +398,7 @@ describe("AuthenticationService", () => {
       // The verifier is single-use and tied to this attempt: it must be sent
       // to the backend, and cleared so a replayed callback can't reuse it.
       verify(
-        mockedAuthModule.googleTokenCreate(
+        mockedAuthModule.exchangeGoogleCode(
           deepEqual({ code: "auth-code-123", codeVerifier: "verifier-abc" }),
         ),
       ).once();
@@ -417,7 +417,7 @@ describe("AuthenticationService", () => {
         { status: 400 } as AxiosResponse,
       );
       when(
-        mockedAuthModule.googleTokenCreate(
+        mockedAuthModule.exchangeGoogleCode(
           deepEqual({ code: "auth-code-123", codeVerifier: "verifier-abc" }),
         ),
       ).thenReject(axiosError);
@@ -487,7 +487,7 @@ describe("AuthenticationService", () => {
       });
       const mockedAuthModule = mock<AuthModule>();
       when(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "secret" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "secret" })),
       ).thenReject(unauthorizedError());
       const mockedClient = mock<Api<unknown>>();
       when(mockedClient.auth).thenReturn(instance(mockedAuthModule));
@@ -541,7 +541,7 @@ describe("AuthenticationService", () => {
 
       // verify: no refresh was attempted, since the check was torn down.
       verify(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "secret" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "secret" })),
       ).never();
     });
 
@@ -559,7 +559,7 @@ describe("AuthenticationService", () => {
       const newJwt = fakeJwt({ sub: "user-4", email: "user4@example.test" });
       const mockedAuthModule = mock<AuthModule>();
       when(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "old-secret" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "old-secret" })),
       ).thenResolve({
         data: {
           token: newJwt,
@@ -584,7 +584,7 @@ describe("AuthenticationService", () => {
 
       // verify
       verify(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "old-secret" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "old-secret" })),
       ).once();
       expect(service.isLoggedIn()).toBe(true);
       expect(service.isSessionExpired()).toBe(false);
@@ -626,7 +626,7 @@ describe("AuthenticationService", () => {
 
       // verify
       verify(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "secret" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "secret" })),
       ).never();
       expect(service.isSessionExpired()).toBe(false);
     });
@@ -646,7 +646,7 @@ describe("AuthenticationService", () => {
       });
       const mockedAuthModule = mock<AuthModule>();
       when(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "secret" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "secret" })),
       ).thenReturn(refreshPromise);
       const mockedClient = mock<Api<unknown>>();
       when(mockedClient.auth).thenReturn(instance(mockedAuthModule));
@@ -675,7 +675,7 @@ describe("AuthenticationService", () => {
 
       // verify
       verify(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "secret" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "secret" })),
       ).once();
     });
 
@@ -691,7 +691,7 @@ describe("AuthenticationService", () => {
       });
       const mockedAuthModule = mock<AuthModule>();
       when(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "secret" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "secret" })),
       ).thenReject(unauthorizedError());
       const mockedClient = mock<Api<unknown>>();
       when(mockedClient.auth).thenReturn(instance(mockedAuthModule));
@@ -729,7 +729,7 @@ describe("AuthenticationService", () => {
       });
       const mockedAuthModule = mock<AuthModule>();
       when(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "secret" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "secret" })),
       ).thenReject(unauthorizedError());
       const mockedClient = mock<Api<unknown>>();
       when(mockedClient.auth).thenReturn(instance(mockedAuthModule));
@@ -749,7 +749,7 @@ describe("AuthenticationService", () => {
 
       // verify: only the first tick attempted a refresh.
       verify(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "secret" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "secret" })),
       ).once();
     });
 
@@ -765,7 +765,7 @@ describe("AuthenticationService", () => {
       });
       const mockedAuthModule = mock<AuthModule>();
       when(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "secret" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "secret" })),
       ).thenReject(new Error("network down"));
       const mockedClient = mock<Api<unknown>>();
       when(mockedClient.auth).thenReturn(instance(mockedAuthModule));
@@ -788,7 +788,7 @@ describe("AuthenticationService", () => {
       expect(service.isSessionExpired()).toBe(false);
       expect(service.isLoggedIn()).toBe(true);
       verify(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "secret" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "secret" })),
       ).times(2);
     });
 
@@ -807,7 +807,7 @@ describe("AuthenticationService", () => {
       });
       const mockedAuthModule = mock<AuthModule>();
       when(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "secret" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "secret" })),
       ).thenReturn(refreshPromise);
       const mockedClient = mock<Api<unknown>>();
       when(mockedClient.auth).thenReturn(instance(mockedAuthModule));
@@ -858,7 +858,7 @@ describe("AuthenticationService", () => {
       });
       const mockedAuthModule = mock<AuthModule>();
       when(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "secret" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "secret" })),
       ).thenReturn(refreshPromise);
       const mockedClient = mock<Api<unknown>>();
       when(mockedClient.auth).thenReturn(instance(mockedAuthModule));
@@ -900,7 +900,7 @@ describe("AuthenticationService", () => {
       });
       const mockedAuthModule = mock<AuthModule>();
       when(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "secret" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "secret" })),
       ).thenReject(new Error("network down"));
       const mockedClient = mock<Api<unknown>>();
       when(mockedClient.auth).thenReturn(instance(mockedAuthModule));
@@ -932,7 +932,7 @@ describe("AuthenticationService", () => {
       const firstJwt = fakeJwt({ sub: "user-8", email: "user8@example.test" });
       const mockedAuthModule = mock<AuthModule>();
       when(
-        mockedAuthModule.googleTokenCreate(
+        mockedAuthModule.exchangeGoogleCode(
           deepEqual({ code: "auth-code-1", codeVerifier: "verifier-1" }),
         ),
       ).thenResolve({
@@ -946,7 +946,7 @@ describe("AuthenticationService", () => {
         },
       } as GoogleTokenCreateResponse);
       when(
-        mockedAuthModule.refreshCreate(deepEqual({ refreshTokenSecret: "secret-1" })),
+        mockedAuthModule.refreshToken(deepEqual({ refreshTokenSecret: "secret-1" })),
       ).thenReject(unauthorizedError());
       const mockedClient = mock<Api<unknown>>();
       when(mockedClient.auth).thenReturn(instance(mockedAuthModule));
@@ -976,7 +976,7 @@ describe("AuthenticationService", () => {
       sessionStorageStub.setItem("auth.googleCodeVerifier", "verifier-2");
       const secondJwt = fakeJwt({ sub: "user-8", email: "user8@example.test" });
       when(
-        mockedAuthModule.googleTokenCreate(
+        mockedAuthModule.exchangeGoogleCode(
           deepEqual({ code: "auth-code-2", codeVerifier: "verifier-2" }),
         ),
       ).thenResolve({
