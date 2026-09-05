@@ -32,8 +32,9 @@ description:
 - Inline comment MUST explain INTENTION of the next code block ("when X, do Y"),
   not mechanics. MUST keep it short, I recommend 2 sentences MAX.
 
-Good: // Retrieve the user from database. DynamoDB client is used because.. (The intention, then the "why")
-Bad:  // DynamoDB is used because user is stored here  (What's the intention?)
+Good: // Retrieve the user from database. DynamoDB client is used because.. (The
+intention, then the "why") Bad: // DynamoDB is used because user is stored here
+(What's the intention?)
 
 - Wite as a linguist expert in jsdoc, comments, classes, methods, variable
   naming, etc. Writing MUST flow nice, simple, and easy to understand.
@@ -49,6 +50,10 @@ Bad:  // DynamoDB is used because user is stored here  (What's the intention?)
 - Methods that can throw MUST have a `@throws` JSDoc explaining when, so callers
   can avoid/handle it. Include throws from downstream services/calls, not just
   direct `throw`s.
+- NEVER catch-all error, only catch DOCUMENTED errors (@throws). Except when
+  you're at the top of the callstack (e.g. a top-level request handler, an app
+  error boundary).
+- MUST log error (console.error()) when catching at the top of the callstack.
 - When catching exceptions from `autoassure-server-sdk`, use `ServiceError`
   (`src/models/ServiceError.ts`) to parse the exception. If can't be handled,
   you SHOULD rethrow as ServiceError or a custom error that extends
