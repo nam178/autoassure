@@ -1,6 +1,6 @@
 # autoassure-server
 
-Backend API project that serves autoassure-web.
+Backend API project that serves autoassure-web. To understand business entities, see ../docs/about.md.
 
 ## Multi-tenancy:
 
