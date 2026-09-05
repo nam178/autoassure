@@ -30,6 +30,7 @@ export const AuthCallbackPage = memo(function AuthCallbackPage() {
     }
 
     void run().catch((err: unknown) => {
+      console.error(err);
       setError(
         err instanceof Error ? err.message : "Failed to complete Google login.",
       );
