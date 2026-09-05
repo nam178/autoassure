@@ -16,7 +16,7 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
     private string ScenariosByTagTableName => options.Value.ScenariosByTagTableName;
     private string ApplicationTableName => options.Value.ApplicationTableName;
 
-    public async Task<ScenarioWriteResult> TrySaveAsync(Scenario scenario)
+    public async Task<bool> TrySaveAsync(Scenario scenario)
     {
         var transactItems = new List<TransactWriteItem>
         {
@@ -31,20 +31,23 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
             await client.TransactWriteItemsAsync(
                 new TransactWriteItemsRequest { TransactItems = transactItems }
             );
-            return ScenarioWriteResult.Success;
+            return true;
         }
         // When the Application was deleted between the Controller's existence check (transact item 0)
-        // and this write. Then report ApplicationNotFound; any other cancellation reason (throttling,
-        // conflict, etc.) is an unexpected failure and MUST propagate instead of being reported as a
-        // business result.
+        // and this write. Then return false; any other cancellation reason (throttling, conflict,
+        // etc.) is an unexpected failure and MUST propagate instead of being reported as a business
+        // result.
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is [{ Code: "ConditionalCheckFailed" }, ..])
         {
-            return ScenarioWriteResult.ApplicationNotFound;
+            return false;
         }
     }
 
-    public async Task<ScenarioWriteResult> TryUpdateAsync(Scenario scenario, Scenario previousState)
+    public async Task<ScenarioUpdateResult> TryUpdateAsync(
+        Scenario scenario,
+        Scenario previousState
+    )
     {
         var transactItems = new List<TransactWriteItem>
         {
@@ -78,7 +81,7 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
             await client.TransactWriteItemsAsync(
                 new TransactWriteItemsRequest { TransactItems = transactItems }
             );
-            return ScenarioWriteResult.Success;
+            return ScenarioUpdateResult.Success;
         }
         // When the Application (item 0) or the Scenario itself (item 1) was deleted between the
         // Controller's existence check and this write. Then report which one; any other
@@ -93,8 +96,8 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
             )
         {
             return reasons[0].Code == "ConditionalCheckFailed"
-                ? ScenarioWriteResult.ApplicationNotFound
-                : ScenarioWriteResult.ScenarioNotFound;
+                ? ScenarioUpdateResult.ApplicationNotFound
+                : ScenarioUpdateResult.ScenarioNotFound;
         }
     }
 

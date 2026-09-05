@@ -12,15 +12,15 @@ namespace A2.Server.Repositories;
 public interface IScenarioRepository
 {
     /// <summary>Atomically creates the Scenario and its folder/tag mappings, after verifying its
-    /// Application exists.</summary>
-    Task<ScenarioWriteResult> TrySaveAsync(Scenario scenario);
+    /// Application exists. Returns false when the Application doesn't exist.</summary>
+    Task<bool> TrySaveAsync(Scenario scenario);
 
     /// <summary>Atomically updates only Title, Description, Folder, Tags, UpdatedByUserId, and
     /// UpdatedAt on the Scenario, and reconciles its folder/tag mappings against
     /// <paramref name="previousState"/>, after verifying the Scenario and its Application still
     /// exist. Takes the full Scenario (not a narrower fields type) because the mapping diff needs
     /// every field.</summary>
-    Task<ScenarioWriteResult> TryUpdateAsync(Scenario scenario, Scenario previousState);
+    Task<ScenarioUpdateResult> TryUpdateAsync(Scenario scenario, Scenario previousState);
 
     /// <summary>Atomically deletes the Scenario and its folder/tag mappings.</summary>
     Task DeleteAsync(Scenario scenario);

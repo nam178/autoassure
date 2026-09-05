@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using A2.Server.Common;
 using A2.Server.Contracts;
 using A2.Server.Repositories;
@@ -68,12 +69,8 @@ public class ScenariosController(
 
         // Application existence is checked here via the save's condition expression instead of a
         // separate lookup, so there's no gap for the app to be deleted in between.
-        var result = await scenarioRepository.TrySaveAsync(scenario);
-        return result switch
-        {
-            ScenarioWriteResult.Success => Ok(scenario.ToResponse()),
-            _ => NotFound(),
-        };
+        var success = await scenarioRepository.TrySaveAsync(scenario);
+        return success ? Ok(scenario.ToResponse()) : NotFound();
     }
 
     /// <response code="400">Both folder and tag were provided; they are mutually exclusive.</response>
@@ -114,12 +111,14 @@ public class ScenariosController(
     }
 
     /// <response code="400">A tag in Tags is longer than 50 characters.</response>
-    /// <response code="404">No Scenario with the given id exists in the caller's Organization, or its
-    /// Application no longer exists (deleted after this request started).</response>
+    /// <response code="404">No Scenario with the given id exists in the caller's Organization.</response>
+    /// <response code="409">The Scenario's Application no longer exists (deleted after this request
+    /// started).</response>
     [HttpPatch("scenarios/{id:guid}", Name = "UpdateScenario")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ScenarioResponse>> Update(Guid id, UpdateScenarioRequest request)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
@@ -150,8 +149,14 @@ public class ScenariosController(
         var result = await scenarioRepository.TryUpdateAsync(updated, previous);
         return result switch
         {
-            ScenarioWriteResult.Success => Ok(updated.ToResponse()),
-            _ => NotFound(),
+            ScenarioUpdateResult.Success => Ok(updated.ToResponse()),
+            ScenarioUpdateResult.ApplicationNotFound => Conflict(
+                new ErrorResponse("The Scenario's Application no longer exists.")
+            ),
+            ScenarioUpdateResult.ScenarioNotFound => NotFound(),
+            _ => throw new UnreachableException(
+                $"Unhandled {nameof(ScenarioUpdateResult)}: {result}"
+            ),
         };
     }
 

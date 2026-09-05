@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using A2.Server.Contracts;
+using A2.Server.Repositories;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -578,7 +579,7 @@ public sealed class ScenariosControllerTests
     }
 
     [Fact]
-    public async Task Update_WhenApplicationDeletedMidRequest_ReturnsNotFound()
+    public async Task Update_WhenApplicationDeletedMidRequest_ReturnsConflict()
     {
         // setup
         var userId = Guid.CreateVersion7();
@@ -609,6 +610,61 @@ public sealed class ScenariosControllerTests
                 {
                     ["OrganizationId"] = new(organizationId.ToString()),
                     ["Id"] = new(appId.ToString()),
+                },
+            }
+        );
+
+        // test
+        var response = await client.PatchAsJsonAsync(
+            $"/scenarios/{created.Id}",
+            new UpdateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/",
+                Tags = null,
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WhenScenarioDeletedMidRequest_ReturnsNotFound()
+    {
+        // setup
+        var userId = Guid.CreateVersion7();
+        await SeedOrganizationMembershipAsync(userId);
+        var client = CreateAuthenticatedClient(userId);
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+            }
+        );
+        var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
+
+        // Update() checks the Scenario exists up front via GetByIdAsync, then relies on
+        // TryUpdateAsync's condition expression to catch it being deleted after that -- delete it
+        // directly (bypassing the Controller) so the request observes it as still present at the
+        // initial check but gone by the time the transact-write's condition runs.
+        var organizationId = await GetOrganizationIdAsync(userId);
+        await _client.DeleteItemAsync(
+            new DeleteItemRequest
+            {
+                TableName = "Scenarios",
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    ["OrganizationId_ApplicationId"] = new(
+                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, appId)
+                    ),
+                    ["Id"] = new(created.Id.ToString()),
                 },
             }
         );

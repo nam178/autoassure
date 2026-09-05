@@ -169,6 +169,10 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
             ) { }
     }
 
+    // BUG: this doesn't decrement the Scenario's ActivityCount. Harmless today since the only
+    // caller (ScenariosController.Delete) deletes the whole Scenario row right after, but a future
+    // caller that clears Activities without deleting the Scenario would leave ActivityCount stuck,
+    // permanently blocking new Activity creation via IncrementScenarioActivityCount's quota check.
     public async Task DeleteAllByScenarioAsync(Guid organizationId, Guid scenarioId)
     {
         var activities = await ListByScenarioAsync(organizationId, scenarioId);
@@ -180,27 +184,33 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
         var partitionKey = DynamoDbMapper.ScenarioScopedPartitionKey(organizationId, scenarioId);
         foreach (var chunk in activities.Chunk(BatchWriteChunkSize))
         {
-            await client.BatchWriteItemAsync(
-                new BatchWriteItemRequest
-                {
-                    RequestItems = new Dictionary<string, List<WriteRequest>>
+            var requestItems = new Dictionary<string, List<WriteRequest>>
+            {
+                [TableName] = chunk
+                    .Select(activity => new WriteRequest
                     {
-                        [TableName] = chunk
-                            .Select(activity => new WriteRequest
+                        DeleteRequest = new DeleteRequest
+                        {
+                            Key = new Dictionary<string, AttributeValue>
                             {
-                                DeleteRequest = new DeleteRequest
-                                {
-                                    Key = new Dictionary<string, AttributeValue>
-                                    {
-                                        ["OrganizationId_ScenarioId"] = new(partitionKey),
-                                        ["Id"] = new(activity.Id.ToString()),
-                                    },
-                                },
-                            })
-                            .ToList(),
-                    },
-                }
-            );
+                                ["OrganizationId_ScenarioId"] = new(partitionKey),
+                                ["Id"] = new(activity.Id.ToString()),
+                            },
+                        },
+                    })
+                    .ToList(),
+            };
+
+            // When BatchWriteItemAsync is throttled, Then it returns the un-deleted items in
+            // UnprocessedItems instead of throwing -- retry those until none remain, otherwise
+            // some Activities would silently survive the Scenario's deletion.
+            while (requestItems.Count > 0)
+            {
+                var response = await client.BatchWriteItemAsync(
+                    new BatchWriteItemRequest { RequestItems = requestItems }
+                );
+                requestItems = response.UnprocessedItems;
+            }
         }
     }
 

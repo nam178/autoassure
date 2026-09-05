@@ -179,12 +179,12 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
         var fetched = await _repository.GetByIdAsync(organizationId, scenario.Id);
 
         // verify
-        Assert.Equal(ScenarioWriteResult.Success, result);
+        Assert.True(result);
         Assert.Equivalent(scenario, fetched);
     }
 
     [Fact]
-    public async Task TrySaveAsync_WhenApplicationDoesNotExist_ReturnsApplicationNotFound()
+    public async Task TrySaveAsync_WhenApplicationDoesNotExist_ReturnsFalse()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -195,7 +195,7 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
         var result = await _repository.TrySaveAsync(scenario);
 
         // verify
-        Assert.Equal(ScenarioWriteResult.ApplicationNotFound, result);
+        Assert.False(result);
     }
 
     [Fact]
@@ -214,7 +214,7 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
         var result = await _repository.TryUpdateAsync(updated, scenario);
 
         // verify
-        Assert.Equal(ScenarioWriteResult.Success, result);
+        Assert.Equal(ScenarioUpdateResult.Success, result);
         var oldFolderScenarios = await _repository.ListByFolderAsync(
             organizationId,
             applicationId,
@@ -242,7 +242,7 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
         var result = await _repository.TryUpdateAsync(scenario, scenario);
 
         // verify
-        Assert.Equal(ScenarioWriteResult.ApplicationNotFound, result);
+        Assert.Equal(ScenarioUpdateResult.ApplicationNotFound, result);
     }
 
     [Fact]
@@ -259,7 +259,7 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
         var fetched = await _repository.GetByIdAsync(organizationId, scenario.Id);
 
         // verify
-        Assert.Equal(ScenarioWriteResult.ScenarioNotFound, result);
+        Assert.Equal(ScenarioUpdateResult.ScenarioNotFound, result);
         Assert.Null(fetched);
     }
 
