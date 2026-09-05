@@ -8,6 +8,5 @@ public record CreateRunRequest
     [Required, MinLength(1), MaxLength(100)]
     public required IReadOnlyList<Guid> ScenarioIds { get; init; }
 
-    [Required]
     public required Guid EnvironmentId { get; init; }
 }

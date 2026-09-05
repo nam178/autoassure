@@ -1,9 +1,11 @@
 using System.Text;
 using A2.Server.Common;
+using A2.Server.Contracts;
 using A2.Server.Repositories;
 using A2.Server.Services;
 using Amazon.DynamoDBv2;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,9 +18,29 @@ if (!DesignTimeBuild.IsActive && !string.IsNullOrEmpty(ssmParameterPath))
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddSchemaTransformer<NotBlankSchemaTransformer>();
+    options.AddOperationTransformer<RequestValidationOperationTransformer>();
+});
 builder
     .Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        // When automatic DataAnnotations validation (e.g. [NotBlank]) fails, then respond with the
+        // same ErrorResponse shape used by every other 400 in this API, instead of ASP.NET's
+        // default ValidationProblemDetails, so API consumers only handle one error shape.
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var message =
+                context
+                    .ModelState.Values.SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .FirstOrDefault(m => !string.IsNullOrEmpty(m))
+                ?? "Request is invalid.";
+            return new BadRequestObjectResult(new ErrorResponse(message));
+        };
+    })
     .AddJsonOptions(options => options.JsonSerializerOptions.RespectNullableAnnotations = true);
 builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection("OAuth:Google"));
 builder.Services.Configure<AuthTokenOptions>(builder.Configuration.GetSection("Auth"));

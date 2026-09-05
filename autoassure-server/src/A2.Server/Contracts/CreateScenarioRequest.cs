@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using A2.Server.Common;
 
 namespace A2.Server.Contracts;
 
@@ -6,10 +7,10 @@ namespace A2.Server.Contracts;
 /// not given; Tags default to empty.</summary>
 public record CreateScenarioRequest
 {
-    [Required, MaxLength(200)]
+    [Required, NotBlank, MaxLength(200)]
     public required string Title { get; init; }
 
-    [Required, MaxLength(10000)]
+    [Required, MaxLength(2000)]
     public required string Description { get; init; }
 
     [MaxLength(300)]

@@ -53,7 +53,7 @@
             }
           },
           "400": {
-            "description": "The caller's Organization could not be found or has been deleted.",
+            "description": "The caller's Organization could not be found or has been deleted. Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -239,6 +239,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Returns 400 when the request fails a validation constraint."
           }
         }
       }
@@ -309,6 +312,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Returns 400 when the request fails a validation constraint."
           }
         }
       }
@@ -390,6 +396,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Returns 400 when the request fails a validation constraint."
           }
         }
       },
@@ -578,6 +587,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Returns 400 when the request fails a validation constraint."
           }
         }
       }
@@ -633,7 +645,7 @@
             "description": "No Content"
           },
           "400": {
-            "description": "key exceeds the maximum allowed length, key contains characters other than\n    letters, digits, or underscores, or the Environment no longer exists (deleted after this request\n    started).",
+            "description": "key exceeds the maximum allowed length, or key contains characters other\n    than letters, digits, or underscores. Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -653,7 +665,7 @@
             }
           },
           "404": {
-            "description": "No Environment with the given id exists in the caller's Organization.",
+            "description": "No Environment with the given id exists in the caller's Organization, or it\n    no longer exists (deleted after this request started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -721,6 +733,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Returns 400 when the request fails a validation constraint."
           }
         }
       }
@@ -783,26 +798,6 @@
               }
             }
           },
-          "400": {
-            "description": "The Application no longer exists (deleted after this request started).",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
           "404": {
             "description": "No Application with the given appId exists in the caller's Organization.",
             "content": {
@@ -822,6 +817,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Returns 400 when the request fails a validation constraint."
           }
         }
       },
@@ -951,6 +949,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Returns 400 when the request fails a validation constraint."
           }
         }
       },
@@ -1035,26 +1036,6 @@
               }
             }
           },
-          "400": {
-            "description": "The Application no longer exists (deleted after this request started).",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
           "404": {
             "description": "No Application with the given appId exists in the caller's Organization.",
             "content": {
@@ -1074,6 +1055,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Returns 400 when the request fails a validation constraint."
           }
         }
       },
@@ -1203,6 +1187,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Returns 400 when the request fails a validation constraint."
           }
         }
       },
@@ -1288,7 +1275,7 @@
             }
           },
           "400": {
-            "description": "EnvironmentId does not reference an Environment belonging to this\n    Application, or the Application/Environment no longer exists (deleted after this request\n    started).",
+            "description": "EnvironmentId does not reference an Environment belonging to this\n    Application. Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1308,7 +1295,7 @@
             }
           },
           "404": {
-            "description": "No Application with the given appId exists in the caller's Organization.",
+            "description": "No Application with the given appId exists in the caller's Organization,\n    or the Application/Environment no longer exists (deleted after this request started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1498,7 +1485,7 @@
             }
           },
           "400": {
-            "description": "Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not\n    reference existing library rows, the total number of unique references exceeds the allowed\n    maximum, or the Application no longer exists (deleted after this request started).",
+            "description": "Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not\n    reference existing library rows, or the total number of unique references exceeds the allowed\n    maximum. Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1518,7 +1505,7 @@
             }
           },
           "404": {
-            "description": "No Application with the given appId exists in the caller's Organization.",
+            "description": "No Application with the given appId exists in the caller's Organization,\n    or it no longer exists (deleted after this request started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1740,7 +1727,7 @@
             }
           },
           "400": {
-            "description": "Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not\n    reference existing library rows, the total number of unique references exceeds the allowed\n    maximum, or the Application no longer exists (deleted after this request started).",
+            "description": "Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not\n    reference existing library rows, or the total number of unique references exceeds the allowed\n    maximum. Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1760,7 +1747,7 @@
             }
           },
           "404": {
-            "description": "No Scenario with the given id exists in the caller's Organization.",
+            "description": "No Scenario with the given id exists in the caller's Organization, or its\n    Application no longer exists (deleted after this request started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1883,7 +1870,7 @@
             }
           },
           "400": {
-            "description": "EnvironmentId does not reference an Environment belonging to the\n    Scenario's Application, or the Application/Environment no longer exists (deleted after this\n    request started).",
+            "description": "EnvironmentId does not reference an Environment belonging to the\n    Scenario's Application. Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1903,7 +1890,7 @@
             }
           },
           "404": {
-            "description": "No Scenario with the given id exists in the caller's Organization.",
+            "description": "No Scenario with the given id exists in the caller's Organization, or the\n    Scenario/Environment no longer exists (deleted after this request started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2117,7 +2104,8 @@
         "properties": {
           "name": {
             "maxLength": 100,
-            "type": "string"
+            "type": "string",
+            "description": "Must not be empty or whitespace."
           },
           "description": {
             "maxLength": 1000,
@@ -2135,7 +2123,8 @@
         "properties": {
           "name": {
             "maxLength": 100,
-            "type": "string"
+            "type": "string",
+            "description": "Must not be empty or whitespace."
           },
           "classification": {
             "$ref": "#/components/schemas/EnvironmentClassification"
@@ -2153,14 +2142,15 @@
         "properties": {
           "name": {
             "maxLength": 200,
-            "type": "string"
+            "type": "string",
+            "description": "Must not be empty or whitespace."
           },
           "description": {
             "maxLength": 500,
             "type": "string"
           },
           "exampleValue": {
-            "maxLength": 500,
+            "maxLength": 10000,
             "type": "string"
           }
         },
@@ -2176,13 +2166,14 @@
         "properties": {
           "name": {
             "maxLength": 200,
-            "type": "string"
+            "type": "string",
+            "description": "Must not be empty or whitespace."
           },
           "valueSource": {
             "$ref": "#/components/schemas/PreconditionValueSource"
           },
           "exampleValue": {
-            "maxLength": 500,
+            "maxLength": 10000,
             "type": "string"
           }
         },
@@ -2220,10 +2211,11 @@
         "properties": {
           "title": {
             "maxLength": 200,
-            "type": "string"
+            "type": "string",
+            "description": "Must not be empty or whitespace."
           },
           "description": {
-            "maxLength": 10000,
+            "maxLength": 2000,
             "type": "string"
           },
           "folder": {
@@ -2708,7 +2700,8 @@
         "properties": {
           "name": {
             "maxLength": 100,
-            "type": "string"
+            "type": "string",
+            "description": "Must not be empty or whitespace."
           },
           "classification": {
             "$ref": "#/components/schemas/EnvironmentClassification"
@@ -2726,14 +2719,15 @@
         "properties": {
           "name": {
             "maxLength": 200,
-            "type": "string"
+            "type": "string",
+            "description": "Must not be empty or whitespace."
           },
           "description": {
             "maxLength": 500,
             "type": "string"
           },
           "exampleValue": {
-            "maxLength": 500,
+            "maxLength": 10000,
             "type": "string"
           }
         },
@@ -2749,13 +2743,14 @@
         "properties": {
           "name": {
             "maxLength": 200,
-            "type": "string"
+            "type": "string",
+            "description": "Must not be empty or whitespace."
           },
           "valueSource": {
             "$ref": "#/components/schemas/PreconditionValueSource"
           },
           "exampleValue": {
-            "maxLength": 500,
+            "maxLength": 10000,
             "type": "string"
           }
         },
@@ -2771,10 +2766,11 @@
         "properties": {
           "title": {
             "maxLength": 200,
-            "type": "string"
+            "type": "string",
+            "description": "Must not be empty or whitespace."
           },
           "description": {
-            "maxLength": 10000,
+            "maxLength": 2000,
             "type": "string"
           },
           "folder": {
