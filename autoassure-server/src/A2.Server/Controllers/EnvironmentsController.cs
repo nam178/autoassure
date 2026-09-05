@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+using System.ComponentModel.DataAnnotations;
 using A2.Server.Common;
 using A2.Server.Contracts;
 using A2.Server.Repositories;
@@ -11,18 +11,13 @@ namespace A2.Server.Controllers;
 
 [ApiController]
 [Authorize]
-public partial class EnvironmentsController(
+public class EnvironmentsController(
     IEnvironmentRepository environmentRepository,
     IEnvironmentVariableRepository environmentVariableRepository,
     ICallerOrganizationService callerOrganizationService,
     IClock clock
 ) : ControllerBase
 {
-    private const int MaxKeyLength = 200;
-
-    [GeneratedRegex("^[A-Za-z0-9_]+$")]
-    private static partial Regex ValidKeyRegex();
-
     /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
     [HttpPost("applications/{appId:guid}/environments", Name = "CreateEnvironment")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -135,31 +130,17 @@ public partial class EnvironmentsController(
 
     /// <param name="key">Variable name. Must be 1-200 characters, using only letters, digits, and
     /// underscores.</param>
-    /// <response code="400">key exceeds the maximum allowed length, or key contains characters other
-    /// than letters, digits, or underscores.</response>
     /// <response code="404">No Environment with the given id exists in the caller's Organization, or it
     /// no longer exists (deleted after this request started).</response>
     [HttpPut("environments/{id:guid}/variables/{key}", Name = "SetEnvironmentVariable")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> SetVariable(
         Guid id,
-        string key,
+        [MaxLength(200), RegularExpression("^[A-Za-z0-9_]+$")] string key,
         SetEnvironmentVariableRequest request
     )
     {
-        if (key.Length > MaxKeyLength)
-        {
-            return BadRequest(new ErrorResponse($"key must be at most {MaxKeyLength} characters."));
-        }
-        if (!ValidKeyRegex().IsMatch(key))
-        {
-            return BadRequest(
-                new ErrorResponse("key must contain only letters, digits, and underscores.")
-            );
-        }
-
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
         var environment = await environmentRepository.GetByIdAsync(organizationId, id);
         if (environment is null)
@@ -170,7 +151,7 @@ public partial class EnvironmentsController(
         // The Environment existed above but may have been deleted since -- still the same
         // client-facing resource the caller asked for, so this is a 404, same as the check above.
         if (
-            !await environmentVariableRepository.TryUpdateAsync(
+            !await environmentVariableRepository.TrySaveAsync(
                 organizationId,
                 environment.ApplicationId,
                 id,

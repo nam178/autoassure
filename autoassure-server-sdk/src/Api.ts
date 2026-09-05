@@ -10,26 +10,28 @@
  * ---------------------------------------------------------------
  */
 
-/**
- * A single step within a Scenario, as submitted by the client. PreconditionIds/EvidenceIds
- *     must reference existing library rows in the same Application.
- */
-export interface ActivityRequest {
-  /** @maxLength 2000 */
-  description: string;
-  /** @maxItems 50 */
-  preconditionIds?: null | string[];
-  /** @maxItems 50 */
-  evidenceIds?: null | string[];
-}
-
 /** A single step within a Scenario, as returned to the client. */
 export interface ActivityResponse {
   /** @format uuid */
   id: string;
+  /** @format uuid */
+  scenarioId: string;
   description: string;
+  /**
+   * @format int32
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  order: number | string;
   preconditionIds: string[];
   evidenceIds: string[];
+  /** @format uuid */
+  createdByUserId: string;
+  /** @format uuid */
+  updatedByUserId: string;
+  /** @format date-time */
+  createdAt: string;
+  /** @format date-time */
+  updatedAt: string;
 }
 
 /** An Application, as returned to the client. */
@@ -54,6 +56,19 @@ export interface AuthTokenResponse {
   refreshTokenSecret: string;
   /** The signed-in AutoAssure user, as returned to the client after authentication. */
   user: UserResponse;
+}
+
+/**
+ * Request body to append a new Activity to a Scenario. PreconditionIds/EvidenceIds must
+ *     each reference existing library rows in the Scenario's Application.
+ */
+export interface CreateActivityRequest {
+  /** @maxLength 2000 */
+  description: string;
+  /** @maxItems 15 */
+  preconditionIds?: null | string[];
+  /** @maxItems 15 */
+  evidenceIds?: null | string[];
 }
 
 /** Request body to create a new Application in the caller's Organization. */
@@ -134,8 +149,6 @@ export interface CreateScenarioRequest {
   folder?: null | string;
   /** @maxItems 20 */
   tags?: null | string[];
-  /** @maxItems 200 */
-  activities?: null | ActivityRequest[];
 }
 
 /** Request body to Try a single Scenario against an Environment. */
@@ -244,6 +257,15 @@ export interface RefreshTokenResponse {
 }
 
 /**
+ * Request body to reorder a Scenario's Activities. Must contain exactly one entry per
+ *     Activity currently in the Scenario, as a permutation of their ids.
+ */
+export interface ReorderActivitiesRequest {
+  /** @maxItems 90 */
+  orderedActivityIds: string[];
+}
+
+/**
  * A Run over one or more Scenarios, as returned to the client. Created in Pending status --
  *     nothing here executes anything yet.
  */
@@ -292,7 +314,6 @@ export interface ScenarioResponse {
   description: string;
   folder: string;
   tags: string[];
-  activities: ActivityResponse[];
 }
 
 /** Request body to upsert a single Environment variable's value. */
@@ -340,6 +361,19 @@ export interface TryScenarioResponse {
   completedAt: null | string;
 }
 
+/**
+ * Request body to edit an existing Activity's Description/PreconditionIds/EvidenceIds.
+ *     Does not change the Activity's Order -- use the reorder endpoint for that.
+ */
+export interface UpdateActivityRequest {
+  /** @maxLength 2000 */
+  description: string;
+  /** @maxItems 15 */
+  preconditionIds?: null | string[];
+  /** @maxItems 15 */
+  evidenceIds?: null | string[];
+}
+
 /** Request body to update an existing Environment's Name/Classification. */
 export interface UpdateEnvironmentRequest {
   /**
@@ -377,7 +411,7 @@ export interface UpdatePreconditionRequest {
   exampleValue: string;
 }
 
-/** Request body to edit an existing Scenario's Title/Description/Folder/Tags/Activities. */
+/** Request body to edit an existing Scenario's Title/Description/Folder/Tags. */
 export interface UpdateScenarioRequest {
   /**
    * Must not be empty or whitespace.
@@ -390,8 +424,6 @@ export interface UpdateScenarioRequest {
   folder: string;
   /** @maxItems 20 */
   tags?: null | string[];
-  /** @maxItems 200 */
-  activities?: null | ActivityRequest[];
 }
 
 /** The signed-in AutoAssure user, as returned to the client after authentication. */
@@ -590,6 +622,192 @@ export class Api<SecurityDataType extends unknown> {
     this.http = http;
   }
 
+  scenarios = {
+    /**
+     * No description
+     *
+     * @tags Activities
+     * @name CreateActivity
+     * @request POST:/scenarios/{scenarioId}/activities
+     * @response `200` `ActivityResponse` OK
+     * @response `400` `ErrorResponse` PreconditionIds/EvidenceIds do not reference existing library rows in the Scenario's Application, or the Scenario already has the maximum number of Activities. Returns 400 when the request fails a validation constraint.
+     * @response `404` `ProblemDetails` No Scenario with the given scenarioId exists in the caller's Organization, or it no longer exists (deleted after this request started).
+     */
+    createActivity: (
+      scenarioId: string,
+      data: CreateActivityRequest,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<ActivityResponse, ErrorResponse | ProblemDetails>({
+        path: `/scenarios/${scenarioId}/activities`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Activities
+     * @name ListActivities
+     * @request GET:/scenarios/{scenarioId}/activities
+     * @response `200` `(ActivityResponse)[]` OK
+     */
+    listActivities: (scenarioId: string, params: RequestParams = {}) =>
+      this.http.request<ActivityResponse[], any>({
+        path: `/scenarios/${scenarioId}/activities`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Activities
+     * @name ReorderActivities
+     * @request PATCH:/scenarios/{scenarioId}/activities/order
+     * @response `200` `(ActivityResponse)[]` OK
+     * @response `400` `ErrorResponse` OrderedActivityIds is not exactly a permutation of the Scenario's current Activity ids. Returns 400 when the request fails a validation constraint.
+     * @response `404` `ProblemDetails` No Scenario with the given scenarioId exists in the caller's Organization.
+     */
+    reorderActivities: (
+      scenarioId: string,
+      data: ReorderActivitiesRequest,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<ActivityResponse[], ErrorResponse | ProblemDetails>({
+        path: `/scenarios/${scenarioId}/activities/order`,
+        method: "PATCH",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Scenarios
+     * @name GetScenarioById
+     * @request GET:/scenarios/{id}
+     * @response `200` `ScenarioResponse` OK
+     * @response `404` `ProblemDetails` No Scenario with the given id exists in the caller's Organization.
+     */
+    getScenarioById: (id: string, params: RequestParams = {}) =>
+      this.http.request<ScenarioResponse, ProblemDetails>({
+        path: `/scenarios/${id}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Scenarios
+     * @name UpdateScenario
+     * @request PATCH:/scenarios/{id}
+     * @response `200` `ScenarioResponse` OK
+     * @response `400` `ErrorResponse` A tag in Tags is longer than 50 characters. Returns 400 when the request fails a validation constraint.
+     * @response `404` `ProblemDetails` No Scenario with the given id exists in the caller's Organization, or its Application no longer exists (deleted after this request started).
+     */
+    updateScenario: (
+      id: string,
+      data: UpdateScenarioRequest,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<ScenarioResponse, ErrorResponse | ProblemDetails>({
+        path: `/scenarios/${id}`,
+        method: "PATCH",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Scenarios
+     * @name DeleteScenario
+     * @request DELETE:/scenarios/{id}
+     * @response `204` `void` No Content
+     * @response `404` `ProblemDetails` No Scenario with the given id exists in the caller's Organization.
+     */
+    deleteScenario: (id: string, params: RequestParams = {}) =>
+      this.http.request<void, ProblemDetails>({
+        path: `/scenarios/${id}`,
+        method: "DELETE",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Tries
+     * @name CreateTry
+     * @request POST:/scenarios/{id}/try
+     * @response `200` `TryScenarioResponse` OK
+     * @response `400` `ErrorResponse` EnvironmentId does not reference an Environment belonging to the Scenario's Application. Returns 400 when the request fails a validation constraint.
+     * @response `404` `ProblemDetails` No Scenario with the given id exists in the caller's Organization, or the Scenario/Environment no longer exists (deleted after this request started).
+     */
+    createTry: (
+      id: string,
+      data: CreateTryRequest,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<TryScenarioResponse, ErrorResponse | ProblemDetails>({
+        path: `/scenarios/${id}/try`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+  };
+  activities = {
+    /**
+     * No description
+     *
+     * @tags Activities
+     * @name UpdateActivity
+     * @request PATCH:/activities/{id}
+     * @response `200` `ActivityResponse` OK
+     * @response `400` `ErrorResponse` PreconditionIds/EvidenceIds do not reference existing library rows in the Scenario's Application. Returns 400 when the request fails a validation constraint.
+     * @response `404` `ProblemDetails` No Activity with the given id exists in the caller's Organization.
+     */
+    updateActivity: (
+      id: string,
+      data: UpdateActivityRequest,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<ActivityResponse, ErrorResponse | ProblemDetails>({
+        path: `/activities/${id}`,
+        method: "PATCH",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Activities
+     * @name DeleteActivity
+     * @request DELETE:/activities/{id}
+     * @response `204` `void` No Content
+     */
+    deleteActivity: (id: string, params: RequestParams = {}) =>
+      this.http.request<void, any>({
+        path: `/activities/${id}`,
+        method: "DELETE",
+        ...params,
+      }),
+  };
   applications = {
     /**
      * No description
@@ -813,7 +1031,7 @@ export class Api<SecurityDataType extends unknown> {
      * @name CreateScenario
      * @request POST:/applications/{appId}/scenarios
      * @response `200` `ScenarioResponse` OK
-     * @response `400` `ErrorResponse` Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not reference existing library rows, or the total number of unique references exceeds the allowed maximum. Returns 400 when the request fails a validation constraint.
+     * @response `400` `ErrorResponse` A tag in Tags is longer than 50 characters. Returns 400 when the request fails a validation constraint.
      * @response `404` `ProblemDetails` No Application with the given appId exists in the caller's Organization, or it no longer exists (deleted after this request started).
      */
     createScenario: (
@@ -948,7 +1166,7 @@ export class Api<SecurityDataType extends unknown> {
      * @name SetEnvironmentVariable
      * @request PUT:/environments/{id}/variables/{key}
      * @response `204` `void` No Content
-     * @response `400` `ErrorResponse` key exceeds the maximum allowed length, or key contains characters other than letters, digits, or underscores. Returns 400 when the request fails a validation constraint.
+     * @response `400` `void` Returns 400 when the request fails a validation constraint.
      * @response `404` `ProblemDetails` No Environment with the given id exists in the caller's Organization, or it no longer exists (deleted after this request started).
      */
     setEnvironmentVariable: (
@@ -957,7 +1175,7 @@ export class Api<SecurityDataType extends unknown> {
       data: SetEnvironmentVariableRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<void, ErrorResponse | ProblemDetails>({
+      this.http.request<void, void | ProblemDetails>({
         path: `/environments/${id}/variables/${key}`,
         method: "PUT",
         body: data,
@@ -1080,88 +1298,6 @@ export class Api<SecurityDataType extends unknown> {
       this.http.request<RunResponse, ProblemDetails>({
         path: `/runs/${id}`,
         method: "GET",
-        format: "json",
-        ...params,
-      }),
-  };
-  scenarios = {
-    /**
-     * No description
-     *
-     * @tags Scenarios
-     * @name GetScenarioById
-     * @request GET:/scenarios/{id}
-     * @response `200` `ScenarioResponse` OK
-     * @response `404` `ProblemDetails` No Scenario with the given id exists in the caller's Organization.
-     */
-    getScenarioById: (id: string, params: RequestParams = {}) =>
-      this.http.request<ScenarioResponse, ProblemDetails>({
-        path: `/scenarios/${id}`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Scenarios
-     * @name UpdateScenario
-     * @request PATCH:/scenarios/{id}
-     * @response `200` `ScenarioResponse` OK
-     * @response `400` `ErrorResponse` Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not reference existing library rows, or the total number of unique references exceeds the allowed maximum. Returns 400 when the request fails a validation constraint.
-     * @response `404` `ProblemDetails` No Scenario with the given id exists in the caller's Organization, or its Application no longer exists (deleted after this request started).
-     */
-    updateScenario: (
-      id: string,
-      data: UpdateScenarioRequest,
-      params: RequestParams = {},
-    ) =>
-      this.http.request<ScenarioResponse, ErrorResponse | ProblemDetails>({
-        path: `/scenarios/${id}`,
-        method: "PATCH",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Scenarios
-     * @name DeleteScenario
-     * @request DELETE:/scenarios/{id}
-     * @response `204` `void` No Content
-     * @response `404` `ProblemDetails` No Scenario with the given id exists in the caller's Organization.
-     */
-    deleteScenario: (id: string, params: RequestParams = {}) =>
-      this.http.request<void, ProblemDetails>({
-        path: `/scenarios/${id}`,
-        method: "DELETE",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Tries
-     * @name CreateTry
-     * @request POST:/scenarios/{id}/try
-     * @response `200` `TryScenarioResponse` OK
-     * @response `400` `ErrorResponse` EnvironmentId does not reference an Environment belonging to the Scenario's Application. Returns 400 when the request fails a validation constraint.
-     * @response `404` `ProblemDetails` No Scenario with the given id exists in the caller's Organization, or the Scenario/Environment no longer exists (deleted after this request started).
-     */
-    createTry: (
-      id: string,
-      data: CreateTryRequest,
-      params: RequestParams = {},
-    ) =>
-      this.http.request<TryScenarioResponse, ErrorResponse | ProblemDetails>({
-        path: `/scenarios/${id}/try`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
         format: "json",
         ...params,
       }),

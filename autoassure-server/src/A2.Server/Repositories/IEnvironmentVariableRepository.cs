@@ -7,11 +7,11 @@ namespace A2.Server.Repositories;
 /// never reads or rewrites the others.</summary>
 public interface IEnvironmentVariableRepository
 {
-    /// <summary>Updates a single variable's Value (creating the row on first write). Always sets
-    /// Value, OrganizationId, EnvironmentId, UpdatedByUserId, UpdatedAt; sets CreatedAt and
+    /// <summary>Creates or updates a single variable's Value as a whole. Always sets Value,
+    /// OrganizationId, EnvironmentId, UpdatedByUserId, UpdatedAt; sets CreatedAt and
     /// CreatedByUserId only if the row doesn't already exist. Returns false if the Environment no
     /// longer exists.</summary>
-    Task<bool> TryUpdateAsync(
+    Task<bool> TrySaveAsync(
         Guid organizationId,
         Guid applicationId,
         Guid environmentId,

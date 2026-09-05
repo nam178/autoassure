@@ -65,7 +65,8 @@ public class DynamoDbRefreshTokenRepository(
                         ["RefreshTokenSecretHash"] = new(refreshTokenSecretHash),
                     },
                     UpdateExpression = "SET RevokedAt = :revokedAt",
-                    ConditionExpression = "attribute_not_exists(RevokedAt)",
+                    ConditionExpression =
+                        "attribute_exists(RefreshTokenSecretHash) AND attribute_not_exists(RevokedAt)",
                     ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                     {
                         [":revokedAt"] = new(revokedAt.ToString("O")),

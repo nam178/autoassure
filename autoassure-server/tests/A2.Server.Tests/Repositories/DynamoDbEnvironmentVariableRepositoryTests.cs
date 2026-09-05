@@ -95,7 +95,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
         );
 
     [Fact]
-    public async Task TryUpdateAsync_WhenEnvironmentExists_CreatesRowWithCreatedAndUpdatedFields()
+    public async Task TrySaveAsync_WhenEnvironmentExists_CreatesRowWithCreatedAndUpdatedFields()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -105,7 +105,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
         var updatedByUserId = Guid.CreateVersion7();
 
         // test
-        var updated = await _repository.TryUpdateAsync(
+        var updated = await _repository.TrySaveAsync(
             organizationId,
             applicationId,
             environmentId,
@@ -127,7 +127,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
     }
 
     [Fact]
-    public async Task TryUpdateAsync_WhenVariableAlreadyExists_UpdatesValueButKeepsCreatedFields()
+    public async Task TrySaveAsync_WhenVariableAlreadyExists_UpdatesValueButKeepsCreatedFields()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -135,7 +135,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
         var environmentId = Guid.CreateVersion7();
         await PutEnvironmentAsync(organizationId, applicationId, environmentId);
         var originalUserId = Guid.CreateVersion7();
-        await _repository.TryUpdateAsync(
+        await _repository.TrySaveAsync(
             organizationId,
             applicationId,
             environmentId,
@@ -146,7 +146,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
         var newUserId = Guid.CreateVersion7();
 
         // test
-        var updated = await _repository.TryUpdateAsync(
+        var updated = await _repository.TrySaveAsync(
             organizationId,
             applicationId,
             environmentId,
@@ -165,10 +165,10 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
     }
 
     [Fact]
-    public async Task TryUpdateAsync_WhenEnvironmentDoesNotExist_ReturnsFalse()
+    public async Task TrySaveAsync_WhenEnvironmentDoesNotExist_ReturnsFalse()
     {
         // test
-        var updated = await _repository.TryUpdateAsync(
+        var updated = await _repository.TrySaveAsync(
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
@@ -189,7 +189,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
         await PutEnvironmentAsync(organizationId, applicationId, environmentId);
-        await _repository.TryUpdateAsync(
+        await _repository.TrySaveAsync(
             organizationId,
             applicationId,
             environmentId,
@@ -218,7 +218,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
         await PutEnvironmentAsync(organizationId, applicationId, otherEnvironmentId);
         var updatedByUserId = Guid.CreateVersion7();
 
-        await _repository.TryUpdateAsync(
+        await _repository.TrySaveAsync(
             organizationId,
             applicationId,
             environmentId,
@@ -226,7 +226,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
             "z-value",
             updatedByUserId
         );
-        await _repository.TryUpdateAsync(
+        await _repository.TrySaveAsync(
             organizationId,
             applicationId,
             environmentId,
@@ -234,7 +234,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
             "a-value",
             updatedByUserId
         );
-        await _repository.TryUpdateAsync(
+        await _repository.TrySaveAsync(
             organizationId,
             applicationId,
             otherEnvironmentId,

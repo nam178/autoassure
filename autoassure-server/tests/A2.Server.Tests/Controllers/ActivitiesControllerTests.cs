@@ -15,11 +15,10 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace A2.Server.Tests.Controllers;
 
-/// <summary>Integration tests for <see cref="A2.Server.Controllers.TriesController"/> and
-/// <see cref="A2.Server.Controllers.RunsController"/> over real HTTP, against DynamoDB Local. Covers only
-/// creation -- execution is stubbed for this steel thread.</summary>
+/// <summary>Integration tests for <see cref="A2.Server.Controllers.ActivitiesController"/> over real
+/// HTTP, against DynamoDB Local.</summary>
 [Collection("DynamoDbLocal")]
-public sealed class TriesAndRunsControllerTests
+public sealed class ActivitiesControllerTests
     : IClassFixture<WebApplicationFactory<Program>>,
         IAsyncLifetime
 {
@@ -30,7 +29,7 @@ public sealed class TriesAndRunsControllerTests
     private readonly WebApplicationFactory<Program> _factory;
     private AmazonDynamoDBClient _client = null!;
 
-    public TriesAndRunsControllerTests(
+    public ActivitiesControllerTests(
         WebApplicationFactory<Program> factory,
         DynamoDbLocalFixture dynamoDbLocalFixture
     )
@@ -44,13 +43,12 @@ public sealed class TriesAndRunsControllerTests
                         {
                             ["Auth:SigningKey"] = SigningKey,
                             ["DynamoDb:ApplicationTableName"] = "Applications",
-                            ["DynamoDb:EnvironmentTableName"] = "Environments",
-                            ["DynamoDb:EnvironmentVariableTableName"] = "EnvironmentVariables",
+                            ["DynamoDb:PreconditionTableName"] = "Preconditions",
+                            ["DynamoDb:EvidenceDefinitionTableName"] = "EvidenceDefinitions",
                             ["DynamoDb:ScenarioTableName"] = "Scenarios",
                             ["DynamoDb:ScenariosByFolderTableName"] = "ScenariosByFolder",
                             ["DynamoDb:ScenariosByTagTableName"] = "ScenariosByTag",
-                            ["DynamoDb:RunTableName"] = "Runs",
-                            ["DynamoDb:TryTableName"] = "Tries",
+                            ["DynamoDb:ActivityTableName"] = "Activities",
                             ["DynamoDb:OrganizationTableName"] = "Organizations",
                             ["DynamoDb:OrganizationUserTableName"] = "OrganizationUsers",
                         }
@@ -86,6 +84,9 @@ public sealed class TriesAndRunsControllerTests
             }
         );
 
+        await CreateLibraryTableAsync("Preconditions");
+        await CreateLibraryTableAsync("EvidenceDefinitions");
+
         await _client.CreateTableAsync(
             new CreateTableRequest
             {
@@ -118,18 +119,21 @@ public sealed class TriesAndRunsControllerTests
             }
         );
 
+        await CreateMappingTableAsync("ScenariosByFolder");
+        await CreateMappingTableAsync("ScenariosByTag");
+
         await _client.CreateTableAsync(
             new CreateTableRequest
             {
-                TableName = "Environments",
+                TableName = "Activities",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement("OrganizationId_ScenarioId", KeyType.HASH),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition("OrganizationId_ScenarioId", ScalarAttributeType.S),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                     new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
                 ],
@@ -149,30 +153,6 @@ public sealed class TriesAndRunsControllerTests
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
-
-        await _client.CreateTableAsync(
-            new CreateTableRequest
-            {
-                TableName = "EnvironmentVariables",
-                KeySchema =
-                [
-                    new KeySchemaElement("OrganizationId_EnvironmentId", KeyType.HASH),
-                    new KeySchemaElement("Key", KeyType.RANGE),
-                ],
-                AttributeDefinitions =
-                [
-                    new AttributeDefinition("OrganizationId_EnvironmentId", ScalarAttributeType.S),
-                    new AttributeDefinition("Key", ScalarAttributeType.S),
-                ],
-                BillingMode = BillingMode.PAY_PER_REQUEST,
-            }
-        );
-
-        await CreateMappingTableAsync("ScenariosByFolder");
-        await CreateMappingTableAsync("ScenariosByTag");
-
-        await CreateRunTableAsync("Runs", "OrganizationId_ApplicationId");
-        await CreateRunTableAsync("Tries", "OrganizationId_ScenarioId");
 
         await _client.CreateTableAsync(
             new CreateTableRequest
@@ -216,7 +196,7 @@ public sealed class TriesAndRunsControllerTests
         );
     }
 
-    private async Task CreateMappingTableAsync(string tableName)
+    private async Task CreateLibraryTableAsync(string tableName)
     {
         await _client.CreateTableAsync(
             new CreateTableRequest
@@ -224,33 +204,12 @@ public sealed class TriesAndRunsControllerTests
                 TableName = tableName,
                 KeySchema =
                 [
-                    new KeySchemaElement("PartitionKey", KeyType.HASH),
-                    new KeySchemaElement("ScenarioId", KeyType.RANGE),
-                ],
-                AttributeDefinitions =
-                [
-                    new AttributeDefinition("PartitionKey", ScalarAttributeType.S),
-                    new AttributeDefinition("ScenarioId", ScalarAttributeType.S),
-                ],
-                BillingMode = BillingMode.PAY_PER_REQUEST,
-            }
-        );
-    }
-
-    private async Task CreateRunTableAsync(string tableName, string partitionKeyName)
-    {
-        await _client.CreateTableAsync(
-            new CreateTableRequest
-            {
-                TableName = tableName,
-                KeySchema =
-                [
-                    new KeySchemaElement(partitionKeyName, KeyType.HASH),
+                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition(partitionKeyName, ScalarAttributeType.S),
+                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                     new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
                 ],
@@ -272,19 +231,39 @@ public sealed class TriesAndRunsControllerTests
         );
     }
 
+    private async Task CreateMappingTableAsync(string tableName)
+    {
+        await _client.CreateTableAsync(
+            new CreateTableRequest
+            {
+                TableName = tableName,
+                KeySchema =
+                [
+                    new KeySchemaElement("PartitionKey", KeyType.HASH),
+                    new KeySchemaElement("ScenarioId", KeyType.RANGE),
+                ],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("PartitionKey", ScalarAttributeType.S),
+                    new AttributeDefinition("ScenarioId", ScalarAttributeType.S),
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+            }
+        );
+    }
+
     public async Task DisposeAsync()
     {
         foreach (
             var tableName in new[]
             {
                 "Applications",
+                "Preconditions",
+                "EvidenceDefinitions",
                 "Scenarios",
-                "Environments",
-                "EnvironmentVariables",
                 "ScenariosByFolder",
                 "ScenariosByTag",
-                "Runs",
-                "Tries",
+                "Activities",
                 "Organizations",
                 "OrganizationUsers",
             }
@@ -386,128 +365,113 @@ public sealed class TriesAndRunsControllerTests
         return scenario!.Id;
     }
 
-    private static async Task<Guid> CreateEnvironmentAsync(HttpClient client, Guid appId)
+    private static async Task<Guid> CreatePreconditionAsync(HttpClient client, Guid appId)
     {
         var response = await client.PostAsJsonAsync(
-            $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest
+            $"/applications/{appId}/preconditions",
+            new CreatePreconditionRequest
             {
-                Name = "Staging",
-                Classification = EnvironmentClassification.NonProduction,
+                Name = "Order ID",
+                ValueSource = PreconditionValueSource.SpecificValue,
+                ExampleValue = "ORD-1",
             }
         );
-        var environment = await response.Content.ReadFromJsonAsync<EnvironmentResponse>();
-        return environment!.Id;
+        var precondition = await response.Content.ReadFromJsonAsync<PreconditionResponse>();
+        return precondition!.Id;
     }
 
     [Fact]
-    public async Task PostTry_WhenScenarioExists_CreatesPendingTryInTriesTableNotRuns()
+    public async Task Create_WhenValidRequest_RoundTripsThroughGetUpdateDelete()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
         var appId = await CreateApplicationAsync(client);
         var scenarioId = await CreateScenarioAsync(client, appId);
-        var environmentId = await CreateEnvironmentAsync(client, appId);
+        var preconditionId = await CreatePreconditionAsync(client, appId);
 
         // test
-        var response = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/try",
-            new CreateTryRequest { EnvironmentId = environmentId }
-        );
-
-        // verify
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var created = await response.Content.ReadFromJsonAsync<TryScenarioResponse>();
-        Assert.NotNull(created);
-        Assert.Equal(scenarioId, created.ScenarioId);
-        Assert.Equal(environmentId, created.EnvironmentId);
-        Assert.Equal(RunStatus.Pending, created.Status);
-
-        var triesScanResponse = await _client.ScanAsync(new ScanRequest { TableName = "Tries" });
-        var triesItem = Assert.Single(triesScanResponse.Items);
-        Assert.Equal(created.Id.ToString(), triesItem["Id"].S);
-
-        var runsScanResponse = await _client.ScanAsync(new ScanRequest { TableName = "Runs" });
-        Assert.Empty(runsScanResponse.Items);
-
-        // test
-        var getResponse = await client.GetAsync($"/tries/{created.Id}");
-
-        // verify
-        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
-    }
-
-    [Fact]
-    public async Task PostRun_WhenScenarioExists_CreatesPendingRunInRunsTableNotTries()
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-        var scenarioId = await CreateScenarioAsync(client, appId);
-        var environmentId = await CreateEnvironmentAsync(client, appId);
-
-        // test
-        var response = await client.PostAsJsonAsync(
-            $"/applications/{appId}/runs",
-            new CreateRunRequest { ScenarioIds = [scenarioId], EnvironmentId = environmentId }
-        );
-
-        // verify
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var created = await response.Content.ReadFromJsonAsync<RunResponse>();
-        Assert.NotNull(created);
-        Assert.Equal(RunStatus.Pending, created.Status);
-        Assert.Equal(environmentId, created.EnvironmentId);
-
-        var triesScanResponse = await _client.ScanAsync(new ScanRequest { TableName = "Tries" });
-        Assert.Empty(triesScanResponse.Items);
-
-        // test
-        var getResponse = await client.GetAsync($"/runs/{created.Id}");
-
-        // verify
-        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
-    }
-
-    [Fact]
-    public async Task ListRuns_WhenTriesAndRunsExist_NeverReturnsTries()
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-        var scenarioId = await CreateScenarioAsync(client, appId);
-        var environmentId = await CreateEnvironmentAsync(client, appId);
-        await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/try",
-            new CreateTryRequest { EnvironmentId = environmentId }
-        );
-        await client.PostAsJsonAsync(
-            $"/applications/{appId}/runs",
-            new CreateRunRequest { ScenarioIds = [scenarioId], EnvironmentId = environmentId }
-        );
-
-        // test
-        var listResponse = await client.GetAsync($"/applications/{appId}/runs");
-        var runs = await listResponse.Content.ReadFromJsonAsync<List<RunResponse>>();
-
-        // verify
-        Assert.Single(runs!);
-    }
-
-    [Fact]
-    public async Task PostRun_WhenApplicationDoesNotExist_ReturnsNotFound()
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-
-        // test
-        var response = await client.PostAsJsonAsync(
-            $"/applications/{Guid.CreateVersion7()}/runs",
-            new CreateRunRequest
+        var createResponse = await client.PostAsJsonAsync(
+            $"/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest
             {
-                ScenarioIds = [Guid.CreateVersion7()],
-                EnvironmentId = Guid.CreateVersion7(),
+                Description = "Add item to cart",
+                PreconditionIds = [preconditionId],
+                EvidenceIds = [],
             }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
+        var created = await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
+        Assert.NotNull(created);
+        Assert.Equal("Add item to cart", created.Description);
+        Assert.Equal(0, created.Order);
+        Assert.Equal(preconditionId, Assert.Single(created.PreconditionIds));
+
+        // test
+        var patchResponse = await client.PatchAsJsonAsync(
+            $"/activities/{created.Id}",
+            new UpdateActivityRequest
+            {
+                Description = "Updated step",
+                PreconditionIds = [],
+                EvidenceIds = [],
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
+        var updated = await patchResponse.Content.ReadFromJsonAsync<ActivityResponse>();
+        Assert.Equal("Updated step", updated!.Description);
+        Assert.Empty(updated.PreconditionIds);
+
+        // test
+        var deleteResponse = await client.DeleteAsync($"/activities/{created.Id}");
+
+        // verify
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        // test
+        var listResponse = await client.GetAsync($"/scenarios/{scenarioId}/activities");
+
+        // verify
+        var list = await listResponse.Content.ReadFromJsonAsync<List<ActivityResponse>>();
+        Assert.Empty(list!);
+    }
+
+    [Fact]
+    public async Task Create_WhenPreconditionIdDoesNotExist_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest
+            {
+                Description = "Step",
+                PreconditionIds = [Guid.CreateVersion7()],
+                EvidenceIds = [],
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WhenScenarioDoesNotExist_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/scenarios/{Guid.CreateVersion7()}/activities",
+            new CreateActivityRequest { Description = "Step" }
         );
 
         // verify
@@ -515,15 +479,65 @@ public sealed class TriesAndRunsControllerTests
     }
 
     [Fact]
-    public async Task PostTry_WhenScenarioDoesNotExist_ReturnsNotFound()
+    public async Task Create_WhenScenarioAlreadyHasMaxActivities_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+        for (var i = 0; i < 90; i++)
+        {
+            await client.PostAsJsonAsync(
+                $"/scenarios/{scenarioId}/activities",
+                new CreateActivityRequest { Description = "Step" }
+            );
+        }
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "One too many" }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task List_WhenMultipleActivitiesExist_ReturnsOrderedByCreationOrder()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+        await client.PostAsJsonAsync(
+            $"/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "First" }
+        );
+        await client.PostAsJsonAsync(
+            $"/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Second" }
+        );
+
+        // test
+        var response = await client.GetAsync($"/scenarios/{scenarioId}/activities");
+
+        // verify
+        var list = await response.Content.ReadFromJsonAsync<List<ActivityResponse>>();
+        Assert.Equal(["First", "Second"], list!.Select(a => a.Description));
+        Assert.Equal([0, 1], list!.Select(a => a.Order));
+    }
+
+    [Fact]
+    public async Task Update_WhenActivityDoesNotExist_ReturnsNotFound()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
 
         // test
-        var response = await client.PostAsJsonAsync(
-            $"/scenarios/{Guid.CreateVersion7()}/try",
-            new CreateTryRequest { EnvironmentId = Guid.CreateVersion7() }
+        var response = await client.PatchAsJsonAsync(
+            $"/activities/{Guid.CreateVersion7()}",
+            new UpdateActivityRequest { Description = "X" }
         );
 
         // verify
@@ -531,40 +545,196 @@ public sealed class TriesAndRunsControllerTests
     }
 
     [Fact]
-    public async Task PostTry_WhenNoAccessToken_ReturnsUnauthorized()
+    public async Task Update_WhenPreconditionIdDoesNotExist_ReturnsBadRequest()
     {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Step" }
+        );
+        var created = await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
+
         // test
-        var response = await _factory
-            .CreateClient()
-            .PostAsync($"/scenarios/{Guid.CreateVersion7()}/try", null);
+        var response = await client.PatchAsJsonAsync(
+            $"/activities/{created!.Id}",
+            new UpdateActivityRequest
+            {
+                Description = "Updated step",
+                PreconditionIds = [Guid.CreateVersion7()],
+                EvidenceIds = [],
+            }
+        );
 
         // verify
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task GetTryById_WhenNoAccessToken_ReturnsUnauthorized()
+    public async Task Delete_WhenActivityDoesNotExist_ReturnsNoContent()
     {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+
         // test
-        var response = await _factory.CreateClient().GetAsync($"/tries/{Guid.CreateVersion7()}");
+        var response = await client.DeleteAsync($"/activities/{Guid.CreateVersion7()}");
 
         // verify
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
     [Fact]
-    public async Task PostRun_WhenNoAccessToken_ReturnsUnauthorized()
+    public async Task Reorder_WhenValidPermutation_UpdatesOrder()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+        var firstResponse = await client.PostAsJsonAsync(
+            $"/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "First" }
+        );
+        var first = (await firstResponse.Content.ReadFromJsonAsync<ActivityResponse>())!;
+        var secondResponse = await client.PostAsJsonAsync(
+            $"/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Second" }
+        );
+        var second = (await secondResponse.Content.ReadFromJsonAsync<ActivityResponse>())!;
+
+        // test
+        var response = await client.PatchAsJsonAsync(
+            $"/scenarios/{scenarioId}/activities/order",
+            new ReorderActivitiesRequest { OrderedActivityIds = [second.Id, first.Id] }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var reordered = await response.Content.ReadFromJsonAsync<List<ActivityResponse>>();
+        Assert.Equal([second.Id, first.Id], reordered!.Select(a => a.Id));
+    }
+
+    [Fact]
+    public async Task Reorder_WhenNotAPermutation_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+        await client.PostAsJsonAsync(
+            $"/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "First" }
+        );
+
+        // test
+        var response = await client.PatchAsJsonAsync(
+            $"/scenarios/{scenarioId}/activities/order",
+            new ReorderActivitiesRequest { OrderedActivityIds = [Guid.CreateVersion7()] }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Reorder_WhenScenarioDoesNotExist_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+
+        // test
+        var response = await client.PatchAsJsonAsync(
+            $"/scenarios/{Guid.CreateVersion7()}/activities/order",
+            new ReorderActivitiesRequest { OrderedActivityIds = [] }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(2000, HttpStatusCode.OK)]
+    [InlineData(2001, HttpStatusCode.BadRequest)]
+    [InlineData(0, HttpStatusCode.BadRequest)]
+    public async Task Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
+        int descriptionLength,
+        HttpStatusCode expectedStatus
+    )
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = new string('a', descriptionLength) }
+        );
+
+        // verify
+        Assert.Equal(expectedStatus, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(15, HttpStatusCode.OK)]
+    [InlineData(16, HttpStatusCode.BadRequest)]
+    public async Task Create_WhenPreconditionIdCountAtBoundary_EnforcesCountLimit(
+        int preconditionCount,
+        HttpStatusCode expectedStatus
+    )
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+        var preconditionIds = new List<Guid>();
+        for (var i = 0; i < preconditionCount; i++)
+        {
+            preconditionIds.Add(await CreatePreconditionAsync(client, appId));
+        }
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Step", PreconditionIds = preconditionIds }
+        );
+
+        // verify
+        Assert.Equal(expectedStatus, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("""{"preconditionIds":null,"evidenceIds":null}""")] // description missing entirely
+    [InlineData("""{"description":null,"preconditionIds":null,"evidenceIds":null}""")] // description explicitly null
+    [InlineData("""{"description":123,"preconditionIds":null,"evidenceIds":null}""")] // description wrong type
+    public async Task Create_WhenRequestHasInvalidShape_ReturnsBadRequest(string rawJson)
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+
+        // test
+        var response = await client.PostAsync(
+            $"/scenarios/{scenarioId}/activities",
+            new StringContent(rawJson, Encoding.UTF8, "application/json")
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WhenNoAccessToken_ReturnsUnauthorized()
     {
         // test
         var response = await _factory
             .CreateClient()
             .PostAsJsonAsync(
-                $"/applications/{Guid.CreateVersion7()}/runs",
-                new CreateRunRequest
-                {
-                    ScenarioIds = [Guid.CreateVersion7()],
-                    EnvironmentId = Guid.CreateVersion7(),
-                }
+                $"/scenarios/{Guid.CreateVersion7()}/activities",
+                new CreateActivityRequest { Description = "Step" }
             );
 
         // verify
@@ -572,165 +742,56 @@ public sealed class TriesAndRunsControllerTests
     }
 
     [Fact]
-    public async Task ListRuns_WhenNoAccessToken_ReturnsUnauthorized()
+    public async Task List_WhenNoAccessToken_ReturnsUnauthorized()
     {
         // test
         var response = await _factory
             .CreateClient()
-            .GetAsync($"/applications/{Guid.CreateVersion7()}/runs");
+            .GetAsync($"/scenarios/{Guid.CreateVersion7()}/activities");
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task GetRunById_WhenNoAccessToken_ReturnsUnauthorized()
+    public async Task Update_WhenNoAccessToken_ReturnsUnauthorized()
     {
         // test
-        var response = await _factory.CreateClient().GetAsync($"/runs/{Guid.CreateVersion7()}");
+        var response = await _factory
+            .CreateClient()
+            .PatchAsJsonAsync(
+                $"/activities/{Guid.CreateVersion7()}",
+                new UpdateActivityRequest { Description = "Step" }
+            );
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task PostRun_WhenScenarioIdsIsEmpty_IsRejected()
+    public async Task Delete_WhenNoAccessToken_ReturnsUnauthorized()
     {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-
         // test
-        var response = await client.PostAsJsonAsync(
-            $"/applications/{appId}/runs",
-            new CreateRunRequest { ScenarioIds = [], EnvironmentId = Guid.CreateVersion7() }
-        );
+        var response = await _factory
+            .CreateClient()
+            .DeleteAsync($"/activities/{Guid.CreateVersion7()}");
 
         // verify
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task PostRun_WhenEnvironmentDoesNotExist_IsRejected()
+    public async Task Reorder_WhenNoAccessToken_ReturnsUnauthorized()
     {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-        var scenarioId = await CreateScenarioAsync(client, appId);
-
         // test
-        var response = await client.PostAsJsonAsync(
-            $"/applications/{appId}/runs",
-            new CreateRunRequest
-            {
-                ScenarioIds = [scenarioId],
-                EnvironmentId = Guid.CreateVersion7(),
-            }
-        );
+        var response = await _factory
+            .CreateClient()
+            .PatchAsJsonAsync(
+                $"/scenarios/{Guid.CreateVersion7()}/activities/order",
+                new ReorderActivitiesRequest { OrderedActivityIds = [] }
+            );
 
         // verify
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task PostRun_WhenEnvironmentBelongsToDifferentApplication_IsRejected()
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-        var scenarioId = await CreateScenarioAsync(client, appId);
-        var otherAppId = await CreateApplicationAsync(client);
-        var environmentId = await CreateEnvironmentAsync(client, otherAppId);
-
-        // test
-        var response = await client.PostAsJsonAsync(
-            $"/applications/{appId}/runs",
-            new CreateRunRequest { ScenarioIds = [scenarioId], EnvironmentId = environmentId }
-        );
-
-        // verify
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task PostTry_WhenEnvironmentDoesNotExist_IsRejected()
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-        var scenarioId = await CreateScenarioAsync(client, appId);
-
-        // test
-        var response = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/try",
-            new CreateTryRequest { EnvironmentId = Guid.CreateVersion7() }
-        );
-
-        // verify
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task PostTry_WhenEnvironmentBelongsToDifferentApplication_IsRejected()
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-        var scenarioId = await CreateScenarioAsync(client, appId);
-        var otherAppId = await CreateApplicationAsync(client);
-        var environmentId = await CreateEnvironmentAsync(client, otherAppId);
-
-        // test
-        var response = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/try",
-            new CreateTryRequest { EnvironmentId = environmentId }
-        );
-
-        // verify
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Theory]
-    [InlineData("""{}""")] // environmentId missing entirely
-    [InlineData("""{"environmentId":null}""")] // environmentId explicitly null
-    [InlineData("""{"environmentId":123}""")] // environmentId wrong type
-    public async Task PostTry_WhenRequestHasInvalidShape_ReturnsBadRequest(string rawJson)
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-        var scenarioId = await CreateScenarioAsync(client, appId);
-
-        // test
-        var response = await client.PostAsync(
-            $"/scenarios/{scenarioId}/try",
-            new StringContent(rawJson, Encoding.UTF8, "application/json")
-        );
-
-        // verify
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Theory]
-    [InlineData("""{"environmentId":"11111111-1111-1111-1111-111111111111"}""")] // scenarioIds missing entirely
-    [InlineData("""{"scenarioIds":null,"environmentId":"11111111-1111-1111-1111-111111111111"}""")] // scenarioIds explicitly null
-    [InlineData(
-        """{"scenarioIds":"not-an-array","environmentId":"11111111-1111-1111-1111-111111111111"}"""
-    )] // scenarioIds wrong type
-    [InlineData("""{"scenarioIds":["11111111-1111-1111-1111-111111111111"],"environmentId":123}""")] // environmentId wrong type
-    public async Task PostRun_WhenRequestHasInvalidShape_ReturnsBadRequest(string rawJson)
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-
-        // test
-        var response = await client.PostAsync(
-            $"/applications/{appId}/runs",
-            new StringContent(rawJson, Encoding.UTF8, "application/json")
-        );
-
-        // verify
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

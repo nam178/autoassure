@@ -7,15 +7,5 @@ namespace A2.Server.Controllers;
 public static partial class ContractMapper
 {
     public static ScenarioResponse ToResponse(this Scenario scenario) =>
-        new(
-            scenario.Id,
-            scenario.Title,
-            scenario.Description,
-            scenario.Folder,
-            scenario.Tags,
-            scenario.Activities.Select(activity => activity.ToResponse()).ToList()
-        );
-
-    private static ActivityResponse ToResponse(this Models.Activity activity) =>
-        new(activity.Id, activity.Description, activity.PreconditionIds, activity.EvidenceIds);
+        new(scenario.Id, scenario.Title, scenario.Description, scenario.Folder, scenario.Tags);
 }

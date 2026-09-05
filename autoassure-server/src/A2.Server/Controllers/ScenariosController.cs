@@ -4,7 +4,6 @@ using A2.Server.Repositories;
 using A2.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Activity = A2.Server.Models.Activity;
 using Scenario = A2.Server.Models.Scenario;
 
 namespace A2.Server.Controllers;
@@ -14,24 +13,15 @@ namespace A2.Server.Controllers;
 public class ScenariosController(
     IApplicationRepository applicationRepository,
     IScenarioRepository scenarioRepository,
-    IPreconditionRepository preconditionRepository,
-    IEvidenceDefinitionRepository evidenceDefinitionRepository,
+    IActivityRepository activityRepository,
     ICallerOrganizationService callerOrganizationService,
     IClock clock
 ) : ControllerBase
 {
-    private const int MaxTagCount = 20;
     private const int MaxTagLength = 50;
     private const string DefaultFolder = "/";
 
-    // Keeps a Scenario's TransactWriteItems well under DynamoDB's 100-item transaction limit: 1
-    // (Application check) + 1 (Scenario put) + 1 (folder mapping) + up to MaxTagCount (tag mappings)
-    // already uses up to 23 items, leaving headroom for reference checks.
-    private const int MaxActivityReferenceCount = 50;
-
-    /// <response code="400">Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not
-    /// reference existing library rows, or the total number of unique references exceeds the allowed
-    /// maximum.</response>
+    /// <response code="400">A tag in Tags is longer than 50 characters.</response>
     /// <response code="404">No Application with the given appId exists in the caller's Organization,
     /// or it no longer exists (deleted after this request started).</response>
     [HttpPost("applications/{appId:guid}/scenarios", Name = "CreateScenario")]
@@ -46,7 +36,7 @@ public class ScenariosController(
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
 
         // The Application is the URL resource -- its non-existence must win as a 404 over a 400 for
-        // an invalid request body, so it's checked before validating tags/activities below.
+        // an invalid request body, so it's checked before validating tags below.
         if (await applicationRepository.GetByIdAsync(organizationId, appId) is null)
         {
             return NotFound();
@@ -56,20 +46,6 @@ public class ScenariosController(
         if (!TryValidateTags(tags, out var tagsError))
         {
             return BadRequest(new ErrorResponse(tagsError!));
-        }
-
-        var activities = await ToActivitiesAsync(organizationId, appId, request.Activities ?? []);
-        if (activities is null)
-        {
-            return BadRequest(
-                new ErrorResponse(
-                    "PreconditionIds/EvidenceIds must reference existing library rows."
-                )
-            );
-        }
-        if (!TryValidateActivityReferenceCount(activities, out var referenceCountError))
-        {
-            return BadRequest(new ErrorResponse(referenceCountError!));
         }
 
         var userId = User.GetUserId();
@@ -83,7 +59,7 @@ public class ScenariosController(
             Description = request.Description,
             Folder = string.IsNullOrEmpty(request.Folder) ? DefaultFolder : request.Folder,
             Tags = tags,
-            Activities = activities,
+            ActivityCount = 0,
             CreatedByUserId = userId,
             UpdatedByUserId = userId,
             CreatedAt = now,
@@ -96,12 +72,7 @@ public class ScenariosController(
         return result switch
         {
             ScenarioWriteResult.Success => Ok(scenario.ToResponse()),
-            ScenarioWriteResult.ApplicationNotFound => NotFound(),
-            _ => BadRequest(
-                new ErrorResponse(
-                    "PreconditionIds/EvidenceIds must reference existing library rows."
-                )
-            ),
+            _ => NotFound(),
         };
     }
 
@@ -142,9 +113,7 @@ public class ScenariosController(
         return scenario is null ? NotFound() : Ok(scenario.ToResponse());
     }
 
-    /// <response code="400">Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not
-    /// reference existing library rows, or the total number of unique references exceeds the allowed
-    /// maximum.</response>
+    /// <response code="400">A tag in Tags is longer than 50 characters.</response>
     /// <response code="404">No Scenario with the given id exists in the caller's Organization, or its
     /// Application no longer exists (deleted after this request started).</response>
     [HttpPatch("scenarios/{id:guid}", Name = "UpdateScenario")]
@@ -166,31 +135,12 @@ public class ScenariosController(
             return BadRequest(new ErrorResponse(tagsError!));
         }
 
-        var activities = await ToActivitiesAsync(
-            organizationId,
-            previous.ApplicationId,
-            request.Activities ?? []
-        );
-        if (activities is null)
-        {
-            return BadRequest(
-                new ErrorResponse(
-                    "PreconditionIds/EvidenceIds must reference existing library rows."
-                )
-            );
-        }
-        if (!TryValidateActivityReferenceCount(activities, out var referenceCountError))
-        {
-            return BadRequest(new ErrorResponse(referenceCountError!));
-        }
-
         var updated = previous with
         {
             Title = request.Title,
             Description = request.Description,
             Folder = request.Folder,
             Tags = tags,
-            Activities = activities,
             UpdatedByUserId = User.GetUserId(),
             UpdatedAt = clock.UtcNow,
         };
@@ -201,13 +151,7 @@ public class ScenariosController(
         return result switch
         {
             ScenarioWriteResult.Success => Ok(updated.ToResponse()),
-            ScenarioWriteResult.ScenarioNotFound or ScenarioWriteResult.ApplicationNotFound =>
-                NotFound(),
-            _ => BadRequest(
-                new ErrorResponse(
-                    "PreconditionIds/EvidenceIds must reference existing library rows."
-                )
-            ),
+            _ => NotFound(),
         };
     }
 
@@ -224,18 +168,15 @@ public class ScenariosController(
             return NotFound();
         }
 
+        // When a Scenario is deleted, then its Activities must be removed first -- otherwise deleted
+        // Scenarios would leave orphaned Activity rows behind.
+        await activityRepository.DeleteAllByScenarioAsync(organizationId, id);
         await scenarioRepository.DeleteAsync(scenario);
         return NoContent();
     }
 
     private static bool TryValidateTags(IReadOnlyList<string> tags, out string? error)
     {
-        if (tags.Count > MaxTagCount)
-        {
-            error = $"tags must have at most {MaxTagCount} entries.";
-            return false;
-        }
-
         if (tags.Any(tag => tag.Length > MaxTagLength))
         {
             error = $"each tag must be at most {MaxTagLength} characters.";
@@ -244,77 +185,5 @@ public class ScenariosController(
 
         error = null;
         return true;
-    }
-
-    private static bool TryValidateActivityReferenceCount(
-        IReadOnlyList<Activity> activities,
-        out string? error
-    )
-    {
-        var uniqueReferenceCount =
-            activities.SelectMany(a => a.PreconditionIds).Distinct().Count()
-            + activities.SelectMany(a => a.EvidenceIds).Distinct().Count();
-        if (uniqueReferenceCount > MaxActivityReferenceCount)
-        {
-            error =
-                $"Activities must reference at most {MaxActivityReferenceCount} unique "
-                + "Preconditions/EvidenceDefinitions in total.";
-            return false;
-        }
-
-        error = null;
-        return true;
-    }
-
-    // Validates that every PreconditionIds/EvidenceIds entry resolves to an existing library row in
-    // the same Application, and returns the resulting domain Activities -- or null if any reference is invalid.
-    private async Task<IReadOnlyList<Activity>?> ToActivitiesAsync(
-        Guid organizationId,
-        Guid applicationId,
-        IReadOnlyList<ActivityRequest> requests
-    )
-    {
-        var activities = new List<Activity>();
-        foreach (var request in requests)
-        {
-            var preconditionIds = request.PreconditionIds ?? [];
-            var evidenceIds = request.EvidenceIds ?? [];
-
-            foreach (var preconditionId in preconditionIds)
-            {
-                var precondition = await preconditionRepository.GetByIdAsync(
-                    organizationId,
-                    preconditionId
-                );
-                if (precondition is null || precondition.ApplicationId != applicationId)
-                {
-                    return null;
-                }
-            }
-
-            foreach (var evidenceId in evidenceIds)
-            {
-                var evidence = await evidenceDefinitionRepository.GetByIdAsync(
-                    organizationId,
-                    evidenceId
-                );
-                if (evidence is null || evidence.ApplicationId != applicationId)
-                {
-                    return null;
-                }
-            }
-
-            activities.Add(
-                new Activity
-                {
-                    Id = Guid.CreateVersion7(),
-                    Description = request.Description,
-                    PreconditionIds = preconditionIds,
-                    EvidenceIds = evidenceIds,
-                }
-            );
-        }
-
-        return activities;
     }
 }

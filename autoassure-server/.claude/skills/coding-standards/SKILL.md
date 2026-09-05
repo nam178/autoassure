@@ -13,6 +13,7 @@ description:
 - MUST not use ! operator. Throw instead.
 - Class and function names MUST be specific. Good: ToDynamoDbRow (), class ShippingRules. Bad: ToItem (), class
   BusinessUtils.
+- MUST mark method as static if it does not use any class member.
 
 # Documentation
 
@@ -44,14 +45,19 @@ description:
 - MUST use mapper to convert domain model <-> DynamoDB, including individual fields. Mapping functions located at
   DynampDbMapper.cs, DynamoDbMapper.Application.cs, etc.
 - MUST use consistent read by default.
-- MUST use naming convention: SaveX () - create or update the object as a whole, UpdateX () - update ONLY certain fields
-  (MUST use query to change specific fields and document the fields being changed), GetX (), ListX (). Additional
-  "Try" prefix is allowed, like TrySaveX ().
+- MUST use naming convention:
+    - SaveX ()/TrySaveX () - create or update the object as a whole
+    - TryUpdateX () - update ONLY certain fields. MUST update ONLY specific fields and document the fields being
+      changed. Better, use typed args: FooUpdatableFields. MUST use conditional check and return false or any value to
+      indicate the object was not exist.
+    - GetX (), ListX ()..
 - If an entity has a relationship, like Scenario belongs to App, MUST check if the other entity exist when
   insert/updating with ConditionExpression.
 - When deleting a parent, make sure all children are deleted FIRST, if they can't be deleted together in one
   transaction.
 - DynamoDB can handle empty string. But can't handle empty string within a set. Watch out.
+- In each query, MUST handle exception EXPLICITLY instead of having a "shared" private method for exception handling.
+- MUST document limits (max 25 items per update etc)
 
 # Services (Business Logic Layer)
 
@@ -73,7 +79,16 @@ description:
     - Non-success HTTP status codes:
         - MUST use ErrorResponse for response body, with user friendly message.
         - Must document with [ProducesResponseType (typeof (ErrorResponse), ...]
-        - MUST document with XML, specify when they occur, e.g. "Returns 400 when username is shorter than 20 chars".
+        - MUST document with XML the EXACT condition that causes the error, so frontend can avoid it Good: "Returns 400
+          when Tags has more than 10 items or an item is longer than 50 chars". Bad: "Tags are invalid." Bad: "Returns
+          400 when input is invalid."
+
+# Enums & Switches
+
+- MUST NOT use `_` (discard) in a switch over an enum. List every named enum value. Adding a new enum value later then
+  breaks the build (CS8509) instead of silently falling into the wrong branch.
+- Add a final `_ => throw new UnreachableException(...)` only to satisfy CS8524 (unnamed enum values from a cast) — not
+  as a stand-in for a real case.
 
 # Functions & Methods
 

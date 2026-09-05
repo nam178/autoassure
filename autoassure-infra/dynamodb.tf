@@ -378,8 +378,9 @@ resource "aws_dynamodb_table" "evidence_definitions" {
   }
 }
 
-# Stores Scenarios (test cases) with embedded Activities. Schema must stay in sync
-# with Models/Scenario.cs, Models/Activity.cs, and Repositories/DynamoDbScenarioRepository.cs.
+# Stores Scenarios (test cases). Their ordered Activities live in the separate
+# activities table below. Schema must stay in sync with Models/Scenario.cs and
+# Repositories/DynamoDbScenarioRepository.cs.
 # trivy:ignore:AWS-0025 -- AWS-owned key is sufficient for this table at this stage;
 # a customer-managed KMS key adds per-request cost and key-rotation overhead not justified yet.
 # Revisit if compliance requirements change.
@@ -487,6 +488,57 @@ resource "aws_dynamodb_table" "scenarios_by_tag" {
   attribute {
     name = "ScenarioId"
     type = "S"
+  }
+
+  point_in_time_recovery {
+    enabled = var.environment == "prod"
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "autoassure"
+  }
+}
+
+# Per-Scenario ordered list of Activities (test steps), split out from the scenarios
+# table so an Activity's Precondition/EvidenceDefinition reference checks are scoped to
+# that Activity's write instead of the whole Scenario's -- see Models/Activity.cs and
+# Repositories/DynamoDbActivityRepository.cs.
+# trivy:ignore:AWS-0025 -- AWS-owned key is sufficient for this table at this stage;
+# a customer-managed KMS key adds per-request cost and key-rotation overhead not justified yet.
+# Revisit if compliance requirements change.
+resource "aws_dynamodb_table" "activities" {
+  name         = "${local.name_prefix}-activity-table"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "OrganizationId_ScenarioId"
+  range_key    = "Id"
+
+  attribute {
+    name = "OrganizationId_ScenarioId"
+    type = "S"
+  }
+
+  attribute {
+    name = "Id"
+    type = "S"
+  }
+
+  attribute {
+    name = "OrganizationId"
+    type = "S"
+  }
+
+  # Point lookup by Id alone, for the flat /activities/{id} routes. Eventually
+  # consistent (GSIs don't support ConsistentRead) — see DynamoDbActivityRepository.cs.
+  global_secondary_index {
+    name            = "IdIndex"
+    hash_key        = "OrganizationId"
+    range_key       = "Id"
+    projection_type = "ALL"
   }
 
   point_in_time_recovery {

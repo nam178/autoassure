@@ -15,8 +15,6 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
     private string ScenariosByFolderTableName => options.Value.ScenariosByFolderTableName;
     private string ScenariosByTagTableName => options.Value.ScenariosByTagTableName;
     private string ApplicationTableName => options.Value.ApplicationTableName;
-    private string PreconditionTableName => options.Value.PreconditionTableName;
-    private string EvidenceDefinitionTableName => options.Value.EvidenceDefinitionTableName;
 
     public async Task<ScenarioWriteResult> TrySaveAsync(Scenario scenario)
     {
@@ -24,12 +22,26 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
         {
             ApplicationExistsCheck(scenario.OrganizationId, scenario.ApplicationId),
         };
-        transactItems.AddRange(ReferenceExistsChecks(scenario));
         transactItems.Add(PutScenario(scenario));
         transactItems.Add(PutFolderMapping(scenario, scenario.Folder));
         transactItems.AddRange(scenario.Tags.Select(tag => PutTagMapping(scenario, tag)));
 
-        return await TryWriteAsync(transactItems);
+        try
+        {
+            await client.TransactWriteItemsAsync(
+                new TransactWriteItemsRequest { TransactItems = transactItems }
+            );
+            return ScenarioWriteResult.Success;
+        }
+        // When the Application was deleted between the Controller's existence check (transact item 0)
+        // and this write. Then report ApplicationNotFound; any other cancellation reason (throttling,
+        // conflict, etc.) is an unexpected failure and MUST propagate instead of being reported as a
+        // business result.
+        catch (TransactionCanceledException ex)
+            when (ex.CancellationReasons is [{ Code: "ConditionalCheckFailed" }, ..])
+        {
+            return ScenarioWriteResult.ApplicationNotFound;
+        }
     }
 
     public async Task<ScenarioWriteResult> TryUpdateAsync(Scenario scenario, Scenario previousState)
@@ -38,10 +50,9 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
         {
             ApplicationExistsCheck(scenario.OrganizationId, scenario.ApplicationId),
         };
-        transactItems.AddRange(ReferenceExistsChecks(scenario));
         // Guards against the Scenario being deleted between the Controller's existence check and this
-        // write -- without it, UpdateItem would silently recreate a partial row.
-        var scenarioItemIndex = transactItems.Count;
+        // write -- without it, UpdateItem would silently recreate a partial row. Always transact
+        // item 1, right after the Application check.
         transactItems.Add(UpdateScenario(scenario));
 
         // Reconcile the folder mapping: only touch it if the folder actually changed, so an
@@ -62,18 +73,6 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
             currentTags.Except(previousTags).Select(tag => PutTagMapping(scenario, tag))
         );
 
-        return await TryWriteAsync(transactItems, scenarioItemIndex);
-    }
-
-    // Runs the transaction and, on cancellation, distinguishes an Application-missing failure (always
-    // transact item 0), a Scenario-missing failure (scenarioItemIndex, only set by TryUpdateAsync),
-    // and a Precondition/EvidenceDefinition-missing failure (every other index) -- the three map to
-    // different HTTP statuses in the Controller.
-    private async Task<ScenarioWriteResult> TryWriteAsync(
-        List<TransactWriteItem> transactItems,
-        int? scenarioItemIndex = null
-    )
-    {
         try
         {
             await client.TransactWriteItemsAsync(
@@ -81,68 +80,22 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
             );
             return ScenarioWriteResult.Success;
         }
+        // When the Application (item 0) or the Scenario itself (item 1) was deleted between the
+        // Controller's existence check and this write. Then report which one; any other
+        // cancellation reason (throttling, conflict, etc.) is an unexpected failure and MUST
+        // propagate instead of being reported as a business result.
         catch (TransactionCanceledException ex)
+            when (ex.CancellationReasons is { Count: > 1 } reasons
+                && (
+                    reasons[0].Code == "ConditionalCheckFailed"
+                    || reasons[1].Code == "ConditionalCheckFailed"
+                )
+            )
         {
-            if (ex.CancellationReasons is not { Count: > 0 } reasons)
-            {
-                return ScenarioWriteResult.ReferenceNotFound;
-            }
-            if (reasons[0].Code == "ConditionalCheckFailed")
-            {
-                return ScenarioWriteResult.ApplicationNotFound;
-            }
-            if (scenarioItemIndex is { } index && reasons[index].Code == "ConditionalCheckFailed")
-            {
-                return ScenarioWriteResult.ScenarioNotFound;
-            }
-            return ScenarioWriteResult.ReferenceNotFound;
+            return reasons[0].Code == "ConditionalCheckFailed"
+                ? ScenarioWriteResult.ApplicationNotFound
+                : ScenarioWriteResult.ScenarioNotFound;
         }
-    }
-
-    // One ConditionCheck per unique Precondition/EvidenceDefinition referenced across all Activities --
-    // deduped, since a DynamoDB transaction rejects two operations targeting the same item.
-    private IEnumerable<TransactWriteItem> ReferenceExistsChecks(Scenario scenario)
-    {
-        var partitionKey = DynamoDbMapper.ApplicationScopedPartitionKey(
-            scenario.OrganizationId,
-            scenario.ApplicationId
-        );
-
-        var preconditionChecks = scenario
-            .Activities.SelectMany(activity => activity.PreconditionIds)
-            .Distinct()
-            .Select(preconditionId => new TransactWriteItem
-            {
-                ConditionCheck = new ConditionCheck
-                {
-                    TableName = PreconditionTableName,
-                    Key = new Dictionary<string, AttributeValue>
-                    {
-                        ["OrganizationId_ApplicationId"] = new(partitionKey),
-                        ["Id"] = new(preconditionId.ToString()),
-                    },
-                    ConditionExpression = "attribute_exists(Id)",
-                },
-            });
-
-        var evidenceChecks = scenario
-            .Activities.SelectMany(activity => activity.EvidenceIds)
-            .Distinct()
-            .Select(evidenceId => new TransactWriteItem
-            {
-                ConditionCheck = new ConditionCheck
-                {
-                    TableName = EvidenceDefinitionTableName,
-                    Key = new Dictionary<string, AttributeValue>
-                    {
-                        ["OrganizationId_ApplicationId"] = new(partitionKey),
-                        ["Id"] = new(evidenceId.ToString()),
-                    },
-                    ConditionExpression = "attribute_exists(Id)",
-                },
-            });
-
-        return preconditionChecks.Concat(evidenceChecks);
     }
 
     private TransactWriteItem ApplicationExistsCheck(Guid organizationId, Guid applicationId) =>
@@ -317,7 +270,7 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
                 },
                 UpdateExpression =
                     "SET Title = :title, Description = :description, Folder = :folder, "
-                    + "Tags = :tags, Activities = :activities, UpdatedByUserId = :updatedByUserId, "
+                    + "Tags = :tags, UpdatedByUserId = :updatedByUserId, "
                     + "UpdatedAt = :updatedAt",
                 ConditionExpression = "attribute_exists(Id)",
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
@@ -328,12 +281,6 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
                     [":tags"] = new AttributeValue
                     {
                         L = scenario.Tags.Select(tag => new AttributeValue(tag)).ToList(),
-                    },
-                    [":activities"] = new AttributeValue
-                    {
-                        L = scenario
-                            .Activities.Select(activity => activity.ToAttributeValue())
-                            .ToList(),
                     },
                     [":updatedByUserId"] = new(scenario.UpdatedByUserId.ToString()),
                     [":updatedAt"] = new(scenario.UpdatedAt.ToString("O")),

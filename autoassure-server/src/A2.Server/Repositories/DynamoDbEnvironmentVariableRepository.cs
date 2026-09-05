@@ -14,7 +14,7 @@ public class DynamoDbEnvironmentVariableRepository(
     private string TableName => options.Value.EnvironmentVariableTableName;
     private string EnvironmentTableName => options.Value.EnvironmentTableName;
 
-    public async Task<bool> TryUpdateAsync(
+    public async Task<bool> TrySaveAsync(
         Guid organizationId,
         Guid applicationId,
         Guid environmentId,

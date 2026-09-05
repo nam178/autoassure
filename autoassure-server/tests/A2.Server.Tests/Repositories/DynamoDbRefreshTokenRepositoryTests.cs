@@ -143,4 +143,65 @@ public sealed class DynamoDbRefreshTokenRepositoryTests(DynamoDbLocalFixture dyn
         Assert.True(result);
         Assert.Equal(token with { RevokedAt = revokedAt }, fetched);
     }
+
+    [Fact]
+    public async Task TryUpdateAsync_WhenTokenDoesNotExist_ReturnsFalseAndDoesNotCreateRow()
+    {
+        // test
+        var result = await _repository.TryUpdateAsync(
+            "does-not-exist",
+            new DateTimeOffset(2026, 1, 15, 0, 0, 0, TimeSpan.Zero)
+        );
+        var fetched = await _repository.GetByHashAsync("does-not-exist");
+
+        // verify
+        Assert.False(result);
+        Assert.Null(fetched);
+    }
+
+    [Fact]
+    public async Task TryUpdateAsync_WhenTokenIsAlreadyRevoked_ReturnsFalse()
+    {
+        // setup
+        var revokedAt = new DateTimeOffset(2026, 1, 10, 0, 0, 0, TimeSpan.Zero);
+        var token = new RefreshToken(
+            "hash-4",
+            Guid.CreateVersion7(),
+            "user@example.com",
+            new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            revokedAt
+        );
+        await _client.PutItemAsync(
+            new PutItemRequest
+            {
+                TableName = TableName,
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    ["RefreshTokenSecretHash"] = new(token.RefreshTokenSecretHash),
+                    ["UserId"] = new(token.UserId.ToString()),
+                    ["Email"] = new(token.Email),
+                    ["ExpiresAt"] = new()
+                    {
+                        N = token
+                            .ExpiresAt.ToUnixTimeSeconds()
+                            .ToString(CultureInfo.InvariantCulture),
+                    },
+                    ["CreatedAt"] = new(token.CreatedAt.ToString("O")),
+                    ["RevokedAt"] = new(revokedAt.ToString("O")),
+                },
+            }
+        );
+
+        // test
+        var result = await _repository.TryUpdateAsync(
+            "hash-4",
+            new DateTimeOffset(2026, 1, 20, 0, 0, 0, TimeSpan.Zero)
+        );
+        var fetched = await _repository.GetByHashAsync("hash-4");
+
+        // verify
+        Assert.False(result);
+        Assert.Equal(token, fetched);
+    }
 }

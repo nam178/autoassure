@@ -18,7 +18,4 @@ public record CreateScenarioRequest
 
     [MaxLength(20)]
     public IReadOnlyList<string>? Tags { get; init; }
-
-    [MaxLength(200)]
-    public IReadOnlyList<ActivityRequest>? Activities { get; init; }
 }

@@ -7,6 +7,5 @@ public record ScenarioResponse(
     string Title,
     string Description,
     string Folder,
-    IReadOnlyList<string> Tags,
-    IReadOnlyList<ActivityResponse> Activities
+    IReadOnlyList<string> Tags
 );

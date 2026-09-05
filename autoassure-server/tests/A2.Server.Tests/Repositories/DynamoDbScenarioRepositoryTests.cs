@@ -18,8 +18,6 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
     private const string ScenariosByFolderTableName = "ScenariosByFolder";
     private const string ScenariosByTagTableName = "ScenariosByTag";
     private const string ApplicationTableName = "Applications";
-    private const string PreconditionTableName = "Preconditions";
-    private const string EvidenceDefinitionTableName = "EvidenceDefinitions";
 
     private AmazonDynamoDBClient _client = null!;
     private DynamoDbScenarioRepository _repository = null!;
@@ -36,8 +34,6 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
                     ScenariosByFolderTableName = ScenariosByFolderTableName,
                     ScenariosByTagTableName = ScenariosByTagTableName,
                     ApplicationTableName = ApplicationTableName,
-                    PreconditionTableName = PreconditionTableName,
-                    EvidenceDefinitionTableName = EvidenceDefinitionTableName,
                 }
             )
         );
@@ -59,9 +55,6 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
-
-        await CreateLibraryTableAsync(PreconditionTableName);
-        await CreateLibraryTableAsync(EvidenceDefinitionTableName);
 
         await _client.CreateTableAsync(
             new CreateTableRequest
@@ -99,39 +92,6 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
         await CreateMappingTableAsync(ScenariosByTagTableName);
     }
 
-    private async Task CreateLibraryTableAsync(string tableName) =>
-        await _client.CreateTableAsync(
-            new CreateTableRequest
-            {
-                TableName = tableName,
-                KeySchema =
-                [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
-                    new KeySchemaElement("Id", KeyType.RANGE),
-                ],
-                AttributeDefinitions =
-                [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
-                    new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
-                    },
-                ],
-                BillingMode = BillingMode.PAY_PER_REQUEST,
-            }
-        );
-
     private async Task CreateMappingTableAsync(string tableName) =>
         await _client.CreateTableAsync(
             new CreateTableRequest
@@ -157,8 +117,6 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
             var tableName in new[]
             {
                 ApplicationTableName,
-                PreconditionTableName,
-                EvidenceDefinitionTableName,
                 ScenarioTableName,
                 ScenariosByFolderTableName,
                 ScenariosByTagTableName,
@@ -187,8 +145,7 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
         Guid organizationId,
         Guid applicationId,
         string folder = "/",
-        IReadOnlyList<string>? tags = null,
-        IReadOnlyList<Activity>? activities = null
+        IReadOnlyList<string>? tags = null
     )
     {
         var userId = Guid.CreateVersion7();
@@ -201,7 +158,6 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
             Description = "Verify a user can complete checkout",
             Folder = folder,
             Tags = tags ?? [],
-            Activities = activities ?? [],
             CreatedByUserId = userId,
             UpdatedByUserId = userId,
             CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
@@ -240,28 +196,6 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
 
         // verify
         Assert.Equal(ScenarioWriteResult.ApplicationNotFound, result);
-    }
-
-    [Fact]
-    public async Task TrySaveAsync_WhenReferencedPreconditionDoesNotExist_ReturnsReferenceNotFound()
-    {
-        // setup
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        await SeedApplicationAsync(organizationId, applicationId);
-        var activity = new Activity
-        {
-            Id = Guid.CreateVersion7(),
-            Description = "Add item to cart",
-            PreconditionIds = [Guid.CreateVersion7()],
-        };
-        var scenario = CreateScenario(organizationId, applicationId, activities: [activity]);
-
-        // test
-        var result = await _repository.TrySaveAsync(scenario);
-
-        // verify
-        Assert.Equal(ScenarioWriteResult.ReferenceNotFound, result);
     }
 
     [Fact]

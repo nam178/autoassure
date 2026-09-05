@@ -3,7 +3,7 @@ using A2.Server.Common;
 
 namespace A2.Server.Contracts;
 
-/// <summary>Request body to edit an existing Scenario's Title/Description/Folder/Tags/Activities.</summary>
+/// <summary>Request body to edit an existing Scenario's Title/Description/Folder/Tags.</summary>
 public record UpdateScenarioRequest
 {
     [Required, NotBlank, MaxLength(200)]
@@ -17,7 +17,4 @@ public record UpdateScenarioRequest
 
     [MaxLength(20)]
     public IReadOnlyList<string>? Tags { get; init; }
-
-    [MaxLength(200)]
-    public IReadOnlyList<ActivityRequest>? Activities { get; init; }
 }

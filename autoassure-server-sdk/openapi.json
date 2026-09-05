@@ -5,6 +5,388 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/scenarios/{scenarioId}/activities": {
+      "post": {
+        "tags": [
+          "Activities"
+        ],
+        "operationId": "CreateActivity",
+        "parameters": [
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateActivityRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateActivityRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateActivityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "PreconditionIds/EvidenceIds do not reference existing library rows in\n    the Scenario's Application, or the Scenario already has the maximum number of\n    Activities. Returns 400 when the request fails a validation constraint.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No Scenario with the given scenarioId exists in the caller's\n    Organization, or it no longer exists (deleted after this request started).",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Activities"
+        ],
+        "operationId": "ListActivities",
+        "parameters": [
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ActivityResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ActivityResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ActivityResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/activities/{id}": {
+      "patch": {
+        "tags": [
+          "Activities"
+        ],
+        "operationId": "UpdateActivity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateActivityRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateActivityRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateActivityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "PreconditionIds/EvidenceIds do not reference existing library rows in\n    the Scenario's Application. Returns 400 when the request fails a validation constraint.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No Activity with the given id exists in the caller's Organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Activities"
+        ],
+        "operationId": "DeleteActivity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/scenarios/{scenarioId}/activities/order": {
+      "patch": {
+        "tags": [
+          "Activities"
+        ],
+        "operationId": "ReorderActivities",
+        "parameters": [
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderActivitiesRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderActivitiesRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderActivitiesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ActivityResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ActivityResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ActivityResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "OrderedActivityIds is not exactly a permutation of the Scenario's\n    current Activity ids. Returns 400 when the request fails a validation constraint.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No Scenario with the given scenarioId exists in the caller's\n    Organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/applications": {
       "post": {
         "tags": [
@@ -616,6 +998,8 @@
             "description": "Variable name. Must be 1-200 characters, using only letters, digits, and\n    underscores.",
             "required": true,
             "schema": {
+              "maxLength": 200,
+              "pattern": "^[A-Za-z0-9_]+$",
               "type": "string"
             }
           }
@@ -644,26 +1028,6 @@
           "204": {
             "description": "No Content"
           },
-          "400": {
-            "description": "key exceeds the maximum allowed length, or key contains characters other\n    than letters, digits, or underscores. Returns 400 when the request fails a validation constraint.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
           "404": {
             "description": "No Environment with the given id exists in the caller's Organization, or it\n    no longer exists (deleted after this request started).",
             "content": {
@@ -683,6 +1047,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Returns 400 when the request fails a validation constraint."
           }
         }
       },
@@ -1485,7 +1852,7 @@
             }
           },
           "400": {
-            "description": "Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not\n    reference existing library rows, or the total number of unique references exceeds the allowed\n    maximum. Returns 400 when the request fails a validation constraint.",
+            "description": "A tag in Tags is longer than 50 characters. Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1727,7 +2094,7 @@
             }
           },
           "400": {
-            "description": "Tags are invalid, an Activity's PreconditionIds/EvidenceIds do not\n    reference existing library rows, or the total number of unique references exceeds the allowed\n    maximum. Returns 400 when the request fails a validation constraint.",
+            "description": "A tag in Tags is longer than 50 characters. Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1976,47 +2343,18 @@
   },
   "components": {
     "schemas": {
-      "ActivityRequest": {
-        "required": [
-          "description"
-        ],
-        "type": "object",
-        "properties": {
-          "description": {
-            "maxLength": 2000,
-            "type": "string"
-          },
-          "preconditionIds": {
-            "maxItems": 50,
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          "evidenceIds": {
-            "maxItems": 50,
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        },
-        "description": "A single step within a Scenario, as submitted by the client. PreconditionIds/EvidenceIds\n    must reference existing library rows in the same Application."
-      },
       "ActivityResponse": {
         "required": [
           "id",
+          "scenarioId",
           "description",
+          "order",
           "preconditionIds",
-          "evidenceIds"
+          "evidenceIds",
+          "createdByUserId",
+          "updatedByUserId",
+          "createdAt",
+          "updatedAt"
         ],
         "type": "object",
         "properties": {
@@ -2024,8 +2362,20 @@
             "type": "string",
             "format": "uuid"
           },
+          "scenarioId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "description": {
             "type": "string"
+          },
+          "order": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
           "preconditionIds": {
             "type": "array",
@@ -2040,6 +2390,22 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          "createdByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "updatedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "description": "A single step within a Scenario, as returned to the client."
@@ -2094,6 +2460,41 @@
           }
         },
         "description": "Returned after a successful Google sign-in: the issued tokens and the signed-in user."
+      },
+      "CreateActivityRequest": {
+        "required": [
+          "description"
+        ],
+        "type": "object",
+        "properties": {
+          "description": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "preconditionIds": {
+            "maxItems": 15,
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "evidenceIds": {
+            "maxItems": 15,
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "description": "Request body to append a new Activity to a Scenario. PreconditionIds/EvidenceIds must\n    each reference existing library rows in the Scenario's Application."
       },
       "CreateApplicationRequest": {
         "required": [
@@ -2233,16 +2634,6 @@
             ],
             "items": {
               "type": "string"
-            }
-          },
-          "activities": {
-            "maxItems": 200,
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/ActivityRequest"
             }
           }
         },
@@ -2474,6 +2865,23 @@
         },
         "description": "Returned after a successful token refresh: the newly issued tokens."
       },
+      "ReorderActivitiesRequest": {
+        "required": [
+          "orderedActivityIds"
+        ],
+        "type": "object",
+        "properties": {
+          "orderedActivityIds": {
+            "maxItems": 90,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "description": "Request body to reorder a Scenario's Activities. Must contain exactly one entry per\n    Activity currently in the Scenario, as a permutation of their ids."
+      },
       "RunResponse": {
         "required": [
           "id",
@@ -2566,8 +2974,7 @@
           "title",
           "description",
           "folder",
-          "tags",
-          "activities"
+          "tags"
         ],
         "type": "object",
         "properties": {
@@ -2588,12 +2995,6 @@
             "type": "array",
             "items": {
               "type": "string"
-            }
-          },
-          "activities": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ActivityResponse"
             }
           }
         },
@@ -2691,6 +3092,41 @@
         },
         "description": "A single-Scenario Try, as returned to the client. Created in Pending status -- nothing\n    here executes anything yet."
       },
+      "UpdateActivityRequest": {
+        "required": [
+          "description"
+        ],
+        "type": "object",
+        "properties": {
+          "description": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "preconditionIds": {
+            "maxItems": 15,
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "evidenceIds": {
+            "maxItems": 15,
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "description": "Request body to edit an existing Activity's Description/PreconditionIds/EvidenceIds.\n    Does not change the Activity's Order -- use the reorder endpoint for that."
+      },
       "UpdateEnvironmentRequest": {
         "required": [
           "name",
@@ -2786,19 +3222,9 @@
             "items": {
               "type": "string"
             }
-          },
-          "activities": {
-            "maxItems": 200,
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/ActivityRequest"
-            }
           }
         },
-        "description": "Request body to edit an existing Scenario's Title/Description/Folder/Tags/Activities."
+        "description": "Request body to edit an existing Scenario's Title/Description/Folder/Tags."
       },
       "UserResponse": {
         "required": [
@@ -2832,6 +3258,9 @@
     }
   },
   "tags": [
+    {
+      "name": "Activities"
+    },
     {
       "name": "Applications"
     },

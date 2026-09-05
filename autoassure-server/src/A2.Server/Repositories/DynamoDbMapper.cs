@@ -6,4 +6,7 @@ public static partial class DynamoDbMapper
 {
     public static string ApplicationScopedPartitionKey(Guid organizationId, Guid applicationId) =>
         $"{organizationId}_{applicationId}";
+
+    public static string ScenarioScopedPartitionKey(Guid organizationId, Guid scenarioId) =>
+        $"{organizationId}_{scenarioId}";
 }

@@ -62,6 +62,7 @@ builder.Services.AddScoped<IEnvironmentVariableRepository, DynamoDbEnvironmentVa
 builder.Services.AddScoped<IPreconditionRepository, DynamoDbPreconditionRepository>();
 builder.Services.AddScoped<IEvidenceDefinitionRepository, DynamoDbEvidenceDefinitionRepository>();
 builder.Services.AddScoped<IScenarioRepository, DynamoDbScenarioRepository>();
+builder.Services.AddScoped<IActivityRepository, DynamoDbActivityRepository>();
 builder.Services.AddScoped<IRunRepository, DynamoDbRunRepository>();
 builder.Services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
 builder.Services.AddHostedService<ConfigValidationHostedService>();

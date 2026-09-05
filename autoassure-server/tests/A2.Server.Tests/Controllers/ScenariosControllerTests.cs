@@ -43,11 +43,10 @@ public sealed class ScenariosControllerTests
                         {
                             ["Auth:SigningKey"] = SigningKey,
                             ["DynamoDb:ApplicationTableName"] = "Applications",
-                            ["DynamoDb:PreconditionTableName"] = "Preconditions",
-                            ["DynamoDb:EvidenceDefinitionTableName"] = "EvidenceDefinitions",
                             ["DynamoDb:ScenarioTableName"] = "Scenarios",
                             ["DynamoDb:ScenariosByFolderTableName"] = "ScenariosByFolder",
                             ["DynamoDb:ScenariosByTagTableName"] = "ScenariosByTag",
+                            ["DynamoDb:ActivityTableName"] = "Activities",
                             ["DynamoDb:OrganizationTableName"] = "Organizations",
                             ["DynamoDb:OrganizationUserTableName"] = "OrganizationUsers",
                         }
@@ -83,9 +82,6 @@ public sealed class ScenariosControllerTests
             }
         );
 
-        await CreateLibraryTableAsync("Preconditions");
-        await CreateLibraryTableAsync("EvidenceDefinitions");
-
         await _client.CreateTableAsync(
             new CreateTableRequest
             {
@@ -120,6 +116,7 @@ public sealed class ScenariosControllerTests
 
         await CreateMappingTableAsync("ScenariosByFolder");
         await CreateMappingTableAsync("ScenariosByTag");
+        await CreateActivityTableAsync("Activities");
 
         await _client.CreateTableAsync(
             new CreateTableRequest
@@ -163,7 +160,7 @@ public sealed class ScenariosControllerTests
         );
     }
 
-    private async Task CreateLibraryTableAsync(string tableName)
+    private async Task CreateActivityTableAsync(string tableName)
     {
         await _client.CreateTableAsync(
             new CreateTableRequest
@@ -171,12 +168,12 @@ public sealed class ScenariosControllerTests
                 TableName = tableName,
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement("OrganizationId_ScenarioId", KeyType.HASH),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition("OrganizationId_ScenarioId", ScalarAttributeType.S),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                     new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
                 ],
@@ -225,11 +222,10 @@ public sealed class ScenariosControllerTests
             var tableName in new[]
             {
                 "Applications",
-                "Preconditions",
-                "EvidenceDefinitions",
                 "Scenarios",
                 "ScenariosByFolder",
                 "ScenariosByTag",
+                "Activities",
                 "Organizations",
                 "OrganizationUsers",
             }
@@ -315,21 +311,6 @@ public sealed class ScenariosControllerTests
         return application!.Id;
     }
 
-    private static async Task<Guid> CreatePreconditionAsync(HttpClient client, Guid appId)
-    {
-        var response = await client.PostAsJsonAsync(
-            $"/applications/{appId}/preconditions",
-            new CreatePreconditionRequest
-            {
-                Name = "Order ID",
-                ValueSource = PreconditionValueSource.SpecificValue,
-                ExampleValue = "ORD-1",
-            }
-        );
-        var precondition = await response.Content.ReadFromJsonAsync<PreconditionResponse>();
-        return precondition!.Id;
-    }
-
     // Looks up the caller's OrganizationId directly from DynamoDB so a test can construct the exact
     // key needed to delete an Application row out from under an authenticated client.
     private async Task<Guid> GetOrganizationIdAsync(Guid userId)
@@ -350,12 +331,11 @@ public sealed class ScenariosControllerTests
     }
 
     [Fact]
-    public async Task Create_WhenValidRequest_RoundTripsTitleAndActivitiesThroughGetById()
+    public async Task Create_WhenValidRequest_RoundTripsTitleThroughGetById()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
         var appId = await CreateApplicationAsync(client);
-        var preconditionId = await CreatePreconditionAsync(client, appId);
 
         // test
         var createResponse = await client.PostAsJsonAsync(
@@ -366,15 +346,6 @@ public sealed class ScenariosControllerTests
                 Description = "Verify a user can complete checkout",
                 Folder = "/Checkout",
                 Tags = ["smoke"],
-                Activities =
-                [
-                    new ActivityRequest
-                    {
-                        Description = "Add item to cart",
-                        PreconditionIds = [preconditionId],
-                        EvidenceIds = [],
-                    },
-                ],
             }
         );
 
@@ -384,8 +355,6 @@ public sealed class ScenariosControllerTests
         Assert.NotNull(created);
         Assert.Equal("Checkout completes", created.Title);
         Assert.Equal("/Checkout", created.Folder);
-        var activity = Assert.Single(created.Activities);
-        Assert.Equal(preconditionId, Assert.Single(activity.PreconditionIds));
 
         // test
         var getResponse = await client.GetAsync($"/scenarios/{created.Id}");
@@ -412,7 +381,6 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = null,
                 Tags = [""],
-                Activities = null,
             }
         );
 
@@ -445,45 +413,12 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = null,
                 Tags = null,
-                Activities = null,
             }
         );
 
         // verify
         var created = await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>();
         Assert.Equal("/", created!.Folder);
-    }
-
-    [Fact]
-    public async Task Create_WhenPreconditionIdDoesNotExist_IsRejected()
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-
-        // test
-        var response = await client.PostAsJsonAsync(
-            $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest
-            {
-                Title = "Title",
-                Description = "Description",
-                Folder = null,
-                Tags = null,
-                Activities =
-                [
-                    new ActivityRequest
-                    {
-                        Description = "Step",
-                        PreconditionIds = [Guid.CreateVersion7()],
-                        EvidenceIds = [],
-                    },
-                ],
-            }
-        );
-
-        // verify
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
@@ -501,54 +436,11 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = null,
                 Tags = null,
-                Activities = null,
             }
         );
 
         // verify
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
-    [Theory]
-    [InlineData(50, HttpStatusCode.OK)]
-    [InlineData(51, HttpStatusCode.BadRequest)]
-    public async Task Create_WhenActivityReferenceCountAtBoundary_EnforcesReferenceCountLimit(
-        int referenceCount,
-        HttpStatusCode expectedStatus
-    )
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-        var preconditionIds = new List<Guid>();
-        for (var i = 0; i < referenceCount; i++)
-        {
-            preconditionIds.Add(await CreatePreconditionAsync(client, appId));
-        }
-        var activities = preconditionIds
-            .Select(preconditionId => new ActivityRequest
-            {
-                Description = "Step",
-                PreconditionIds = [preconditionId],
-                EvidenceIds = [],
-            })
-            .ToList();
-
-        // test
-        var response = await client.PostAsJsonAsync(
-            $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest
-            {
-                Title = "Title",
-                Description = "Description",
-                Folder = null,
-                Tags = null,
-                Activities = activities,
-            }
-        );
-
-        // verify
-        Assert.Equal(expectedStatus, response.StatusCode);
     }
 
     [Fact]
@@ -565,7 +457,6 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = "/OldFolder",
                 Tags = null,
-                Activities = null,
             }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
@@ -579,7 +470,6 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = "/NewFolder",
                 Tags = null,
-                Activities = null,
             }
         );
 
@@ -624,7 +514,6 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = null,
                 Tags = [],
-                Activities = null,
             }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
@@ -638,7 +527,6 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = "/",
                 Tags = ["regression"],
-                Activities = null,
             }
         );
         var listWithTag = await client.GetAsync($"/applications/{appId}/scenarios?tag=regression");
@@ -656,7 +544,6 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = "/",
                 Tags = [],
-                Activities = null,
             }
         );
         var listWithoutTag = await client.GetAsync(
@@ -683,7 +570,6 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = "/",
                 Tags = null,
-                Activities = null,
             }
         );
 
@@ -707,7 +593,6 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = null,
                 Tags = null,
-                Activities = null,
             }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
@@ -737,7 +622,6 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = "/",
                 Tags = null,
-                Activities = null,
             }
         );
 
@@ -759,7 +643,6 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = null,
                 Tags = ["tag1"],
-                Activities = null,
             }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
@@ -820,7 +703,6 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = null,
                 Tags = null,
-                Activities = null,
             }
         );
 
@@ -829,8 +711,8 @@ public sealed class ScenariosControllerTests
     }
 
     [Theory]
-    [InlineData(10000, HttpStatusCode.OK)]
-    [InlineData(10001, HttpStatusCode.BadRequest)]
+    [InlineData(2000, HttpStatusCode.OK)]
+    [InlineData(2001, HttpStatusCode.BadRequest)]
     [InlineData(0, HttpStatusCode.BadRequest)]
     public async Task Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
         int descriptionLength,
@@ -850,7 +732,6 @@ public sealed class ScenariosControllerTests
                 Description = new string('a', descriptionLength),
                 Folder = null,
                 Tags = null,
-                Activities = null,
             }
         );
 
@@ -879,7 +760,6 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = new string('a', folderLength),
                 Tags = null,
-                Activities = null,
             }
         );
 
@@ -908,7 +788,6 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = null,
                 Tags = Enumerable.Range(0, tagCount).Select(i => $"tag{i}").ToList(),
-                Activities = null,
             }
         );
 
@@ -937,45 +816,6 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = null,
                 Tags = [new string('a', tagLength)],
-                Activities = null,
-            }
-        );
-
-        // verify
-        Assert.Equal(expectedStatus, response.StatusCode);
-    }
-
-    [Theory]
-    [InlineData(2000, HttpStatusCode.OK)]
-    [InlineData(2001, HttpStatusCode.BadRequest)]
-    [InlineData(0, HttpStatusCode.BadRequest)]
-    public async Task Create_WhenActivityDescriptionLengthAtBoundary_EnforcesLengthLimit(
-        int descriptionLength,
-        HttpStatusCode expectedStatus
-    )
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-
-        // test
-        var response = await client.PostAsJsonAsync(
-            $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest
-            {
-                Title = "Title",
-                Description = "Description",
-                Folder = null,
-                Tags = null,
-                Activities =
-                [
-                    new ActivityRequest
-                    {
-                        Description = new string('a', descriptionLength),
-                        PreconditionIds = [],
-                        EvidenceIds = [],
-                    },
-                ],
             }
         );
 
@@ -997,7 +837,6 @@ public sealed class ScenariosControllerTests
                 Description = "Description",
                 Folder = "/Folder",
                 Tags = null,
-                Activities = null,
             }
         );
         var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
@@ -1006,7 +845,7 @@ public sealed class ScenariosControllerTests
         var response = await client.PatchAsync(
             $"/scenarios/{created.Id}",
             new StringContent(
-                """{"title":"Title","description":"Description","tags":null,"activities":null}""",
+                """{"title":"Title","description":"Description","tags":null}""",
                 Encoding.UTF8,
                 "application/json"
             )
@@ -1017,17 +856,11 @@ public sealed class ScenariosControllerTests
     }
 
     [Theory]
-    [InlineData("""{"description":"Description","folder":null,"tags":null,"activities":null}""")] // title missing entirely
-    [InlineData(
-        """{"title":null,"description":"Description","folder":null,"tags":null,"activities":null}"""
-    )] // title explicitly null
-    [InlineData(
-        """{"title":123,"description":"Description","folder":null,"tags":null,"activities":null}"""
-    )] // title wrong type
-    [InlineData("""{"title":"Title","folder":null,"tags":null,"activities":null}""")] // description missing entirely
-    [InlineData(
-        """{"title":"Title","description":null,"folder":null,"tags":null,"activities":null}"""
-    )] // description explicitly null
+    [InlineData("""{"description":"Description","folder":null,"tags":null}""")] // title missing entirely
+    [InlineData("""{"title":null,"description":"Description","folder":null,"tags":null}""")] // title explicitly null
+    [InlineData("""{"title":123,"description":"Description","folder":null,"tags":null}""")] // title wrong type
+    [InlineData("""{"title":"Title","folder":null,"tags":null}""")] // description missing entirely
+    [InlineData("""{"title":"Title","description":null,"folder":null,"tags":null}""")] // description explicitly null
     public async Task Create_WhenRequestHasInvalidShape_ReturnsBadRequest(string rawJson)
     {
         // setup
@@ -1061,7 +894,6 @@ public sealed class ScenariosControllerTests
                     Description = "Description",
                     Folder = null,
                     Tags = null,
-                    Activities = null,
                 }
             );
 
@@ -1107,7 +939,6 @@ public sealed class ScenariosControllerTests
                     Description = "Description",
                     Folder = "/",
                     Tags = null,
-                    Activities = null,
                 }
             );
 
