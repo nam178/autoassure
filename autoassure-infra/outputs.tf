@@ -127,3 +127,13 @@ output "activities_table_arn" {
   description = "ARN of the activities table, e.g. for scoping an IAM policy to it."
   value       = aws_dynamodb_table.activities.arn
 }
+
+output "runs_table_name" {
+  description = "DynamoDB table name — set autoassure-server's DynamoDb:RunTableName to this value."
+  value       = aws_dynamodb_table.runs.name
+}
+
+output "runs_table_arn" {
+  description = "ARN of the runs table, e.g. for scoping an IAM policy to it."
+  value       = aws_dynamodb_table.runs.arn
+}

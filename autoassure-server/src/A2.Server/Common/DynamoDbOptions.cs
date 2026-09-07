@@ -17,4 +17,5 @@ public record DynamoDbOptions
     public string ScenariosByFolderTableName { get; init; } = "";
     public string ScenariosByTagTableName { get; init; } = "";
     public string ActivityTableName { get; init; } = "";
+    public string RunTableName { get; init; } = "";
 }

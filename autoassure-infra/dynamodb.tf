@@ -554,3 +554,106 @@ resource "aws_dynamodb_table" "activities" {
     Project     = "autoassure"
   }
 }
+
+# Stores a Run's three row shapes -- header, one row per Scenario snapshot, one row per status
+# update -- all under the same OrganizationId_ApplicationId partition and a RowKey range key built as
+# "<runId>", "<runId>#scenario#<scenarioId>" or "<runId>#update#<seq, zero-padded to 12 digits>". Split
+# this way so a single activity result write touches one small row instead of the whole Run -- see
+# fix_run_design.md section 3. Schema must stay in sync with Models/Run.cs, Models/RunStatusUpdate.cs,
+# Models/ActivityResult.cs and Repositories/DynamoDbMapper.Run.cs in autoassure-server.
+# trivy:ignore:AWS-0025 -- AWS-owned key is sufficient for this table at this stage;
+# a customer-managed KMS key adds per-request cost and key-rotation overhead not justified yet.
+# Revisit if compliance requirements change.
+resource "aws_dynamodb_table" "runs" {
+  name         = "${local.name_prefix}-run-table"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "OrganizationId_ApplicationId"
+  range_key    = "RowKey"
+
+  attribute {
+    name = "OrganizationId_ApplicationId"
+    type = "S"
+  }
+
+  attribute {
+    name = "RowKey"
+    type = "S"
+  }
+
+  # Only a header row carries HeaderId (its own RunId) -- body rows (Scenario snapshots, status
+  # updates) do not. That sparseness is what keeps this index to one entry per Run.
+  attribute {
+    name = "HeaderId"
+    type = "S"
+  }
+
+  # Only an in-flight (Running) header row carries InFlightShard -- a Pending, Completed, Cancelled or
+  # Abandoned run has no attribute here at all, so it drops out of the index entirely.
+  attribute {
+    name = "InFlightShard"
+    type = "S"
+  }
+
+  attribute {
+    name = "LastHeartbeatAt"
+    type = "S"
+  }
+
+  # Answers List Runs by reading headers only, never a Scenario snapshot or status update row -- a
+  # FilterExpression over the base partition would read (and charge for) every row of every Run.
+  # Eventually consistent (GSIs don't support ConsistentRead) -- see DynamoDbRunRepository.cs. Projects
+  # only what the Application's Runs panel shows, not the whole header, to keep this index small.
+  global_secondary_index {
+    name            = "RunHeaderIndex"
+    hash_key        = "OrganizationId_ApplicationId"
+    range_key       = "HeaderId"
+    projection_type = "INCLUDE"
+    non_key_attributes = [
+      "Id",
+      "Trigger",
+      "Status",
+      "StatusReason",
+      "TotalActivityCount",
+      "PassedActivityCount",
+      "FailedActivityCount",
+      "SkippedActivityCount",
+      "CreatedAt",
+      "StartedAt",
+      "CompletedAt",
+    ]
+  }
+
+  # Lets the sweeper find stale in-flight runs (a heartbeat past the cutoff, or a passed deadline)
+  # without a table scan. Sharded ("Running#<0-9>", derived from the run id -- see
+  # DynamoDbMapper.RunInFlightShard) so the index is ten partitions wide instead of one hot one; this
+  # shard key cannot be added later without a backfill, so it is built in from day one. KEYS_ONLY since
+  # the sweeper only needs to know which Run to act on, not read its data through the index.
+  global_secondary_index {
+    name            = "InFlightIndex"
+    hash_key        = "InFlightShard"
+    range_key       = "LastHeartbeatAt"
+    projection_type = "KEYS_ONLY"
+  }
+
+  # ExpiresAt is stored as epoch seconds (see DynamoDbMapper.Run.cs) so DynamoDB can use it directly
+  # for TTL-based cleanup: 7 days for an Authoring run, 3 years otherwise. TTL is the only way a run row
+  # ever leaves this table -- there is no delete path. TTL deletion isn't immediate (up to 48h), so
+  # reads still filter on ExpiresAt themselves.
+  ttl {
+    attribute_name = "ExpiresAt"
+    enabled        = true
+  }
+
+  point_in_time_recovery {
+    enabled = var.environment == "prod"
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "autoassure"
+  }
+}
