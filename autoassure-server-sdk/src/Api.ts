@@ -153,10 +153,14 @@ export interface EnvironmentResponse {
   variables: EnvironmentVariableResponse[];
 }
 
-/** A single Environment variable, as returned to the client. */
+/**
+ * A single Environment variable, as returned to the client. When IsSensitive is true, Value
+ *     is masked: only its first 30% of characters, the rest replaced by a fixed-length run of dots.
+ */
 export interface EnvironmentVariableResponse {
   key: string;
   value: string;
+  isSensitive: boolean;
 }
 
 /** An error, as returned to the client on a non-success response. */
@@ -262,6 +266,11 @@ export interface ScenarioResponse {
 export interface SetEnvironmentVariableRequest {
   /** @maxLength 4000 */
   value: string;
+  /**
+   * When true, the API masks this variable's value on every future read. Defaults to
+   *     false.
+   */
+  isSensitive?: boolean;
 }
 
 /**

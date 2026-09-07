@@ -157,6 +157,7 @@ public class EnvironmentsController(
                 id,
                 key,
                 request.Value,
+                request.IsSensitive,
                 User.GetUserId()
             )
         )

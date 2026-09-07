@@ -20,6 +20,7 @@ public class DynamoDbEnvironmentVariableRepository(
         Guid environmentId,
         string key,
         string value,
+        bool isSensitive,
         Guid updatedByUserId
     )
     {
@@ -62,7 +63,7 @@ public class DynamoDbEnvironmentVariableRepository(
                                     ["Key"] = new(key),
                                 },
                                 UpdateExpression =
-                                    "SET #value = :value, OrganizationId = :organizationId, EnvironmentId = :environmentId, "
+                                    "SET #value = :value, IsSensitive = :isSensitive, OrganizationId = :organizationId, EnvironmentId = :environmentId, "
                                     + "UpdatedByUserId = :updatedByUserId, UpdatedAt = :now, "
                                     + "CreatedAt = if_not_exists(CreatedAt, :now), "
                                     + "CreatedByUserId = if_not_exists(CreatedByUserId, :updatedByUserId)",
@@ -73,6 +74,7 @@ public class DynamoDbEnvironmentVariableRepository(
                                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                                 {
                                     [":value"] = new(value),
+                                    [":isSensitive"] = new() { BOOL = isSensitive },
                                     [":organizationId"] = new(organizationId.ToString()),
                                     [":environmentId"] = new(environmentId.ToString()),
                                     [":updatedByUserId"] = new(updatedByUserId.ToString()),

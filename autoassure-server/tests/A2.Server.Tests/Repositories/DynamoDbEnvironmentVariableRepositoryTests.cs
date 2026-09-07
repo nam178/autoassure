@@ -111,6 +111,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
             environmentId,
             "API_BASE_URL",
             "https://staging.example.com",
+            false,
             updatedByUserId
         );
         var result = await _repository.ListByEnvironmentAsync(organizationId, environmentId);
@@ -122,6 +123,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
         Assert.Equal(environmentId, variable.EnvironmentId);
         Assert.Equal("API_BASE_URL", variable.Key);
         Assert.Equal("https://staging.example.com", variable.Value);
+        Assert.False(variable.IsSensitive);
         Assert.Equal(updatedByUserId, variable.CreatedByUserId);
         Assert.Equal(updatedByUserId, variable.UpdatedByUserId);
     }
@@ -141,6 +143,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
             environmentId,
             "API_BASE_URL",
             "https://staging.example.com",
+            false,
             originalUserId
         );
         var newUserId = Guid.CreateVersion7();
@@ -152,6 +155,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
             environmentId,
             "API_BASE_URL",
             "https://staging2.example.com",
+            false,
             newUserId
         );
         var result = await _repository.ListByEnvironmentAsync(organizationId, environmentId);
@@ -174,6 +178,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
             Guid.CreateVersion7(),
             "API_BASE_URL",
             "https://staging.example.com",
+            false,
             Guid.CreateVersion7()
         );
 
@@ -195,6 +200,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
             environmentId,
             "API_BASE_URL",
             "https://staging.example.com",
+            false,
             Guid.CreateVersion7()
         );
 
@@ -224,6 +230,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
             environmentId,
             "ZOO_KEY",
             "z-value",
+            false,
             updatedByUserId
         );
         await _repository.TrySaveAsync(
@@ -232,6 +239,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
             environmentId,
             "API_KEY",
             "a-value",
+            false,
             updatedByUserId
         );
         await _repository.TrySaveAsync(
@@ -240,6 +248,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
             otherEnvironmentId,
             "API_KEY",
             "other-env-value",
+            false,
             updatedByUserId
         );
 
@@ -249,5 +258,71 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
         // verify
         Assert.Equal(["API_KEY", "ZOO_KEY"], result.Select(variable => variable.Key));
         Assert.All(result, variable => Assert.Equal(environmentId, variable.EnvironmentId));
+    }
+
+    [Fact]
+    public async Task TrySaveAsync_WhenIsSensitiveTrue_StoresValueWholeAndUnmasked()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
+
+        // test
+        var updated = await _repository.TrySaveAsync(
+            organizationId,
+            applicationId,
+            environmentId,
+            "API_KEY",
+            "super-secret-value",
+            true,
+            Guid.CreateVersion7()
+        );
+        var result = await _repository.ListByEnvironmentAsync(organizationId, environmentId);
+
+        // verify: the repository never masks -- the whole value is stored regardless of IsSensitive.
+        Assert.True(updated);
+        var variable = Assert.Single(result);
+        Assert.True(variable.IsSensitive);
+        Assert.Equal("super-secret-value", variable.Value);
+    }
+
+    [Fact]
+    public async Task ListByEnvironmentAsync_WhenRowHasNoIsSensitiveAttribute_ReadsBackAsFalse()
+    {
+        // setup: put a row directly, bypassing TrySaveAsync, to simulate a row written before
+        // IsSensitive existed.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
+        var userId = Guid.CreateVersion7();
+        var now = DateTimeOffset.UtcNow.ToString("O");
+        await _client.PutItemAsync(
+            new PutItemRequest
+            {
+                TableName = EnvironmentVariableTableName,
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    ["OrganizationId_EnvironmentId"] = new($"{organizationId}_{environmentId}"),
+                    ["Key"] = new("LEGACY_KEY"),
+                    ["Value"] = new("legacy-value"),
+                    ["OrganizationId"] = new(organizationId.ToString()),
+                    ["EnvironmentId"] = new(environmentId.ToString()),
+                    ["CreatedByUserId"] = new(userId.ToString()),
+                    ["UpdatedByUserId"] = new(userId.ToString()),
+                    ["CreatedAt"] = new(now),
+                    ["UpdatedAt"] = new(now),
+                },
+            }
+        );
+
+        // test
+        var result = await _repository.ListByEnvironmentAsync(organizationId, environmentId);
+
+        // verify
+        var variable = Assert.Single(result);
+        Assert.False(variable.IsSensitive);
     }
 }

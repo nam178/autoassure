@@ -51,5 +51,8 @@ public static partial class DynamoDbMapper
             UpdatedByUserId = Guid.Parse(row["UpdatedByUserId"].S),
             CreatedAt = DateTimeOffset.Parse(row["CreatedAt"].S, CultureInfo.InvariantCulture),
             UpdatedAt = DateTimeOffset.Parse(row["UpdatedAt"].S, CultureInfo.InvariantCulture),
+            // When a row was written before IsSensitive existed, Then treat it as not sensitive.
+            IsSensitive =
+                row.TryGetValue("IsSensitive", out var isSensitive) && (isSensitive.BOOL ?? false),
         };
 }

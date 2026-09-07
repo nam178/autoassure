@@ -13,4 +13,9 @@ public record EnvironmentVariable
     public required Guid UpdatedByUserId { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
     public required DateTimeOffset UpdatedAt { get; init; }
+
+    /// <summary>When true, the Value holds a secret (a token, a password, an API key). It is stored
+    /// whole -- the executor needs the real value -- but the API masks it on the way out. Defaults to
+    /// false, so variables set before this flag existed read back as not sensitive.</summary>
+    public bool IsSensitive { get; init; }
 }

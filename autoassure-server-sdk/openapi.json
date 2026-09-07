@@ -2299,7 +2299,8 @@
       "EnvironmentVariableResponse": {
         "required": [
           "key",
-          "value"
+          "value",
+          "isSensitive"
         ],
         "type": "object",
         "properties": {
@@ -2308,9 +2309,12 @@
           },
           "value": {
             "type": "string"
+          },
+          "isSensitive": {
+            "type": "boolean"
           }
         },
-        "description": "A single Environment variable, as returned to the client."
+        "description": "A single Environment variable, as returned to the client. When IsSensitive is true, Value\n    is masked: only its first 30% of characters, the rest replaced by a fixed-length run of dots."
       },
       "ErrorResponse": {
         "required": [
@@ -2535,6 +2539,10 @@
           "value": {
             "maxLength": 4000,
             "type": "string"
+          },
+          "isSensitive": {
+            "type": "boolean",
+            "description": "When true, the API masks this variable's value on every future read. Defaults to\n    false."
           }
         },
         "description": "Request body to upsert a single Environment variable's value."

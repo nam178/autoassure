@@ -9,6 +9,11 @@ namespace A2.Server.Controllers;
 /// <summary>Mapping between Environment Contracts and domain Models.</summary>
 public static partial class ContractMapper
 {
+    // The API keeps more of a sensitive value visible than a run snapshot does, since the API answers
+    // "did I paste the right key?" live, while a snapshot lives on for years.
+    private const double SensitiveVariableFractionToKeep = 0.3;
+
+
     /// <summary>Combines an Environment with its Variables into the response returned to the client.</summary>
     public static EnvironmentResponse ToResponse(
         this Environment environment,
@@ -21,9 +26,16 @@ public static partial class ContractMapper
             variables.Select(v => v.ToResponse()).ToList()
         );
 
-    /// <summary>Maps a single Environment variable to its response representation.</summary>
+    /// <summary>Maps a single Environment variable to its response representation. A sensitive
+    /// variable's Value is masked, keeping only its first 30% of characters.</summary>
     private static EnvironmentVariableResponse ToResponse(this EnvironmentVariable variable) =>
-        new(variable.Key, variable.Value);
+        new(
+            variable.Key,
+            variable.IsSensitive
+                ? SensitiveValueMasker.Mask(variable.Value, SensitiveVariableFractionToKeep)
+                : variable.Value,
+            variable.IsSensitive
+        );
 
     public static ModelEnvironmentClassification ToModel(
         this ContractEnvironmentClassification classification

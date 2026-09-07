@@ -331,6 +331,40 @@ public sealed class EnvironmentsControllerTests
         var variable = Assert.Single(environment.Variables);
         Assert.Equal("API_URL", variable.Key);
         Assert.Equal("https://staging.example.com", variable.Value);
+        Assert.False(variable.IsSensitive);
+    }
+
+    [Fact]
+    public async Task GetById_WhenVariableIsSensitive_ReturnsValueMasked()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/environments",
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
+        );
+        var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
+        await client.PutAsJsonAsync(
+            $"/environments/{created.Id}/variables/API_KEY",
+            new SetEnvironmentVariableRequest { Value = "abcdefghij", IsSensitive = true }
+        );
+
+        // test
+        var getResponse = await client.GetAsync($"/environments/{created.Id}");
+
+        // verify: 30% of the 10-character value stays visible, the rest becomes a fixed-length run
+        // of dots -- the real value is never returned whole.
+        var environment = await getResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
+        var variable = Assert.Single(environment!.Variables);
+        Assert.True(variable.IsSensitive);
+        Assert.NotEqual("abcdefghij", variable.Value);
+        Assert.StartsWith("abc", variable.Value);
+        Assert.EndsWith("........", variable.Value);
     }
 
     [Fact]

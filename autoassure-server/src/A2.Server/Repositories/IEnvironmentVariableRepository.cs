@@ -7,9 +7,9 @@ namespace A2.Server.Repositories;
 /// never reads or rewrites the others.</summary>
 public interface IEnvironmentVariableRepository
 {
-    /// <summary>Creates or updates a single variable's Value as a whole. Always sets Value,
-    /// OrganizationId, EnvironmentId, UpdatedByUserId, UpdatedAt; sets CreatedAt and
-    /// CreatedByUserId only if the row doesn't already exist. Returns false if the Environment no
+    /// <summary>Creates or updates a single variable's Value and IsSensitive as a whole. Always sets
+    /// Value, IsSensitive, OrganizationId, EnvironmentId, UpdatedByUserId, UpdatedAt; sets CreatedAt
+    /// and CreatedByUserId only if the row doesn't already exist. Returns false if the Environment no
     /// longer exists.</summary>
     Task<bool> TrySaveAsync(
         Guid organizationId,
@@ -17,6 +17,7 @@ public interface IEnvironmentVariableRepository
         Guid environmentId,
         string key,
         string value,
+        bool isSensitive,
         Guid updatedByUserId
     );
 
