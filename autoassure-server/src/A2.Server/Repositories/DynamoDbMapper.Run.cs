@@ -19,7 +19,8 @@ public static partial class DynamoDbMapper
     public static string RunHeaderRowKey(Guid runId) => runId.ToString();
 
     /// <summary>Builds a Scenario snapshot row's range key. See <see cref="RunHeaderRowKey"/>.</summary>
-    public static string RunScenarioRowKey(Guid runId, Guid scenarioId) => $"{runId}#scenario#{scenarioId}";
+    public static string RunScenarioRowKey(Guid runId, Guid scenarioId) =>
+        $"{runId}#scenario#{scenarioId}";
 
     /// <summary>Builds a status update row's range key, zero-padding <paramref name="seq"/> to 12
     /// digits. DynamoDB compares range keys as strings, so an unpadded key would sort "#update#10"
@@ -29,6 +30,15 @@ public static partial class DynamoDbMapper
     /// itself.</summary>
     public static string RunStatusUpdateRowKey(Guid runId, long seq) =>
         $"{runId}#update#{seq.ToString("D12", CultureInfo.InvariantCulture)}";
+
+    /// <summary>The status update prefix on its own, with no sequence number. Every
+    /// <see cref="RunStatusUpdateRowKey"/> for this run sorts strictly after this string (it is always
+    /// a strict prefix of one), while <see cref="RunHeaderRowKey"/> and every
+    /// <see cref="RunScenarioRowKey"/> for this run sort strictly before it -- "#scenario#" precedes
+    /// "#update#" lexically. Get Run's Query (task 5) uses this as the exclusive upper bound of a
+    /// BETWEEN range to read the header and Scenario snapshots without touching a single status update
+    /// row, and the status update log's own Query (task 9) reuses it as a begins_with prefix.</summary>
+    public static string RunStatusUpdateRowKeyPrefix(Guid runId) => $"{runId}#update#";
 
     /// <summary>Derives the InFlightIndex shard key for a Run in progress: "Running#" followed by a
     /// digit 0-9 spread deterministically across the Run's id, so the sweeper's sparse index is ten
@@ -74,7 +84,10 @@ public static partial class DynamoDbMapper
                 N = run.SkippedActivityCount.ToString(CultureInfo.InvariantCulture),
             },
             ["Environment"] = run.Environment.ToAttributeValue(),
-            ["LastSeq"] = new AttributeValue { N = run.LastSeq.ToString(CultureInfo.InvariantCulture) },
+            ["LastSeq"] = new AttributeValue
+            {
+                N = run.LastSeq.ToString(CultureInfo.InvariantCulture),
+            },
             ["CreatedAt"] = new(run.CreatedAt.ToString("O")),
             // Only a header row carries HeaderId. The sparse RunHeaderIndex uses its presence to answer
             // List Runs by reading headers alone, never a Scenario snapshot or status update row.
@@ -113,7 +126,10 @@ public static partial class DynamoDbMapper
 
         if (run.ExpiresAt is { } expiresAt)
         {
-            row["ExpiresAt"] = new AttributeValue { N = expiresAt.ToString(CultureInfo.InvariantCulture) };
+            row["ExpiresAt"] = new AttributeValue
+            {
+                N = expiresAt.ToString(CultureInfo.InvariantCulture),
+            };
         }
 
         // Only an in-flight (Running) row carries InFlightShard. That is what keeps the sparse
@@ -137,10 +153,22 @@ public static partial class DynamoDbMapper
             StatusReason = row.TryGetValue("StatusReason", out var statusReason)
                 ? Enum.Parse<RunStatusReason>(statusReason.S)
                 : null,
-            TotalActivityCount = int.Parse(row["TotalActivityCount"].N, CultureInfo.InvariantCulture),
-            PassedActivityCount = int.Parse(row["PassedActivityCount"].N, CultureInfo.InvariantCulture),
-            FailedActivityCount = int.Parse(row["FailedActivityCount"].N, CultureInfo.InvariantCulture),
-            SkippedActivityCount = int.Parse(row["SkippedActivityCount"].N, CultureInfo.InvariantCulture),
+            TotalActivityCount = int.Parse(
+                row["TotalActivityCount"].N,
+                CultureInfo.InvariantCulture
+            ),
+            PassedActivityCount = int.Parse(
+                row["PassedActivityCount"].N,
+                CultureInfo.InvariantCulture
+            ),
+            FailedActivityCount = int.Parse(
+                row["FailedActivityCount"].N,
+                CultureInfo.InvariantCulture
+            ),
+            SkippedActivityCount = int.Parse(
+                row["SkippedActivityCount"].N,
+                CultureInfo.InvariantCulture
+            ),
             Environment = row["Environment"].ToRunEnvironmentSnapshot(),
             LastSeq = long.Parse(row["LastSeq"].N, CultureInfo.InvariantCulture),
             TriggeredByUserId = row.TryGetValue("TriggeredByUserId", out var triggeredByUserId)
@@ -205,13 +233,18 @@ public static partial class DynamoDbMapper
 
         if (expiresAt is { } value)
         {
-            row["ExpiresAt"] = new AttributeValue { N = value.ToString(CultureInfo.InvariantCulture) };
+            row["ExpiresAt"] = new AttributeValue
+            {
+                N = value.ToString(CultureInfo.InvariantCulture),
+            };
         }
 
         return row;
     }
 
-    public static RunScenarioSnapshot ToRunScenarioSnapshot(this Dictionary<string, AttributeValue> row) =>
+    public static RunScenarioSnapshot ToRunScenarioSnapshot(
+        this Dictionary<string, AttributeValue> row
+    ) =>
         new()
         {
             Source = row["Source"].ToSnapshotSource(),
@@ -219,7 +252,9 @@ public static partial class DynamoDbMapper
             Description = row["Description"].S,
             Folder = row["Folder"].S,
             Tags = row["Tags"].L.Select(tag => tag.S).ToList(),
-            Activities = row["Activities"].L.Select(activity => activity.ToRunActivitySnapshot()).ToList(),
+            Activities = row["Activities"]
+                .L.Select(activity => activity.ToRunActivitySnapshot())
+                .ToList(),
         };
 
     // ----- Status update row -----
@@ -257,7 +292,10 @@ public static partial class DynamoDbMapper
 
         if (expiresAt is { } value)
         {
-            row["ExpiresAt"] = new AttributeValue { N = value.ToString(CultureInfo.InvariantCulture) };
+            row["ExpiresAt"] = new AttributeValue
+            {
+                N = value.ToString(CultureInfo.InvariantCulture),
+            };
         }
 
         return row;
@@ -341,7 +379,9 @@ public static partial class DynamoDbMapper
             },
         };
 
-    private static RunEnvironmentVariableSnapshot ToRunEnvironmentVariableSnapshot(this AttributeValue value) =>
+    private static RunEnvironmentVariableSnapshot ToRunEnvironmentVariableSnapshot(
+        this AttributeValue value
+    ) =>
         new()
         {
             Key = value.M["Key"].S,
@@ -386,7 +426,9 @@ public static partial class DynamoDbMapper
             },
         };
 
-    private static RunEvidenceDefinitionSnapshot ToRunEvidenceDefinitionSnapshot(this AttributeValue value) =>
+    private static RunEvidenceDefinitionSnapshot ToRunEvidenceDefinitionSnapshot(
+        this AttributeValue value
+    ) =>
         new()
         {
             Source = value.M["Source"].ToSnapshotSource(),
@@ -401,16 +443,23 @@ public static partial class DynamoDbMapper
             M = new Dictionary<string, AttributeValue>
             {
                 ["Source"] = snapshot.Source.ToAttributeValue(),
-                ["Order"] = new AttributeValue { N = snapshot.Order.ToString(CultureInfo.InvariantCulture) },
+                ["Order"] = new AttributeValue
+                {
+                    N = snapshot.Order.ToString(CultureInfo.InvariantCulture),
+                },
                 ["Description"] = new(snapshot.Description),
                 ["Preconditions"] = new AttributeValue
                 {
-                    L = snapshot.Preconditions.Select(precondition => precondition.ToAttributeValue()).ToList(),
+                    L = snapshot
+                        .Preconditions.Select(precondition => precondition.ToAttributeValue())
+                        .ToList(),
                 },
                 ["EvidenceDefinitions"] = new AttributeValue
                 {
                     L = snapshot
-                        .EvidenceDefinitions.Select(evidenceDefinition => evidenceDefinition.ToAttributeValue())
+                        .EvidenceDefinitions.Select(evidenceDefinition =>
+                            evidenceDefinition.ToAttributeValue()
+                        )
                         .ToList(),
                 },
             },
@@ -428,7 +477,9 @@ public static partial class DynamoDbMapper
                 .ToList(),
             EvidenceDefinitions = value
                 .M["EvidenceDefinitions"]
-                .L.Select(evidenceDefinition => evidenceDefinition.ToRunEvidenceDefinitionSnapshot())
+                .L.Select(evidenceDefinition =>
+                    evidenceDefinition.ToRunEvidenceDefinitionSnapshot()
+                )
                 .ToList(),
         };
 
@@ -441,11 +492,17 @@ public static partial class DynamoDbMapper
             ["Status"] = new(activityResult.Status.ToString()),
             ["ResolvedPreconditions"] = new AttributeValue
             {
-                M = activityResult.ResolvedPreconditions.ToDictionary(kv => kv.Key, kv => new AttributeValue(kv.Value)),
+                M = activityResult.ResolvedPreconditions.ToDictionary(
+                    kv => kv.Key,
+                    kv => new AttributeValue(kv.Value)
+                ),
             },
             ["Evidence"] = new AttributeValue
             {
-                M = activityResult.Evidence.ToDictionary(kv => kv.Key, kv => new AttributeValue(kv.Value)),
+                M = activityResult.Evidence.ToDictionary(
+                    kv => kv.Key,
+                    kv => new AttributeValue(kv.Value)
+                ),
             },
         };
 
@@ -463,7 +520,9 @@ public static partial class DynamoDbMapper
             ScenarioId = Guid.Parse(value.M["ScenarioId"].S),
             ActivityId = Guid.Parse(value.M["ActivityId"].S),
             Status = Enum.Parse<ActivityResultStatus>(value.M["Status"].S),
-            ResolvedPreconditions = value.M["ResolvedPreconditions"].M.ToDictionary(kv => kv.Key, kv => kv.Value.S),
+            ResolvedPreconditions = value
+                .M["ResolvedPreconditions"]
+                .M.ToDictionary(kv => kv.Key, kv => kv.Value.S),
             Evidence = value.M["Evidence"].M.ToDictionary(kv => kv.Key, kv => kv.Value.S),
             ContinuationReasoning = value.M.TryGetValue("ContinuationReasoning", out var reasoning)
                 ? reasoning.S
