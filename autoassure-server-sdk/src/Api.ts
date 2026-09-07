@@ -122,17 +122,6 @@ export interface CreatePreconditionRequest {
   exampleValue: string;
 }
 
-/** Request body to start a Run of one or more Scenarios against an Environment. */
-export interface CreateRunRequest {
-  /**
-   * @maxItems 100
-   * @minItems 1
-   */
-  scenarioIds: string[];
-  /** @format uuid */
-  environmentId: string;
-}
-
 /**
  * Request body to create a new Scenario for an Application. Folder defaults to "/" when
  *     not given; Tags default to empty.
@@ -149,12 +138,6 @@ export interface CreateScenarioRequest {
   folder?: null | string;
   /** @maxItems 20 */
   tags?: null | string[];
-}
-
-/** Request body to Try a single Scenario against an Environment. */
-export interface CreateTryRequest {
-  /** @format uuid */
-  environmentId: string;
 }
 
 /** Whether an Environment is a live Production system or a non-production one (staging, dev, ...). */
@@ -265,47 +248,6 @@ export interface ReorderActivitiesRequest {
   orderedActivityIds: string[];
 }
 
-/**
- * A Run over one or more Scenarios, as returned to the client. Created in Pending status --
- *     nothing here executes anything yet.
- */
-export interface RunResponse {
-  /** @format uuid */
-  id: string;
-  scenarioIds: string[];
-  /** @format uuid */
-  environmentId: string;
-  /** A Try/Run's lifecycle state only -- carries no pass/fail judgment; see the activity counts for that. */
-  status: RunStatus;
-  /**
-   * @format int32
-   * @pattern ^-?(?:0|[1-9]\d*)$
-   */
-  totalActivityCount: number | string;
-  /**
-   * @format int32
-   * @pattern ^-?(?:0|[1-9]\d*)$
-   */
-  passedActivityCount: number | string;
-  /**
-   * @format int32
-   * @pattern ^-?(?:0|[1-9]\d*)$
-   */
-  failedActivityCount: number | string;
-  /**
-   * @format int32
-   * @pattern ^-?(?:0|[1-9]\d*)$
-   */
-  skippedActivityCount: number | string;
-  /** @format date-time */
-  startedAt: null | string;
-  /** @format date-time */
-  completedAt: null | string;
-}
-
-/** A Try/Run's lifecycle state only -- carries no pass/fail judgment; see the activity counts for that. */
-export type RunStatus = number;
-
 /** A Scenario, as returned to the client. */
 export interface ScenarioResponse {
   /** @format uuid */
@@ -320,45 +262,6 @@ export interface ScenarioResponse {
 export interface SetEnvironmentVariableRequest {
   /** @maxLength 4000 */
   value: string;
-}
-
-/**
- * A single-Scenario Try, as returned to the client. Created in Pending status -- nothing
- *     here executes anything yet.
- */
-export interface TryScenarioResponse {
-  /** @format uuid */
-  id: string;
-  /** @format uuid */
-  scenarioId: string;
-  /** @format uuid */
-  environmentId: string;
-  /** A Try/Run's lifecycle state only -- carries no pass/fail judgment; see the activity counts for that. */
-  status: RunStatus;
-  /**
-   * @format int32
-   * @pattern ^-?(?:0|[1-9]\d*)$
-   */
-  totalActivityCount: number | string;
-  /**
-   * @format int32
-   * @pattern ^-?(?:0|[1-9]\d*)$
-   */
-  passedActivityCount: number | string;
-  /**
-   * @format int32
-   * @pattern ^-?(?:0|[1-9]\d*)$
-   */
-  failedActivityCount: number | string;
-  /**
-   * @format int32
-   * @pattern ^-?(?:0|[1-9]\d*)$
-   */
-  skippedActivityCount: number | string;
-  /** @format date-time */
-  startedAt: null | string;
-  /** @format date-time */
-  completedAt: null | string;
 }
 
 /**
@@ -712,7 +615,8 @@ export class Api<SecurityDataType extends unknown> {
      * @request PATCH:/scenarios/{id}
      * @response `200` `ScenarioResponse` OK
      * @response `400` `ErrorResponse` A tag in Tags is longer than 50 characters. Returns 400 when the request fails a validation constraint.
-     * @response `404` `ProblemDetails` No Scenario with the given id exists in the caller's Organization, or its Application no longer exists (deleted after this request started).
+     * @response `404` `ProblemDetails` No Scenario with the given id exists in the caller's Organization.
+     * @response `409` `ErrorResponse` The Scenario's Application no longer exists (deleted after this request started).
      */
     updateScenario: (
       id: string,
@@ -741,30 +645,6 @@ export class Api<SecurityDataType extends unknown> {
       this.http.request<void, ProblemDetails>({
         path: `/scenarios/${id}`,
         method: "DELETE",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Tries
-     * @name CreateTry
-     * @request POST:/scenarios/{id}/try
-     * @response `200` `TryScenarioResponse` OK
-     * @response `400` `ErrorResponse` EnvironmentId does not reference an Environment belonging to the Scenario's Application. Returns 400 when the request fails a validation constraint.
-     * @response `404` `ProblemDetails` No Scenario with the given id exists in the caller's Organization, or the Scenario/Environment no longer exists (deleted after this request started).
-     */
-    createTry: (
-      id: string,
-      data: CreateTryRequest,
-      params: RequestParams = {},
-    ) =>
-      this.http.request<TryScenarioResponse, ErrorResponse | ProblemDetails>({
-        path: `/scenarios/${id}/try`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
         ...params,
       }),
   };
@@ -979,46 +859,6 @@ export class Api<SecurityDataType extends unknown> {
     listPreconditions: (appId: string, params: RequestParams = {}) =>
       this.http.request<PreconditionResponse[], any>({
         path: `/applications/${appId}/preconditions`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Runs
-     * @name CreateRun
-     * @request POST:/applications/{appId}/runs
-     * @response `200` `RunResponse` OK
-     * @response `400` `ErrorResponse` EnvironmentId does not reference an Environment belonging to this Application. Returns 400 when the request fails a validation constraint.
-     * @response `404` `ProblemDetails` No Application with the given appId exists in the caller's Organization, or the Application/Environment no longer exists (deleted after this request started).
-     */
-    createRun: (
-      appId: string,
-      data: CreateRunRequest,
-      params: RequestParams = {},
-    ) =>
-      this.http.request<RunResponse, ErrorResponse | ProblemDetails>({
-        path: `/applications/${appId}/runs`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Runs
-     * @name ListRuns
-     * @request GET:/applications/{appId}/runs
-     * @response `200` `(RunResponse)[]` OK
-     */
-    listRuns: (appId: string, params: RequestParams = {}) =>
-      this.http.request<RunResponse[], any>({
-        path: `/applications/${appId}/runs`,
         method: "GET",
         format: "json",
         ...params,
@@ -1281,42 +1121,6 @@ export class Api<SecurityDataType extends unknown> {
       this.http.request<void, any>({
         path: `/preconditions/${id}`,
         method: "DELETE",
-        ...params,
-      }),
-  };
-  runs = {
-    /**
-     * No description
-     *
-     * @tags Runs
-     * @name GetRunById
-     * @request GET:/runs/{id}
-     * @response `200` `RunResponse` OK
-     * @response `404` `ProblemDetails` No Run with the given id exists in the caller's Organization.
-     */
-    getRunById: (id: string, params: RequestParams = {}) =>
-      this.http.request<RunResponse, ProblemDetails>({
-        path: `/runs/${id}`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-  };
-  tries = {
-    /**
-     * No description
-     *
-     * @tags Tries
-     * @name GetTryById
-     * @request GET:/tries/{id}
-     * @response `200` `TryScenarioResponse` OK
-     * @response `404` `ProblemDetails` No Try (Run) with the given id exists in the caller's Organization.
-     */
-    getTryById: (id: string, params: RequestParams = {}) =>
-      this.http.request<TryScenarioResponse, ProblemDetails>({
-        path: `/tries/${id}`,
-        method: "GET",
-        format: "json",
         ...params,
       }),
   };

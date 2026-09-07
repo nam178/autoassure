@@ -5,7 +5,6 @@ using A2.Server.Common;
 using A2.Server.Contracts;
 using A2.Server.Models;
 using A2.Server.Services;
-using A2.Server.Tests;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

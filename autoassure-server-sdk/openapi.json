@@ -1583,216 +1583,6 @@
         }
       }
     },
-    "/applications/{appId}/runs": {
-      "post": {
-        "tags": [
-          "Runs"
-        ],
-        "operationId": "CreateRun",
-        "parameters": [
-          {
-            "name": "appId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateRunRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateRunRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateRunRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "EnvironmentId does not reference an Environment belonging to this\n    Application. Returns 400 when the request fails a validation constraint.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No Application with the given appId exists in the caller's Organization,\n    or the Application/Environment no longer exists (deleted after this request started).",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "Runs"
-        ],
-        "operationId": "ListRuns",
-        "parameters": [
-          {
-            "name": "appId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/RunResponse"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/RunResponse"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/RunResponse"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/runs/{id}": {
-      "get": {
-        "tags": [
-          "Runs"
-        ],
-        "operationId": "GetRunById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No Run with the given id exists in the caller's Organization.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/applications/{appId}/scenarios": {
       "post": {
         "tags": [
@@ -2114,7 +1904,7 @@
             }
           },
           "404": {
-            "description": "No Scenario with the given id exists in the caller's Organization, or its\n    Application no longer exists (deleted after this request started).",
+            "description": "No Scenario with the given id exists in the caller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2129,6 +1919,26 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The Scenario's Application no longer exists (deleted after this request\n    started).",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -2157,168 +1967,6 @@
           },
           "404": {
             "description": "No Scenario with the given id exists in the caller's Organization.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/scenarios/{id}/try": {
-      "post": {
-        "tags": [
-          "Tries"
-        ],
-        "operationId": "CreateTry",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTryRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTryRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTryRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TryScenarioResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TryScenarioResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TryScenarioResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "EnvironmentId does not reference an Environment belonging to the\n    Scenario's Application. Returns 400 when the request fails a validation constraint.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No Scenario with the given id exists in the caller's Organization, or the\n    Scenario/Environment no longer exists (deleted after this request started).",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/tries/{id}": {
-      "get": {
-        "tags": [
-          "Tries"
-        ],
-        "operationId": "GetTryById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TryScenarioResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TryScenarioResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TryScenarioResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No Try (Run) with the given id exists in the caller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2580,29 +2228,6 @@
         },
         "description": "Request body to add a Precondition to an Application's library."
       },
-      "CreateRunRequest": {
-        "required": [
-          "scenarioIds",
-          "environmentId"
-        ],
-        "type": "object",
-        "properties": {
-          "scenarioIds": {
-            "maxItems": 100,
-            "minItems": 1,
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          "environmentId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "description": "Request body to start a Run of one or more Scenarios against an Environment."
-      },
       "CreateScenarioRequest": {
         "required": [
           "title",
@@ -2638,19 +2263,6 @@
           }
         },
         "description": "Request body to create a new Scenario for an Application. Folder defaults to \"/\" when\n    not given; Tags default to empty."
-      },
-      "CreateTryRequest": {
-        "required": [
-          "environmentId"
-        ],
-        "type": "object",
-        "properties": {
-          "environmentId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "description": "Request body to Try a single Scenario against an Environment."
       },
       "EnvironmentClassification": {
         "type": "integer",
@@ -2882,92 +2494,6 @@
         },
         "description": "Request body to reorder a Scenario's Activities. Must contain exactly one entry per\n    Activity currently in the Scenario, as a permutation of their ids."
       },
-      "RunResponse": {
-        "required": [
-          "id",
-          "scenarioIds",
-          "environmentId",
-          "status",
-          "totalActivityCount",
-          "passedActivityCount",
-          "failedActivityCount",
-          "skippedActivityCount",
-          "startedAt",
-          "completedAt"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "scenarioIds": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          "environmentId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "$ref": "#/components/schemas/RunStatus"
-          },
-          "totalActivityCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "passedActivityCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "failedActivityCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "skippedActivityCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "startedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "completedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          }
-        },
-        "description": "A Run over one or more Scenarios, as returned to the client. Created in Pending status --\n    nothing here executes anything yet."
-      },
-      "RunStatus": {
-        "type": "integer",
-        "description": "A Try/Run's lifecycle state only -- carries no pass/fail judgment; see the activity counts for that."
-      },
       "ScenarioResponse": {
         "required": [
           "id",
@@ -3012,85 +2538,6 @@
           }
         },
         "description": "Request body to upsert a single Environment variable's value."
-      },
-      "TryScenarioResponse": {
-        "required": [
-          "id",
-          "scenarioId",
-          "environmentId",
-          "status",
-          "totalActivityCount",
-          "passedActivityCount",
-          "failedActivityCount",
-          "skippedActivityCount",
-          "startedAt",
-          "completedAt"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "scenarioId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "environmentId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "$ref": "#/components/schemas/RunStatus"
-          },
-          "totalActivityCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "passedActivityCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "failedActivityCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "skippedActivityCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "startedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "completedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          }
-        },
-        "description": "A single-Scenario Try, as returned to the client. Created in Pending status -- nothing\n    here executes anything yet."
       },
       "UpdateActivityRequest": {
         "required": [
@@ -3277,13 +2724,7 @@
       "name": "Preconditions"
     },
     {
-      "name": "Runs"
-    },
-    {
       "name": "Scenarios"
-    },
-    {
-      "name": "Tries"
     }
   ]
 }

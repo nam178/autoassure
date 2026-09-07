@@ -6,7 +6,6 @@ using System.Security.Claims;
 using System.Text;
 using A2.Server.Contracts;
 using A2.Server.Models;
-using A2.Server.Tests;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;

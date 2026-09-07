@@ -1,7 +1,0 @@
-namespace A2.Server.Contracts;
-
-/// <summary>Request body to Try a single Scenario against an Environment.</summary>
-public record CreateTryRequest
-{
-    public required Guid EnvironmentId { get; init; }
-}
