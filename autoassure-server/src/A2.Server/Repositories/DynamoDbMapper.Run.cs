@@ -40,16 +40,22 @@ public static partial class DynamoDbMapper
     /// row, and the status update log's own Query (task 9) reuses it as a begins_with prefix.</summary>
     public static string RunStatusUpdateRowKeyPrefix(Guid runId) => $"{runId}#update#";
 
-    /// <summary>Derives the InFlightIndex shard key for a Run in progress: "Running#" followed by a
-    /// digit 0-9 spread deterministically across the Run's id, so the sweeper's sparse index is ten
-    /// partitions wide instead of one hot one. Sums the id's bytes rather than using
-    /// <see cref="Guid.GetHashCode"/>, whose exact result .NET does not guarantee stable across runtime
-    /// versions -- this must keep producing the same shard for the same Run for as long as it stays in
-    /// flight.</summary>
+    /// <summary>Builds the InFlightIndex shard key for a given shard number (0 through
+    /// <see cref="RunExecutionPolicy.InFlightShardCount"/> minus 1) -- the one place "Running#" is ever
+    /// formatted, used both when a Run is claimed (<see cref="RunInFlightShard"/>) and when the sweeper
+    /// queries a shard for stale Runs.</summary>
+    public static string RunInFlightShardKey(int shard) => $"Running#{shard}";
+
+    /// <summary>Derives the InFlightIndex shard key for a Run in progress: a digit 0 through
+    /// <see cref="RunExecutionPolicy.InFlightShardCount"/> minus 1, spread deterministically across the
+    /// Run's id, so the sweeper's sparse index is many partitions wide instead of one hot one. Sums the
+    /// id's bytes rather than using <see cref="Guid.GetHashCode"/>, whose exact result .NET does not
+    /// guarantee stable across runtime versions -- this must keep producing the same shard for the same
+    /// Run for as long as it stays in flight.</summary>
     public static string RunInFlightShard(Guid runId)
     {
         var sumOfBytes = runId.ToByteArray().Sum(b => b);
-        return $"Running#{sumOfBytes % 10}";
+        return RunInFlightShardKey(sumOfBytes % RunExecutionPolicy.InFlightShardCount);
     }
 
     // ----- Header row -----

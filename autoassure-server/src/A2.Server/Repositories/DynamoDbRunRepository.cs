@@ -227,13 +227,16 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     Key = HeaderKey(organizationId, applicationId, id),
                     UpdateExpression =
                         "SET #status = :running, StartedAt = :startedAt, DeadlineAt = :deadlineAt, "
-                            + "LastHeartbeatAt = :startedAt, InFlightShard = :shard",
+                        + "LastHeartbeatAt = :startedAt, InFlightShard = :shard",
                     // Status is the only concurrency control (see fix_run_design.md section 5) -- this
                     // is what lets exactly one of several racing claims win, and it doubles as an
                     // existence check: a Run that does not exist has no Status attribute at all, so the
                     // comparison fails the same way.
                     ConditionExpression = "#status = :pending",
-                    ExpressionAttributeNames = new Dictionary<string, string> { ["#status"] = "Status" },
+                    ExpressionAttributeNames = new Dictionary<string, string>
+                    {
+                        ["#status"] = "Status",
+                    },
                     ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                     {
                         [":running"] = new(RunStatus.Running.ToString()),
@@ -302,12 +305,13 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
 
         // Removing InFlightShard on every terminal transition is what drops a finished Run out of the
         // sweeper's sparse InFlightIndex, whichever of the three callers ended it.
-        var updateExpression = "SET #status = :terminal, CompletedAt = :completedAt REMOVE InFlightShard";
+        var updateExpression =
+            "SET #status = :terminal, CompletedAt = :completedAt REMOVE InFlightShard";
         if (statusReason is { } reason)
         {
             updateExpression =
                 "SET #status = :terminal, StatusReason = :reason, CompletedAt = :completedAt "
-                    + "REMOVE InFlightShard";
+                + "REMOVE InFlightShard";
             attributeValues[":reason"] = new(reason.ToString());
         }
 
@@ -320,7 +324,10 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     Key = HeaderKey(organizationId, applicationId, id),
                     UpdateExpression = updateExpression,
                     ConditionExpression = conditionExpression,
-                    ExpressionAttributeNames = new Dictionary<string, string> { ["#status"] = "Status" },
+                    ExpressionAttributeNames = new Dictionary<string, string>
+                    {
+                        ["#status"] = "Status",
+                    },
                     ExpressionAttributeValues = attributeValues,
                 }
             );
@@ -351,9 +358,12 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     Key = HeaderKey(organizationId, applicationId, id),
                     UpdateExpression =
                         "SET TotalActivityCount = :total, PassedActivityCount = :passed, "
-                            + "FailedActivityCount = :failed, SkippedActivityCount = :skipped",
+                        + "FailedActivityCount = :failed, SkippedActivityCount = :skipped",
                     ConditionExpression = "#status = :running",
-                    ExpressionAttributeNames = new Dictionary<string, string> { ["#status"] = "Status" },
+                    ExpressionAttributeNames = new Dictionary<string, string>
+                    {
+                        ["#status"] = "Status",
+                    },
                     ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                     {
                         [":total"] = new AttributeValue
@@ -382,6 +392,136 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         {
             return false;
         }
+    }
+
+    public async Task<bool> TryHeartbeatAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid id,
+        DateTimeOffset heartbeatAt
+    )
+    {
+        try
+        {
+            await client.UpdateItemAsync(
+                new UpdateItemRequest
+                {
+                    TableName = RunTableName,
+                    Key = HeaderKey(organizationId, applicationId, id),
+                    UpdateExpression = "SET LastHeartbeatAt = :heartbeatAt",
+                    // When the Run was cancelled or already swept, Then Status is no longer Running and
+                    // this condition fails -- the worker finds out on its very next beat with no
+                    // separate signalling channel (see fix_run_design.md section 5).
+                    ConditionExpression = "#status = :running",
+                    ExpressionAttributeNames = new Dictionary<string, string> { ["#status"] = "Status" },
+                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    {
+                        [":heartbeatAt"] = new(heartbeatAt.ToString("O")),
+                        [":running"] = new(RunStatus.Running.ToString()),
+                    },
+                }
+            );
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<IReadOnlyList<StaleInFlightRun>> ListStaleInFlightRunsAsync(
+        int shard,
+        DateTimeOffset heartbeatCutoff
+    )
+    {
+        if (shard < 0 || shard >= RunExecutionPolicy.InFlightShardCount)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(shard),
+                shard,
+                $"Shard must be between 0 and {RunExecutionPolicy.InFlightShardCount - 1}."
+            );
+        }
+
+        // The InFlightIndex is KEYS_ONLY, so a query against it can only ever return LastHeartbeatAt and
+        // the base table's own keys -- never DeadlineAt. A KeyConditionExpression can only narrow this
+        // Query by LastHeartbeatAt (the index's range key), so bounding it there would silently drop the
+        // "fresh heartbeat, passed deadline" half of the OR the design requires. Reading the whole shard
+        // instead, unbounded, is what lets the loop below still catch that case with a follow-up read.
+        var rows = await QueryAllPagesAsync(
+            new QueryRequest
+            {
+                TableName = RunTableName,
+                IndexName = "InFlightIndex",
+                KeyConditionExpression = "InFlightShard = :shard",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":shard"] = new(DynamoDbMapper.RunInFlightShardKey(shard)),
+                },
+            }
+        );
+
+        var now = DateTimeOffset.UtcNow;
+        var staleRuns = new List<StaleInFlightRun>();
+        foreach (var row in rows)
+        {
+            var (organizationId, applicationId) = DynamoDbMapper.ParseApplicationScopedPartitionKey(
+                row["OrganizationId_ApplicationId"].S
+            );
+            // Only a header row ever carries InFlightShard, so RowKey here is always the bare RunId --
+            // never a Scenario or status update row's suffixed key.
+            var id = Guid.Parse(row["RowKey"].S);
+            var lastHeartbeatAt = DateTimeOffset.Parse(
+                row["LastHeartbeatAt"].S,
+                CultureInfo.InvariantCulture
+            );
+
+            // When the heartbeat itself is already older than the cutoff, Then this Run is stale without
+            // reading anything else -- LastHeartbeatAt is one of the attributes this index projects.
+            if (lastHeartbeatAt < heartbeatCutoff)
+            {
+                staleRuns.Add(
+                    new StaleInFlightRun
+                    {
+                        OrganizationId = organizationId,
+                        ApplicationId = applicationId,
+                        Id = id,
+                    }
+                );
+                continue;
+            }
+
+            // When the heartbeat is fresh, Then only a passed DeadlineAt can still make this Run stale,
+            // and DeadlineAt is not projected onto this index -- a consistent read of the header itself
+            // is the only way to check it. A Run that ended between the Query above and this read still
+            // carries a (now historical) DeadlineAt, but that is harmless: the sweeper's own End Run call
+            // is conditioned on Status = Running and simply no-ops for a Run that already ended.
+            var headerRow = await client.GetItemAsync(
+                new GetItemRequest
+                {
+                    TableName = RunTableName,
+                    Key = HeaderKey(organizationId, applicationId, id),
+                    ConsistentRead = true,
+                    ProjectionExpression = "DeadlineAt",
+                }
+            );
+            if (
+                headerRow.Item.TryGetValue("DeadlineAt", out var deadlineAtValue)
+                && DateTimeOffset.Parse(deadlineAtValue.S, CultureInfo.InvariantCulture) < now
+            )
+            {
+                staleRuns.Add(
+                    new StaleInFlightRun
+                    {
+                        OrganizationId = organizationId,
+                        ApplicationId = applicationId,
+                        Id = id,
+                    }
+                );
+            }
+        }
+
+        return staleRuns;
     }
 
     // Builds a header row's primary key -- the shared Key every Start/End/Update Stats UpdateItem

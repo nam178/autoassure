@@ -1,3 +1,4 @@
+using System.Globalization;
 using A2.Server.Common;
 using A2.Server.Models;
 using A2.Server.Repositories;
@@ -8,9 +9,11 @@ using Microsoft.Extensions.Options;
 namespace A2.Server.Tests.Repositories;
 
 /// <summary>Integration tests for <see cref="DynamoDbRunRepository"/> against DynamoDB Local, covering
-/// Create Run, Get Run and List Runs: the transactional create, its Application/Environment existence
-/// checks, the TTL retention numbers, the LastEvaluatedKey pagination loop, Get Run's exclusion of
-/// status update rows, and List Runs' sparse RunHeaderIndex query.</summary>
+/// Create Run, Get Run, List Runs, Start Run, End Run, Update Run Stats, Update Run Heart Beat and the
+/// stale in-flight Run query: the transactional create, its Application/Environment existence checks,
+/// the TTL retention numbers, the LastEvaluatedKey pagination loop, Get Run's exclusion of status update
+/// rows, List Runs' sparse RunHeaderIndex query, the state machine's conditioned writes, and the sparse
+/// InFlightIndex query's stale-heartbeat-or-passed-deadline logic across its ten shards.</summary>
 [Collection("DynamoDbLocal")]
 public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLocalFixture)
     : IAsyncLifetime
@@ -53,10 +56,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
                     new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
                     new AttributeDefinition("RowKey", ScalarAttributeType.S),
                     new AttributeDefinition("HeaderId", ScalarAttributeType.S),
+                    new AttributeDefinition("InFlightShard", ScalarAttributeType.S),
+                    new AttributeDefinition("LastHeartbeatAt", ScalarAttributeType.S),
                 ],
-                // Mirrors ../../autoassure-infra/dynamodb.tf's RunHeaderIndex exactly -- same sparse
-                // key shape and the same INCLUDE projection list -- so a test proves what the real
-                // index actually returns rather than what a looser local approximation would.
+                // Mirrors ../../autoassure-infra/dynamodb.tf's RunHeaderIndex and InFlightIndex exactly
+                // -- same sparse key shapes and the same projections -- so a test proves what the real
+                // indexes actually return rather than what a looser local approximation would.
                 GlobalSecondaryIndexes =
                 [
                     new GlobalSecondaryIndex
@@ -85,6 +90,16 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
                                 "CompletedAt",
                             ],
                         },
+                    },
+                    new GlobalSecondaryIndex
+                    {
+                        IndexName = "InFlightIndex",
+                        KeySchema =
+                        [
+                            new KeySchemaElement("InFlightShard", KeyType.HASH),
+                            new KeySchemaElement("LastHeartbeatAt", KeyType.RANGE),
+                        ],
+                        Projection = new Projection { ProjectionType = ProjectionType.KEYS_ONLY },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -991,7 +1006,9 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     [InlineData(RunStatus.Completed)]
     [InlineData(RunStatus.Cancelled)]
     [InlineData(RunStatus.Abandoned)]
-    public async Task TryUpdateStatsAsync_WhenRunIsNotRunning_FailsAndChangesNothing(RunStatus notRunning)
+    public async Task TryUpdateStatsAsync_WhenRunIsNotRunning_FailsAndChangesNothing(
+        RunStatus notRunning
+    )
     {
         // setup -- reach notRunning by claiming the Run and, unless it must stay Pending, ending it once
         // with that status, so the real test call attempts to update stats on a Run that is not Running.
@@ -1027,5 +1044,265 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         // verify -- the call changed nothing; stats remain at zero.
         Assert.False(result);
         Assert.Equal("0", row["TotalActivityCount"].N);
+    }
+
+    // Claims a fresh pending Run and immediately starts it at startedAt, so its LastHeartbeatAt and
+    // DeadlineAt derive from that single instant -- what every stale-query test below manipulates.
+    private async Task<Guid> CreateRunningRunAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid environmentId,
+        DateTimeOffset startedAt
+    )
+    {
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+        await _repository.TryStartAsync(organizationId, applicationId, runId, startedAt);
+        return runId;
+    }
+
+    // Extracts the 0-9 digit DynamoDbMapper.RunInFlightShard bakes into "Running#<digit>", so a test can
+    // ask ListStaleInFlightRunsAsync for exactly the shard a given Run id actually landed on.
+    private static int ShardOf(Guid runId) =>
+        int.Parse(
+            DynamoDbMapper.RunInFlightShard(runId)["Running#".Length..],
+            CultureInfo.InvariantCulture
+        );
+
+    [Fact]
+    public async Task TryHeartbeatAsync_WhenRunIsRunning_MovesLastHeartbeatAt()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, FixedNow);
+
+        // test
+        var heartbeatAt = FixedNow.AddSeconds(30);
+        var result = await _repository.TryHeartbeatAsync(
+            organizationId,
+            applicationId,
+            runId,
+            heartbeatAt
+        );
+        var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+
+        // verify
+        Assert.True(result);
+        Assert.Equal(heartbeatAt.ToString("O"), row["LastHeartbeatAt"].S);
+    }
+
+    [Theory]
+    [InlineData(RunStatus.Pending)]
+    [InlineData(RunStatus.Completed)]
+    [InlineData(RunStatus.Cancelled)]
+    [InlineData(RunStatus.Abandoned)]
+    public async Task TryHeartbeatAsync_WhenRunIsNotRunning_FailsAndChangesNothing(RunStatus notRunning)
+    {
+        // setup -- reach notRunning by claiming the Run and, unless it must stay Pending, ending it once
+        // with that status, so the real test call beats a Run that is not Running.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+        if (notRunning != RunStatus.Pending)
+        {
+            await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+            await _repository.TryEndAsync(
+                organizationId,
+                applicationId,
+                runId,
+                notRunning,
+                notRunning == RunStatus.Abandoned ? RunStatusReason.WorkerCrashed : null,
+                FixedNow.AddMinutes(5)
+            );
+        }
+        var beforeRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+
+        // test
+        var result = await _repository.TryHeartbeatAsync(
+            organizationId,
+            applicationId,
+            runId,
+            FixedNow.AddMinutes(10)
+        );
+        var afterRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+
+        // verify -- the call changed nothing; LastHeartbeatAt (present or absent) is unchanged.
+        Assert.False(result);
+        Assert.Equal(beforeRow.ContainsKey("LastHeartbeatAt"), afterRow.ContainsKey("LastHeartbeatAt"));
+        if (beforeRow.TryGetValue("LastHeartbeatAt", out var lastHeartbeatAt))
+        {
+            Assert.Equal(lastHeartbeatAt.S, afterRow["LastHeartbeatAt"].S);
+        }
+    }
+
+    [Fact]
+    public async Task ListStaleInFlightRunsAsync_WhenHeartbeatIsPastCutoff_ReturnsIt()
+    {
+        // setup -- a Running Run whose heartbeat is older than the sweeper's cutoff, with a DeadlineAt
+        // nowhere near passed, so only the heartbeat half of the OR can be what catches it.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var startedAt = DateTimeOffset.UtcNow.AddMinutes(-2);
+        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, startedAt);
+        var cutoff = DateTimeOffset.UtcNow.AddSeconds(-90);
+
+        // test
+        var staleRuns = await _repository.ListStaleInFlightRunsAsync(ShardOf(runId), cutoff);
+
+        // verify
+        Assert.Contains(
+            staleRuns,
+            staleRun =>
+                staleRun.Id == runId
+                && staleRun.OrganizationId == organizationId
+                && staleRun.ApplicationId == applicationId
+        );
+    }
+
+    [Fact]
+    public async Task ListStaleInFlightRunsAsync_WhenHeartbeatIsFreshAndDeadlineNotPassed_DoesNotReturnIt()
+    {
+        // setup -- a Running Run that just started: fresh heartbeat, DeadlineAt hours away.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreateRunningRunAsync(
+            organizationId,
+            applicationId,
+            environmentId,
+            DateTimeOffset.UtcNow
+        );
+        var cutoff = DateTimeOffset.UtcNow.AddSeconds(-90);
+
+        // test
+        var staleRuns = await _repository.ListStaleInFlightRunsAsync(ShardOf(runId), cutoff);
+
+        // verify
+        Assert.DoesNotContain(staleRuns, staleRun => staleRun.Id == runId);
+    }
+
+    [Fact]
+    public async Task ListStaleInFlightRunsAsync_WhenHeartbeatIsFreshButDeadlineHasPassed_ReturnsIt()
+    {
+        // setup -- a Run claimed long enough ago that its fixed DeadlineAt has already passed, then
+        // heartbeats just now -- the "stuck in a retry loop, still beating" case the OR exists for. A
+        // KeyConditionExpression on LastHeartbeatAt alone would miss this Run entirely.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var startedAt =
+            DateTimeOffset.UtcNow - RunExecutionPolicy.MaxRunDuration - TimeSpan.FromHours(1);
+        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, startedAt);
+        await _repository.TryHeartbeatAsync(
+            organizationId,
+            applicationId,
+            runId,
+            DateTimeOffset.UtcNow
+        );
+        // A cutoff this recent would not flag the (now fresh) heartbeat as stale on its own.
+        var cutoff = DateTimeOffset.UtcNow.AddSeconds(-90);
+
+        // test
+        var staleRuns = await _repository.ListStaleInFlightRunsAsync(ShardOf(runId), cutoff);
+
+        // verify -- caught only via the DeadlineAt half of the OR.
+        Assert.Contains(
+            staleRuns,
+            staleRun =>
+                staleRun.Id == runId
+                && staleRun.OrganizationId == organizationId
+                && staleRun.ApplicationId == applicationId
+        );
+    }
+
+    [Fact]
+    public async Task ListStaleInFlightRunsAsync_WhenRunHasEnded_NeverReturnsIt()
+    {
+        // setup -- a Run that, were it still in flight, would be caught by both halves of the OR (stale
+        // heartbeat and passed deadline), but has since ended.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var startedAt = DateTimeOffset.UtcNow.AddHours(-5);
+        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, startedAt);
+        await _repository.TryEndAsync(
+            organizationId,
+            applicationId,
+            runId,
+            RunStatus.Completed,
+            null,
+            DateTimeOffset.UtcNow
+        );
+        var cutoff = DateTimeOffset.UtcNow.AddSeconds(-90);
+
+        // test
+        var staleRuns = await _repository.ListStaleInFlightRunsAsync(ShardOf(runId), cutoff);
+
+        // verify -- ending the Run removed InFlightShard (task 7), which is what drops it out of this
+        // query no matter how stale its (now-frozen) heartbeat and deadline still look.
+        Assert.DoesNotContain(staleRuns, staleRun => staleRun.Id == runId);
+    }
+
+    [Fact]
+    public async Task ListStaleInFlightRunsAsync_WhenRunsSpanMultipleShards_EachShardReturnsOnlyItsOwn()
+    {
+        // setup -- enough Running Runs with stale heartbeats that RunInFlightShard's even spread across
+        // ten shards makes it overwhelmingly likely several distinct shards end up populated, proving
+        // this Query reads one shard rather than the whole table.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutApplicationAsync(organizationId, applicationId);
+        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
+        var startedAt = DateTimeOffset.UtcNow.AddMinutes(-5);
+        var runIds = new List<Guid>();
+        for (var i = 0; i < 40; i++)
+        {
+            var run = CreateRun(organizationId, applicationId, environmentId);
+            await _repository.TryCreateAsync(run, [CreateScenarioSnapshot()]);
+            await _repository.TryStartAsync(organizationId, applicationId, run.Id, startedAt);
+            runIds.Add(run.Id);
+        }
+        var cutoff = DateTimeOffset.UtcNow.AddSeconds(-90);
+
+        // test -- query every shard independently, the way a sweeper walking 0..9 would.
+        var foundByShard = new Dictionary<int, IReadOnlyList<StaleInFlightRun>>();
+        for (var shard = 0; shard < RunExecutionPolicy.InFlightShardCount; shard++)
+        {
+            foundByShard[shard] = await _repository.ListStaleInFlightRunsAsync(shard, cutoff);
+        }
+
+        // verify -- every created Run turns up under its own shard and nowhere else, and more than one
+        // shard actually held a result.
+        foreach (var runId in runIds)
+        {
+            var ownShard = ShardOf(runId);
+            Assert.Contains(foundByShard[ownShard], staleRun => staleRun.Id == runId);
+            foreach (
+                var otherShard in Enumerable
+                    .Range(0, RunExecutionPolicy.InFlightShardCount)
+                    .Where(candidate => candidate != ownShard)
+            )
+            {
+                Assert.DoesNotContain(foundByShard[otherShard], staleRun => staleRun.Id == runId);
+            }
+        }
+        var populatedShardCount = foundByShard.Count(entry => entry.Value.Count > 0);
+        Assert.True(
+            populatedShardCount > 1,
+            $"expected the 40 created Run ids to spread across more than one shard, got {populatedShardCount}"
+        );
+    }
+
+    [Fact]
+    public async Task ListStaleInFlightRunsAsync_WhenShardIsOutOfRange_Throws()
+    {
+        // test & verify
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            () => _repository.ListStaleInFlightRunsAsync(RunExecutionPolicy.InFlightShardCount, DateTimeOffset.UtcNow)
+        );
     }
 }

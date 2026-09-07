@@ -118,4 +118,42 @@ public interface IRunRepository
         int failedActivityCount,
         int skippedActivityCount
     );
+
+    /// <summary>Proves the owning worker is still alive by overwriting <c>LastHeartbeatAt</c> with
+    /// <paramref name="heartbeatAt"/>. This is the one Run attribute that is never a permanent record --
+    /// it is overwritten in place every <see cref="RunExecutionPolicy.HeartbeatInterval"/>, and a beat is
+    /// worth nothing once the next one arrives (see fix_run_design.md section 5).
+    ///
+    /// Returns false, and writes nothing, when the Run's <c>Status</c> is not Running. That is the only
+    /// way a cancel or a sweep reaches the worker: there is no signalling channel, so a worker that was
+    /// cancelled or already marked Abandoned simply fails its next beat and is expected to stop within
+    /// one interval.</summary>
+    Task<bool> TryHeartbeatAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid id,
+        DateTimeOffset heartbeatAt
+    );
+
+    /// <summary>Finds in-flight Runs the sweeper should end, in one shard of the sparse in-flight lookup
+    /// (0 through <see cref="RunExecutionPolicy.InFlightShardCount"/> minus 1). A Run is stale when its
+    /// heartbeat has not arrived since <paramref name="heartbeatCutoff"/>, *or* when its
+    /// <c>DeadlineAt</c> has passed even though its heartbeat is still fresh -- a worker stuck in a retry
+    /// loop keeps proving it is alive without making progress (see fix_run_design.md section 5). Never
+    /// scans: this reads only the shard's own entries.
+    ///
+    /// Returns identifying info only (<see cref="StaleInFlightRun"/>), not full Run data -- the
+    /// underlying lookup is sparse and key-only, so it cannot answer with more than that. A caller
+    /// wanting the full Run makes its own follow-up <see cref="GetByIdAsync"/>. A Run that has ended
+    /// never appears here, whatever <paramref name="heartbeatCutoff"/> is, because ending a Run removes
+    /// it from this lookup (see <see cref="TryEndAsync"/>).
+    ///
+    /// Throws <see cref="ArgumentOutOfRangeException"/> when <paramref name="shard"/> is outside 0 to
+    /// <see cref="RunExecutionPolicy.InFlightShardCount"/> minus 1 -- no Run is ever assigned a shard
+    /// outside that range, so a caller passing one made a mistake worth surfacing rather than silently
+    /// returning nothing.</summary>
+    Task<IReadOnlyList<StaleInFlightRun>> ListStaleInFlightRunsAsync(
+        int shard,
+        DateTimeOffset heartbeatCutoff
+    );
 }

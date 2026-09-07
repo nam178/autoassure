@@ -18,4 +18,10 @@ public static class RunExecutionPolicy
     /// is a chosen default, not a specified requirement -- a round number comfortably above what a single
     /// Run is expected to take today.</summary>
     public static readonly TimeSpan MaxRunDuration = TimeSpan.FromHours(4);
+
+    /// <summary>How many groups the sweeper spreads in-flight Runs across so it can look for stale ones
+    /// without every Run competing for the same one. Kept here, next to the timing constants that govern
+    /// the same sweep, rather than as a magic number wherever a Run's group is derived -- this number
+    /// must never change without reassigning every in-flight Run's group.</summary>
+    public const int InFlightShardCount = 10;
 }
