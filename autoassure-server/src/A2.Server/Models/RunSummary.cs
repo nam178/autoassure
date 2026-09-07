@@ -5,9 +5,9 @@ namespace A2.Server.Models;
 // meantime.
 /// <summary>A Run's identity and execution state, with no Environment snapshot and no Scenario data --
 /// exactly what the Application's Runs panel shows for one row of the list. List Runs answers from a
-/// sparse index that never holds anything beyond these fields (see fix_run_design.md section 3), so
-/// this is a distinct shape from <see cref="Run"/> rather than a partially filled one: nothing here can
-/// be turned into a full <see cref="Run"/> without a separate Get.</summary>
+/// list read that only ever returns these fields (see fix_run_design.md section 3), so this is a
+/// distinct shape from <see cref="Run"/> rather than a partially filled one: nothing here can be turned
+/// into a full <see cref="Run"/> without a separate Get.</summary>
 public record RunSummary
 {
     public required Guid Id { get; init; }

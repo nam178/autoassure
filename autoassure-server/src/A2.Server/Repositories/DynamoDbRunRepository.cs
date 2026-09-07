@@ -159,7 +159,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         return new RunDetail { Header = header, Scenarios = scenarios };
     }
 
-    public async Task<IReadOnlyList<RunSummary>> ListRunsByApplicationAsync(
+    public async Task<IReadOnlyList<RunSummary>> ListByApplicationAsync(
         Guid organizationId,
         Guid applicationId
     )

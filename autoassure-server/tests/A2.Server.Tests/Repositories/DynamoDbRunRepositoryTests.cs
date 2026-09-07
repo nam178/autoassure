@@ -520,7 +520,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task ListRunsByApplicationAsync_WhenRunHasScenarios_ReturnsOneHeaderOnlySummary()
+    public async Task ListByApplicationAsync_WhenRunHasScenarios_ReturnsOneHeaderOnlySummary()
     {
         // setup -- a Run with several Scenario snapshots, so the table holds 4 rows for it (1 header +
         // 3 Scenario rows). Listing must still return exactly one entry, and it must be the header
@@ -541,7 +541,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         await _repository.TryCreateAsync(run, scenarios);
 
         // test
-        var summaries = await _repository.ListRunsByApplicationAsync(organizationId, applicationId);
+        var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
 
         // verify
         var summary = Assert.Single(summaries);
@@ -552,7 +552,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task ListRunsByApplicationAsync_WhenRunBelongsToAnotherApplication_DoesNotReturnIt()
+    public async Task ListByApplicationAsync_WhenRunBelongsToAnotherApplication_DoesNotReturnIt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -566,14 +566,14 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         await _repository.TryCreateAsync(otherApplicationRun, [CreateScenarioSnapshot()]);
 
         // test
-        var summaries = await _repository.ListRunsByApplicationAsync(organizationId, applicationId);
+        var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
 
         // verify
         Assert.Empty(summaries);
     }
 
     [Fact]
-    public async Task ListRunsByApplicationAsync_WhenTriggerIsAuthoring_NeverReturnsIt()
+    public async Task ListByApplicationAsync_WhenTriggerIsAuthoring_NeverReturnsIt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -592,7 +592,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         await _repository.TryCreateAsync(authoringRun, [CreateScenarioSnapshot()]);
 
         // test
-        var summaries = await _repository.ListRunsByApplicationAsync(organizationId, applicationId);
+        var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
 
         // verify -- only the Manual Run comes back; there is no parameter to include Authoring runs.
         var summary = Assert.Single(summaries);
@@ -600,7 +600,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task ListRunsByApplicationAsync_WhenMultipleRuns_ReturnsInCreationOrder()
+    public async Task ListByApplicationAsync_WhenMultipleRuns_ReturnsInCreationOrder()
     {
         // setup -- three Runs created in sequence. Guid.CreateVersion7() ids are time-sortable, so
         // ascending id order is creation order.
@@ -617,7 +617,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         await _repository.TryCreateAsync(thirdRun, [CreateScenarioSnapshot()]);
 
         // test
-        var summaries = await _repository.ListRunsByApplicationAsync(organizationId, applicationId);
+        var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
 
         // verify
         Assert.Equal(
@@ -627,7 +627,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task ListRunsByApplicationAsync_WhenExpiresAtHasPassed_ExcludesIt()
+    public async Task ListByApplicationAsync_WhenExpiresAtHasPassed_ExcludesIt()
     {
         // setup -- one Run "created" long enough ago that its computed ExpiresAt has already passed,
         // and one fresh Run in the same Application.
@@ -649,7 +649,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         await _repository.TryCreateAsync(freshRun, [CreateScenarioSnapshot()]);
 
         // test
-        var summaries = await _repository.ListRunsByApplicationAsync(organizationId, applicationId);
+        var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
 
         // verify
         var summary = Assert.Single(summaries);

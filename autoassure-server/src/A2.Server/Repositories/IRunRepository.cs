@@ -51,7 +51,7 @@ public interface IRunRepository
     /// header is not a Run that still exists (see fix_run_design.md section 6). Nothing lists Runs by
     /// Scenario -- that is out of scope (see fix_run_design.md section 6 and the goal file's "out of
     /// scope" list).</summary>
-    Task<IReadOnlyList<RunSummary>> ListRunsByApplicationAsync(
+    Task<IReadOnlyList<RunSummary>> ListByApplicationAsync(
         Guid organizationId,
         Guid applicationId
     );
