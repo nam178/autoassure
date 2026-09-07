@@ -432,18 +432,18 @@ resource "aws_dynamodb_table" "scenarios" {
 # partition query instead of a filter expression. One row per Scenario, keyed by its
 # current folder; kept in sync with the scenarios table in the same DynamoDB
 # transaction. Schema must stay in sync with DynamoDbScenarioRepository.cs (the
-# PartitionKey attribute holds "{OrganizationId}_{ApplicationId}_{Folder}").
+# OrganizationId_ApplicationId_Folder attribute holds "{OrganizationId}_{ApplicationId}_{Folder}").
 # trivy:ignore:AWS-0025 -- AWS-owned key is sufficient for this table at this stage;
 # a customer-managed KMS key adds per-request cost and key-rotation overhead not justified yet.
 # Revisit if compliance requirements change.
 resource "aws_dynamodb_table" "scenarios_by_folder" {
   name         = "${local.name_prefix}-scenarios-by-folder-table"
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "PartitionKey"
+  hash_key     = "OrganizationId_ApplicationId_Folder"
   range_key    = "ScenarioId"
 
   attribute {
-    name = "PartitionKey"
+    name = "OrganizationId_ApplicationId_Folder"
     type = "S"
   }
 
@@ -469,19 +469,19 @@ resource "aws_dynamodb_table" "scenarios_by_folder" {
 # Mapping table so "list Scenarios with tag X" is a plain, strongly consistent
 # partition query instead of a filter expression. One row per (Scenario, tag) pair;
 # kept in sync with the scenarios table in the same DynamoDB transaction. Schema must
-# stay in sync with DynamoDbScenarioRepository.cs (the PartitionKey attribute holds
-# "{OrganizationId}_{ApplicationId}_{Tag}").
+# stay in sync with DynamoDbScenarioRepository.cs (the OrganizationId_ApplicationId_Tag
+# attribute holds "{OrganizationId}_{ApplicationId}_{Tag}").
 # trivy:ignore:AWS-0025 -- AWS-owned key is sufficient for this table at this stage;
 # a customer-managed KMS key adds per-request cost and key-rotation overhead not justified yet.
 # Revisit if compliance requirements change.
 resource "aws_dynamodb_table" "scenarios_by_tag" {
   name         = "${local.name_prefix}-scenarios-by-tag-table"
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "PartitionKey"
+  hash_key     = "OrganizationId_ApplicationId_Tag"
   range_key    = "ScenarioId"
 
   attribute {
-    name = "PartitionKey"
+    name = "OrganizationId_ApplicationId_Tag"
     type = "S"
   }
 

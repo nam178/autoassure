@@ -88,23 +88,26 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
             }
         );
 
-        await CreateMappingTableAsync(ScenariosByFolderTableName);
-        await CreateMappingTableAsync(ScenariosByTagTableName);
+        await CreateMappingTableAsync(
+            ScenariosByFolderTableName,
+            "OrganizationId_ApplicationId_Folder"
+        );
+        await CreateMappingTableAsync(ScenariosByTagTableName, "OrganizationId_ApplicationId_Tag");
     }
 
-    private async Task CreateMappingTableAsync(string tableName) =>
+    private async Task CreateMappingTableAsync(string tableName, string partitionKeyName) =>
         await _client.CreateTableAsync(
             new CreateTableRequest
             {
                 TableName = tableName,
                 KeySchema =
                 [
-                    new KeySchemaElement("PartitionKey", KeyType.HASH),
+                    new KeySchemaElement(partitionKeyName, KeyType.HASH),
                     new KeySchemaElement("ScenarioId", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("PartitionKey", ScalarAttributeType.S),
+                    new AttributeDefinition(partitionKeyName, ScalarAttributeType.S),
                     new AttributeDefinition("ScenarioId", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,

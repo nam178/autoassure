@@ -119,8 +119,8 @@ public sealed class ActivitiesControllerTests
             }
         );
 
-        await CreateMappingTableAsync("ScenariosByFolder");
-        await CreateMappingTableAsync("ScenariosByTag");
+        await CreateMappingTableAsync("ScenariosByFolder", "OrganizationId_ApplicationId_Folder");
+        await CreateMappingTableAsync("ScenariosByTag", "OrganizationId_ApplicationId_Tag");
 
         await _client.CreateTableAsync(
             new CreateTableRequest
@@ -231,7 +231,7 @@ public sealed class ActivitiesControllerTests
         );
     }
 
-    private async Task CreateMappingTableAsync(string tableName)
+    private async Task CreateMappingTableAsync(string tableName, string partitionKeyName)
     {
         await _client.CreateTableAsync(
             new CreateTableRequest
@@ -239,12 +239,12 @@ public sealed class ActivitiesControllerTests
                 TableName = tableName,
                 KeySchema =
                 [
-                    new KeySchemaElement("PartitionKey", KeyType.HASH),
+                    new KeySchemaElement(partitionKeyName, KeyType.HASH),
                     new KeySchemaElement("ScenarioId", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("PartitionKey", ScalarAttributeType.S),
+                    new AttributeDefinition(partitionKeyName, ScalarAttributeType.S),
                     new AttributeDefinition("ScenarioId", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,

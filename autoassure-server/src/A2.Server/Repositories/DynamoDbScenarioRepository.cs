@@ -11,6 +11,11 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
 {
     private const string IdIndexName = "IdIndex";
 
+    // Partition key attribute names of the two mapping tables. They hold
+    // "{OrganizationId}_{ApplicationId}_{Folder}" and "{OrganizationId}_{ApplicationId}_{Tag}".
+    private const string FolderPartitionKeyName = "OrganizationId_ApplicationId_Folder";
+    private const string TagPartitionKeyName = "OrganizationId_ApplicationId_Tag";
+
     private string ScenarioTableName => options.Value.ScenarioTableName;
     private string ScenariosByFolderTableName => options.Value.ScenariosByFolderTableName;
     private string ScenariosByTagTableName => options.Value.ScenariosByTagTableName;
@@ -179,6 +184,7 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
     ) =>
         ListByMappingAsync(
             ScenariosByFolderTableName,
+            FolderPartitionKeyName,
             $"{organizationId}_{applicationId}_{folder}"
         );
 
@@ -186,10 +192,16 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
         Guid organizationId,
         Guid applicationId,
         string tag
-    ) => ListByMappingAsync(ScenariosByTagTableName, $"{organizationId}_{applicationId}_{tag}");
+    ) =>
+        ListByMappingAsync(
+            ScenariosByTagTableName,
+            TagPartitionKeyName,
+            $"{organizationId}_{applicationId}_{tag}"
+        );
 
     private async Task<IReadOnlyList<Scenario>> ListByMappingAsync(
         string mappingTableName,
+        string partitionKeyName,
         string partitionKey
     )
     {
@@ -197,7 +209,7 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
             new QueryRequest
             {
                 TableName = mappingTableName,
-                KeyConditionExpression = "PartitionKey = :partitionKey",
+                KeyConditionExpression = $"{partitionKeyName} = :partitionKey",
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
                     [":partitionKey"] = new(partitionKey),
@@ -318,7 +330,7 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
                 TableName = ScenariosByFolderTableName,
                 Item = new Dictionary<string, AttributeValue>
                 {
-                    ["PartitionKey"] = new(FolderPartitionKey(scenario, folder)),
+                    [FolderPartitionKeyName] = new(FolderPartitionKey(scenario, folder)),
                     ["ScenarioId"] = new(scenario.Id.ToString()),
                     ["OrganizationId"] = new(scenario.OrganizationId.ToString()),
                     ["ApplicationId"] = new(scenario.ApplicationId.ToString()),
@@ -336,7 +348,7 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
                 TableName = ScenariosByFolderTableName,
                 Key = new Dictionary<string, AttributeValue>
                 {
-                    ["PartitionKey"] = new(FolderPartitionKey(scenario, folder)),
+                    [FolderPartitionKeyName] = new(FolderPartitionKey(scenario, folder)),
                     ["ScenarioId"] = new(scenario.Id.ToString()),
                 },
             },
@@ -350,7 +362,7 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
                 TableName = ScenariosByTagTableName,
                 Item = new Dictionary<string, AttributeValue>
                 {
-                    ["PartitionKey"] = new(TagPartitionKey(scenario, tag)),
+                    [TagPartitionKeyName] = new(TagPartitionKey(scenario, tag)),
                     ["ScenarioId"] = new(scenario.Id.ToString()),
                     ["OrganizationId"] = new(scenario.OrganizationId.ToString()),
                     ["ApplicationId"] = new(scenario.ApplicationId.ToString()),
@@ -368,7 +380,7 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
                 TableName = ScenariosByTagTableName,
                 Key = new Dictionary<string, AttributeValue>
                 {
-                    ["PartitionKey"] = new(TagPartitionKey(scenario, tag)),
+                    [TagPartitionKeyName] = new(TagPartitionKey(scenario, tag)),
                     ["ScenarioId"] = new(scenario.Id.ToString()),
                 },
             },
