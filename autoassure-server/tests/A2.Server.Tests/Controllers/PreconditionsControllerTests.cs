@@ -588,8 +588,8 @@ public sealed class PreconditionsControllerTests
     }
 
     [Theory]
-    [InlineData(500, HttpStatusCode.OK)]
-    [InlineData(501, HttpStatusCode.BadRequest)]
+    [InlineData(10000, HttpStatusCode.OK)]
+    [InlineData(10001, HttpStatusCode.BadRequest)]
     public async Task Create_WhenExampleValueLengthAtBoundary_EnforcesLengthLimit(
         int exampleValueLength,
         HttpStatusCode expectedStatus
