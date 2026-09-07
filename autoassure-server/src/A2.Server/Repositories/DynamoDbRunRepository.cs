@@ -1,3 +1,4 @@
+using System.Globalization;
 using A2.Server.Common;
 using A2.Server.Models;
 using Amazon.DynamoDBv2;
@@ -204,6 +205,199 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             )
             .ToList();
     }
+
+    public async Task<bool> TryStartAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid id,
+        DateTimeOffset startedAt
+    )
+    {
+        // When a Run is claimed, Then its DeadlineAt is fixed from this same instant so the sweeper
+        // (task 8) always compares against the moment the worker actually started, not against a
+        // separately-read clock.
+        var deadlineAt = startedAt + RunExecutionPolicy.MaxRunDuration;
+
+        try
+        {
+            await client.UpdateItemAsync(
+                new UpdateItemRequest
+                {
+                    TableName = RunTableName,
+                    Key = HeaderKey(organizationId, applicationId, id),
+                    UpdateExpression =
+                        "SET #status = :running, StartedAt = :startedAt, DeadlineAt = :deadlineAt, "
+                            + "LastHeartbeatAt = :startedAt, InFlightShard = :shard",
+                    // Status is the only concurrency control (see fix_run_design.md section 5) -- this
+                    // is what lets exactly one of several racing claims win, and it doubles as an
+                    // existence check: a Run that does not exist has no Status attribute at all, so the
+                    // comparison fails the same way.
+                    ConditionExpression = "#status = :pending",
+                    ExpressionAttributeNames = new Dictionary<string, string> { ["#status"] = "Status" },
+                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    {
+                        [":running"] = new(RunStatus.Running.ToString()),
+                        [":pending"] = new(RunStatus.Pending.ToString()),
+                        [":startedAt"] = new(startedAt.ToString("O")),
+                        [":deadlineAt"] = new(deadlineAt.ToString("O")),
+                        [":shard"] = new(DynamoDbMapper.RunInFlightShard(id)),
+                    },
+                }
+            );
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> TryEndAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid id,
+        RunStatus terminalStatus,
+        RunStatusReason? statusReason,
+        DateTimeOffset completedAt,
+        DateTimeOffset? heartbeatCutoff = null
+    )
+    {
+        if (
+            terminalStatus != RunStatus.Completed
+            && terminalStatus != RunStatus.Cancelled
+            && terminalStatus != RunStatus.Abandoned
+        )
+        {
+            throw new ArgumentException(
+                $"{terminalStatus} is not a terminal state End Run can write -- only Completed, "
+                    + "Cancelled or Abandoned.",
+                nameof(terminalStatus)
+            );
+        }
+
+        if (statusReason is not null && terminalStatus != RunStatus.Abandoned)
+        {
+            throw new ArgumentException(
+                "StatusReason can only be written alongside Abandoned -- Completed and Cancelled are "
+                    + "self-explanatory (see Run.StatusReason's doc).",
+                nameof(statusReason)
+            );
+        }
+
+        // When the sweeper calls End Run, Then it adds LastHeartbeatAt < heartbeatCutoff on top of the
+        // Status = Running condition every caller shares, so a worker that beat again after the sweeper
+        // read it as stale keeps its Run.
+        var conditionExpression = "#status = :running";
+        var attributeValues = new Dictionary<string, AttributeValue>
+        {
+            [":terminal"] = new(terminalStatus.ToString()),
+            [":completedAt"] = new(completedAt.ToString("O")),
+            [":running"] = new(RunStatus.Running.ToString()),
+        };
+        if (heartbeatCutoff is { } cutoff)
+        {
+            conditionExpression += " AND LastHeartbeatAt < :cutoff";
+            attributeValues[":cutoff"] = new(cutoff.ToString("O"));
+        }
+
+        // Removing InFlightShard on every terminal transition is what drops a finished Run out of the
+        // sweeper's sparse InFlightIndex, whichever of the three callers ended it.
+        var updateExpression = "SET #status = :terminal, CompletedAt = :completedAt REMOVE InFlightShard";
+        if (statusReason is { } reason)
+        {
+            updateExpression =
+                "SET #status = :terminal, StatusReason = :reason, CompletedAt = :completedAt "
+                    + "REMOVE InFlightShard";
+            attributeValues[":reason"] = new(reason.ToString());
+        }
+
+        try
+        {
+            await client.UpdateItemAsync(
+                new UpdateItemRequest
+                {
+                    TableName = RunTableName,
+                    Key = HeaderKey(organizationId, applicationId, id),
+                    UpdateExpression = updateExpression,
+                    ConditionExpression = conditionExpression,
+                    ExpressionAttributeNames = new Dictionary<string, string> { ["#status"] = "Status" },
+                    ExpressionAttributeValues = attributeValues,
+                }
+            );
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> TryUpdateStatsAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid id,
+        int totalActivityCount,
+        int passedActivityCount,
+        int failedActivityCount,
+        int skippedActivityCount
+    )
+    {
+        try
+        {
+            await client.UpdateItemAsync(
+                new UpdateItemRequest
+                {
+                    TableName = RunTableName,
+                    Key = HeaderKey(organizationId, applicationId, id),
+                    UpdateExpression =
+                        "SET TotalActivityCount = :total, PassedActivityCount = :passed, "
+                            + "FailedActivityCount = :failed, SkippedActivityCount = :skipped",
+                    ConditionExpression = "#status = :running",
+                    ExpressionAttributeNames = new Dictionary<string, string> { ["#status"] = "Status" },
+                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    {
+                        [":total"] = new AttributeValue
+                        {
+                            N = totalActivityCount.ToString(CultureInfo.InvariantCulture),
+                        },
+                        [":passed"] = new AttributeValue
+                        {
+                            N = passedActivityCount.ToString(CultureInfo.InvariantCulture),
+                        },
+                        [":failed"] = new AttributeValue
+                        {
+                            N = failedActivityCount.ToString(CultureInfo.InvariantCulture),
+                        },
+                        [":skipped"] = new AttributeValue
+                        {
+                            N = skippedActivityCount.ToString(CultureInfo.InvariantCulture),
+                        },
+                        [":running"] = new(RunStatus.Running.ToString()),
+                    },
+                }
+            );
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
+
+    // Builds a header row's primary key -- the shared Key every Start/End/Update Stats UpdateItem
+    // targets, since none of them ever touch a Scenario snapshot or status update row.
+    private static Dictionary<string, AttributeValue> HeaderKey(
+        Guid organizationId,
+        Guid applicationId,
+        Guid id
+    ) =>
+        new()
+        {
+            ["OrganizationId_ApplicationId"] = new(
+                DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+            ),
+            ["RowKey"] = new(DynamoDbMapper.RunHeaderRowKey(id)),
+        };
 
     private static bool IsExpired(long? expiresAt) =>
         expiresAt is { } value && value <= DateTimeOffset.UtcNow.ToUnixTimeSeconds();

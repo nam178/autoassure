@@ -655,4 +655,404 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var summary = Assert.Single(summaries);
         Assert.Equal(freshRun.Id, summary.Id);
     }
+
+    // Reads a Run header's raw row straight from the table, bypassing the repository, so a test can
+    // check storage-only attributes like InFlightShard that no repository method surfaces on a Run.
+    private async Task<Dictionary<string, AttributeValue>> GetRawHeaderRowAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid runId
+    )
+    {
+        var response = await _client.GetItemAsync(
+            new GetItemRequest
+            {
+                TableName = RunTableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    ["OrganizationId_ApplicationId"] = new(
+                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                    ),
+                    ["RowKey"] = new(DynamoDbMapper.RunHeaderRowKey(runId)),
+                },
+                ConsistentRead = true,
+            }
+        );
+        return response.Item;
+    }
+
+    private async Task<Guid> CreatePendingRunAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid environmentId
+    )
+    {
+        await PutApplicationAsync(organizationId, applicationId);
+        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
+        var run = CreateRun(organizationId, applicationId, environmentId);
+        await _repository.TryCreateAsync(run, [CreateScenarioSnapshot()]);
+        return run.Id;
+    }
+
+    [Fact]
+    public async Task TryStartAsync_WhenRunIsPending_SucceedsAndWritesInFlightShard()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+        var startedAt = FixedNow;
+
+        // test
+        var result = await _repository.TryStartAsync(organizationId, applicationId, runId, startedAt);
+        var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+
+        // verify
+        Assert.True(result);
+        Assert.Equal(RunStatus.Running.ToString(), row["Status"].S);
+        Assert.Equal(startedAt.ToString("O"), row["StartedAt"].S);
+        Assert.Equal(startedAt.ToString("O"), row["LastHeartbeatAt"].S);
+        Assert.Equal(
+            (startedAt + RunExecutionPolicy.MaxRunDuration).ToString("O"),
+            row["DeadlineAt"].S
+        );
+        Assert.Equal(DynamoDbMapper.RunInFlightShard(runId), row["InFlightShard"].S);
+    }
+
+    [Theory]
+    [InlineData(RunStatus.Running)]
+    [InlineData(RunStatus.Completed)]
+    [InlineData(RunStatus.Cancelled)]
+    [InlineData(RunStatus.Abandoned)]
+    public async Task TryStartAsync_WhenRunIsNotPending_FailsAndChangesNothing(RunStatus notPending)
+    {
+        // setup -- claim the Run once to reach Running, then optionally end it, so its Status is
+        // notPending before the real test call.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+        await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+        if (notPending != RunStatus.Running)
+        {
+            await _repository.TryEndAsync(
+                organizationId,
+                applicationId,
+                runId,
+                notPending,
+                notPending == RunStatus.Abandoned ? RunStatusReason.WorkerCrashed : null,
+                FixedNow
+            );
+        }
+        var beforeRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+
+        // test
+        var result = await _repository.TryStartAsync(
+            organizationId,
+            applicationId,
+            runId,
+            FixedNow.AddMinutes(1)
+        );
+        var afterRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+
+        // verify
+        Assert.False(result);
+        Assert.Equal(beforeRow["Status"].S, afterRow["Status"].S);
+        Assert.Equal(beforeRow.ContainsKey("StartedAt"), afterRow.ContainsKey("StartedAt"));
+    }
+
+    [Fact]
+    public async Task TryStartAsync_WhenTwoStartsRaceTheSamePendingRun_ExactlyOneWins()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+
+        // test -- two sequential claims stand in for two racing workers; the second one arriving after
+        // the first already flipped Status is enough to prove the conditional write, without needing
+        // real concurrent threads.
+        var first = await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+        var second = await _repository.TryStartAsync(
+            organizationId,
+            applicationId,
+            runId,
+            FixedNow.AddSeconds(1)
+        );
+
+        // verify
+        Assert.True(first);
+        Assert.False(second);
+    }
+
+    [Theory]
+    [InlineData(RunStatus.Completed)]
+    [InlineData(RunStatus.Cancelled)]
+    [InlineData(RunStatus.Abandoned)]
+    public async Task TryEndAsync_WhenRunIsRunning_SucceedsAndRemovesInFlightShard(
+        RunStatus terminalStatus
+    )
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+        await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+        var completedAt = FixedNow.AddMinutes(5);
+        RunStatusReason? statusReason =
+            terminalStatus == RunStatus.Abandoned ? RunStatusReason.HeartbeatLost : null;
+
+        // test
+        var result = await _repository.TryEndAsync(
+            organizationId,
+            applicationId,
+            runId,
+            terminalStatus,
+            statusReason,
+            completedAt
+        );
+        var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+
+        // verify
+        Assert.True(result);
+        Assert.Equal(terminalStatus.ToString(), row["Status"].S);
+        Assert.Equal(completedAt.ToString("O"), row["CompletedAt"].S);
+        Assert.False(row.ContainsKey("InFlightShard"));
+        if (statusReason is { } reason)
+        {
+            Assert.Equal(reason.ToString(), row["StatusReason"].S);
+        }
+        else
+        {
+            Assert.False(row.ContainsKey("StatusReason"));
+        }
+    }
+
+    [Fact]
+    public async Task TryEndAsync_WhenRunIsPending_FailsAndChangesNothing()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+
+        // test
+        var result = await _repository.TryEndAsync(
+            organizationId,
+            applicationId,
+            runId,
+            RunStatus.Completed,
+            null,
+            FixedNow
+        );
+        var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+
+        // verify
+        Assert.False(result);
+        Assert.Equal(RunStatus.Pending.ToString(), row["Status"].S);
+        Assert.False(row.ContainsKey("CompletedAt"));
+    }
+
+    [Fact]
+    public async Task TryEndAsync_WhenRunAlreadyEnded_FailsAndCannotBeEndedTwice()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+        await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+        var firstCompletedAt = FixedNow.AddMinutes(5);
+        await _repository.TryEndAsync(
+            organizationId,
+            applicationId,
+            runId,
+            RunStatus.Completed,
+            null,
+            firstCompletedAt
+        );
+
+        // test -- a second End Run call, this time trying to cancel an already-Completed Run
+        var result = await _repository.TryEndAsync(
+            organizationId,
+            applicationId,
+            runId,
+            RunStatus.Cancelled,
+            null,
+            FixedNow.AddMinutes(10)
+        );
+        var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+
+        // verify -- the second call changed nothing; the Run is still Completed with its first
+        // CompletedAt
+        Assert.False(result);
+        Assert.Equal(RunStatus.Completed.ToString(), row["Status"].S);
+        Assert.Equal(firstCompletedAt.ToString("O"), row["CompletedAt"].S);
+    }
+
+    [Fact]
+    public async Task TryEndAsync_WhenRunHasEnded_CannotTakeStatsEither()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+        await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+        await _repository.TryEndAsync(
+            organizationId,
+            applicationId,
+            runId,
+            RunStatus.Completed,
+            null,
+            FixedNow.AddMinutes(5)
+        );
+
+        // test
+        var result = await _repository.TryUpdateStatsAsync(
+            organizationId,
+            applicationId,
+            runId,
+            totalActivityCount: 10,
+            passedActivityCount: 10,
+            failedActivityCount: 0,
+            skippedActivityCount: 0
+        );
+        var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+
+        // verify
+        Assert.False(result);
+        Assert.Equal("0", row["TotalActivityCount"].N);
+    }
+
+    [Fact]
+    public async Task TryEndAsync_WhenSweeperCallsWithFreshHeartbeat_Fails()
+    {
+        // setup -- a Running Run whose heartbeat was just set by Start Run
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+        var startedAt = FixedNow;
+        await _repository.TryStartAsync(organizationId, applicationId, runId, startedAt);
+
+        // test -- the sweeper's cutoff is before the Run's actual heartbeat, so the heartbeat is fresh
+        // relative to it and the sweeper must not end the Run
+        var staleBeforeCutoff = startedAt.AddSeconds(-90);
+        var result = await _repository.TryEndAsync(
+            organizationId,
+            applicationId,
+            runId,
+            RunStatus.Abandoned,
+            RunStatusReason.HeartbeatLost,
+            FixedNow.AddMinutes(5),
+            heartbeatCutoff: staleBeforeCutoff
+        );
+        var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+
+        // verify -- the Run is still Running; the sweeper's condition rejected the fresh heartbeat
+        Assert.False(result);
+        Assert.Equal(RunStatus.Running.ToString(), row["Status"].S);
+    }
+
+    [Fact]
+    public async Task TryEndAsync_WhenSweeperCallsWithStaleHeartbeatCutoff_Succeeds()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+        var startedAt = FixedNow;
+        await _repository.TryStartAsync(organizationId, applicationId, runId, startedAt);
+
+        // test -- the sweeper's cutoff is after the Run's last heartbeat, so the heartbeat reads as
+        // stale and the sweeper may abandon the Run
+        var cutoffAfterHeartbeat = startedAt.AddSeconds(90);
+        var result = await _repository.TryEndAsync(
+            organizationId,
+            applicationId,
+            runId,
+            RunStatus.Abandoned,
+            RunStatusReason.HeartbeatLost,
+            FixedNow.AddMinutes(5),
+            heartbeatCutoff: cutoffAfterHeartbeat
+        );
+        var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+
+        // verify
+        Assert.True(result);
+        Assert.Equal(RunStatus.Abandoned.ToString(), row["Status"].S);
+        Assert.Equal(RunStatusReason.HeartbeatLost.ToString(), row["StatusReason"].S);
+    }
+
+    [Fact]
+    public async Task TryUpdateStatsAsync_WhenRunIsRunning_WritesAbsoluteCounts()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+        await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+
+        // test -- a second call with different, still-absolute numbers proves a retry (or a later
+        // progress update) simply overwrites rather than accumulating.
+        await _repository.TryUpdateStatsAsync(
+            organizationId,
+            applicationId,
+            runId,
+            totalActivityCount: 10,
+            passedActivityCount: 3,
+            failedActivityCount: 1,
+            skippedActivityCount: 0
+        );
+        var result = await _repository.TryUpdateStatsAsync(
+            organizationId,
+            applicationId,
+            runId,
+            totalActivityCount: 10,
+            passedActivityCount: 7,
+            failedActivityCount: 2,
+            skippedActivityCount: 1
+        );
+        var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+
+        // verify
+        Assert.True(result);
+        Assert.Equal("10", row["TotalActivityCount"].N);
+        Assert.Equal("7", row["PassedActivityCount"].N);
+        Assert.Equal("2", row["FailedActivityCount"].N);
+        Assert.Equal("1", row["SkippedActivityCount"].N);
+    }
+
+    [Fact]
+    public async Task TryUpdateStatsAsync_WhenRunIsPending_FailsAndChangesNothing()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+
+        // test
+        var result = await _repository.TryUpdateStatsAsync(
+            organizationId,
+            applicationId,
+            runId,
+            totalActivityCount: 5,
+            passedActivityCount: 5,
+            failedActivityCount: 0,
+            skippedActivityCount: 0
+        );
+        var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+
+        // verify
+        Assert.False(result);
+        Assert.Equal("0", row["TotalActivityCount"].N);
+    }
 }

@@ -51,8 +51,71 @@ public interface IRunRepository
     /// header is not a Run that still exists (see fix_run_design.md section 6). Nothing lists Runs by
     /// Scenario -- that is out of scope (see fix_run_design.md section 6 and the goal file's "out of
     /// scope" list).</summary>
-    Task<IReadOnlyList<RunSummary>> ListByApplicationAsync(
+    Task<IReadOnlyList<RunSummary>> ListByApplicationAsync(Guid organizationId, Guid applicationId);
+
+    /// <summary>Claims a Pending Run for execution: sets <c>Status</c> to Running, stamps
+    /// <paramref name="startedAt"/> onto <c>StartedAt</c> and the first <c>LastHeartbeatAt</c>, derives
+    /// <c>DeadlineAt</c> from it via <see cref="RunExecutionPolicy.MaxRunDuration"/>, and marks the Run
+    /// in-flight so the sweeper's (task 8) index can find it. <c>Status</c> is the only concurrency
+    /// control -- conditioning this write on <c>Status = Pending</c> is what lets exactly one of several
+    /// racing claims win.
+    ///
+    /// Returns false, and writes nothing, when the Run's <c>Status</c> is not Pending -- including a
+    /// second claim racing an already-successful one, which is what makes duplicate dispatch harmless
+    /// (see fix_run_design.md section 5).</summary>
+    Task<bool> TryStartAsync(
         Guid organizationId,
-        Guid applicationId
+        Guid applicationId,
+        Guid id,
+        DateTimeOffset startedAt
+    );
+
+    /// <summary>Moves a Running Run to one of its terminal states, stamping <paramref name="completedAt"/>
+    /// onto <c>CompletedAt</c> and, for Abandoned, <paramref name="statusReason"/> onto
+    /// <c>StatusReason</c>. Always removes the Run's in-flight marker, which is what drops a finished Run
+    /// out of the sweeper's index.
+    ///
+    /// Serves all three End Run callers named in fix_run_design.md section 5 -- the owning worker
+    /// finishing, the user cancelling, and the sweeper abandoning -- rather than one method per caller,
+    /// since splitting it would give the same rule two places to drift apart. The sweeper is the only
+    /// caller that supplies <paramref name="heartbeatCutoff"/>: when present, the write also requires
+    /// <c>LastHeartbeatAt &lt; heartbeatCutoff</c>, so a worker that beat again in the meantime keeps its
+    /// Run even though the sweeper read it as stale a moment earlier.
+    ///
+    /// Returns false, and writes nothing, when the Run's <c>Status</c> is not Running, or when
+    /// <paramref name="heartbeatCutoff"/> is supplied and the Run's <c>LastHeartbeatAt</c> is not older
+    /// than it.
+    ///
+    /// Throws <see cref="ArgumentException"/> when <paramref name="terminalStatus"/> is Pending or
+    /// Running -- neither is a state this operation can end a Run in -- or when
+    /// <paramref name="statusReason"/> is supplied together with a <paramref name="terminalStatus"/> other
+    /// than Abandoned, which <see cref="Run.StatusReason"/>'s own doc says never carries one. Callers
+    /// avoid both by only ever passing Completed, Cancelled or Abandoned, and a reason only alongside
+    /// Abandoned.</summary>
+    Task<bool> TryEndAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid id,
+        RunStatus terminalStatus,
+        RunStatusReason? statusReason,
+        DateTimeOffset completedAt,
+        DateTimeOffset? heartbeatCutoff = null
+    );
+
+    /// <summary>Overwrites a Running Run's four activity counts with the absolute values supplied here --
+    /// never an increment -- so a retried call does no harm. Its own operation rather than folded into
+    /// appending a status update, which is why its counts can lag the log by one write (see
+    /// fix_run_design.md section 5); nothing that needs exact progress reads these counts, since that
+    /// caller folds the log instead.
+    ///
+    /// Returns false, and writes nothing, when the Run's <c>Status</c> is not Running.</summary>
+    Task<bool> TryUpdateStatsAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid id,
+        int totalActivityCount,
+        int passedActivityCount,
+        int failedActivityCount,
+        int skippedActivityCount
     );
 }
