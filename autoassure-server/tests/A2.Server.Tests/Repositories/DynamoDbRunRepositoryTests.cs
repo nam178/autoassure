@@ -705,7 +705,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var startedAt = FixedNow;
 
         // test
-        var result = await _repository.TryStartAsync(organizationId, applicationId, runId, startedAt);
+        var result = await _repository.TryStartAsync(
+            organizationId,
+            applicationId,
+            runId,
+            startedAt
+        );
         var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
 
         // verify
@@ -831,14 +836,32 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         }
     }
 
-    [Fact]
-    public async Task TryEndAsync_WhenRunIsPending_FailsAndChangesNothing()
+    [Theory]
+    [InlineData(RunStatus.Pending)]
+    [InlineData(RunStatus.Completed)]
+    [InlineData(RunStatus.Cancelled)]
+    [InlineData(RunStatus.Abandoned)]
+    public async Task TryEndAsync_WhenRunIsNotRunning_FailsAndChangesNothing(RunStatus notRunning)
     {
-        // setup
+        // setup -- reach notRunning by claiming the Run and, unless it must stay Pending, ending it once
+        // with that status, so the real test call attempts to end a Run that is not Running.
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+        if (notRunning != RunStatus.Pending)
+        {
+            await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+            await _repository.TryEndAsync(
+                organizationId,
+                applicationId,
+                runId,
+                notRunning,
+                notRunning == RunStatus.Abandoned ? RunStatusReason.WorkerCrashed : null,
+                FixedNow.AddMinutes(5)
+            );
+        }
+        var beforeRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
 
         // test
         var result = await _repository.TryEndAsync(
@@ -846,87 +869,20 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             applicationId,
             runId,
             RunStatus.Completed,
-            null,
-            FixedNow
-        );
-        var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
-
-        // verify
-        Assert.False(result);
-        Assert.Equal(RunStatus.Pending.ToString(), row["Status"].S);
-        Assert.False(row.ContainsKey("CompletedAt"));
-    }
-
-    [Fact]
-    public async Task TryEndAsync_WhenRunAlreadyEnded_FailsAndCannotBeEndedTwice()
-    {
-        // setup
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
-        await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
-        var firstCompletedAt = FixedNow.AddMinutes(5);
-        await _repository.TryEndAsync(
-            organizationId,
-            applicationId,
-            runId,
-            RunStatus.Completed,
-            null,
-            firstCompletedAt
-        );
-
-        // test -- a second End Run call, this time trying to cancel an already-Completed Run
-        var result = await _repository.TryEndAsync(
-            organizationId,
-            applicationId,
-            runId,
-            RunStatus.Cancelled,
             null,
             FixedNow.AddMinutes(10)
         );
-        var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+        var afterRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
 
-        // verify -- the second call changed nothing; the Run is still Completed with its first
-        // CompletedAt
+        // verify -- the call changed nothing; the Run keeps whatever Status and CompletedAt it had
+        // before this call.
         Assert.False(result);
-        Assert.Equal(RunStatus.Completed.ToString(), row["Status"].S);
-        Assert.Equal(firstCompletedAt.ToString("O"), row["CompletedAt"].S);
-    }
-
-    [Fact]
-    public async Task TryEndAsync_WhenRunHasEnded_CannotTakeStatsEither()
-    {
-        // setup
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
-        await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
-        await _repository.TryEndAsync(
-            organizationId,
-            applicationId,
-            runId,
-            RunStatus.Completed,
-            null,
-            FixedNow.AddMinutes(5)
-        );
-
-        // test
-        var result = await _repository.TryUpdateStatsAsync(
-            organizationId,
-            applicationId,
-            runId,
-            totalActivityCount: 10,
-            passedActivityCount: 10,
-            failedActivityCount: 0,
-            skippedActivityCount: 0
-        );
-        var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
-
-        // verify
-        Assert.False(result);
-        Assert.Equal("0", row["TotalActivityCount"].N);
+        Assert.Equal(beforeRow["Status"].S, afterRow["Status"].S);
+        Assert.Equal(beforeRow.ContainsKey("CompletedAt"), afterRow.ContainsKey("CompletedAt"));
+        if (beforeRow.TryGetValue("CompletedAt", out var completedAt))
+        {
+            Assert.Equal(completedAt.S, afterRow["CompletedAt"].S);
+        }
     }
 
     [Fact]
@@ -1030,14 +986,31 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         Assert.Equal("1", row["SkippedActivityCount"].N);
     }
 
-    [Fact]
-    public async Task TryUpdateStatsAsync_WhenRunIsPending_FailsAndChangesNothing()
+    [Theory]
+    [InlineData(RunStatus.Pending)]
+    [InlineData(RunStatus.Completed)]
+    [InlineData(RunStatus.Cancelled)]
+    [InlineData(RunStatus.Abandoned)]
+    public async Task TryUpdateStatsAsync_WhenRunIsNotRunning_FailsAndChangesNothing(RunStatus notRunning)
     {
-        // setup
+        // setup -- reach notRunning by claiming the Run and, unless it must stay Pending, ending it once
+        // with that status, so the real test call attempts to update stats on a Run that is not Running.
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+        if (notRunning != RunStatus.Pending)
+        {
+            await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+            await _repository.TryEndAsync(
+                organizationId,
+                applicationId,
+                runId,
+                notRunning,
+                notRunning == RunStatus.Abandoned ? RunStatusReason.WorkerCrashed : null,
+                FixedNow.AddMinutes(5)
+            );
+        }
 
         // test
         var result = await _repository.TryUpdateStatsAsync(
@@ -1051,7 +1024,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         );
         var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
 
-        // verify
+        // verify -- the call changed nothing; stats remain at zero.
         Assert.False(result);
         Assert.Equal("0", row["TotalActivityCount"].N);
     }
