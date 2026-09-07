@@ -413,7 +413,10 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     // this condition fails -- the worker finds out on its very next beat with no
                     // separate signalling channel (see fix_run_design.md section 5).
                     ConditionExpression = "#status = :running",
-                    ExpressionAttributeNames = new Dictionary<string, string> { ["#status"] = "Status" },
+                    ExpressionAttributeNames = new Dictionary<string, string>
+                    {
+                        ["#status"] = "Status",
+                    },
                     ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                     {
                         [":heartbeatAt"] = new(heartbeatAt.ToString("O")),
@@ -522,6 +525,136 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
 
         return staleRuns;
+    }
+
+    public async Task<bool> TryAppendStatusUpdateAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid id,
+        RunStatusUpdate update,
+        long? expiresAt
+    )
+    {
+        var transactItems = new List<TransactWriteItem>
+        {
+            new TransactWriteItem
+            {
+                Put = new Put
+                {
+                    TableName = RunTableName,
+                    Item = update.ToDynamoDbRow(id, organizationId, applicationId, expiresAt),
+                    // A retried append (dispatch is at-least-once) targets the same Seq and therefore
+                    // the same RowKey, so this is what turns the retry into a no-op instead of a
+                    // second row for the same update.
+                    ConditionExpression = "attribute_not_exists(RowKey)",
+                },
+            },
+            new TransactWriteItem
+            {
+                Update = new Update
+                {
+                    TableName = RunTableName,
+                    Key = HeaderKey(organizationId, applicationId, id),
+                    UpdateExpression = "SET LastSeq = :seq",
+                    // When LastSeq has already reached or passed this Seq, Then this append is a stale
+                    // retry and this condition fails alongside the Put above. When Status is not
+                    // Running, Then the owning worker was cancelled or swept and cannot append further
+                    // -- there is no other signalling channel (see fix_run_design.md section 5).
+                    ConditionExpression = "LastSeq < :seq AND #status = :running",
+                    ExpressionAttributeNames = new Dictionary<string, string>
+                    {
+                        ["#status"] = "Status",
+                    },
+                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    {
+                        [":seq"] = new AttributeValue
+                        {
+                            N = update.Seq.ToString(CultureInfo.InvariantCulture),
+                        },
+                        [":running"] = new(RunStatus.Running.ToString()),
+                    },
+                },
+            },
+        };
+
+        try
+        {
+            await client.TransactWriteItemsAsync(
+                new TransactWriteItemsRequest { TransactItems = transactItems }
+            );
+            return true;
+        }
+        catch (TransactionCanceledException ex)
+            when (ex.CancellationReasons?.Any(reason => reason.Code == "ConditionalCheckFailed")
+                == true)
+        {
+            return false;
+        }
+    }
+
+    public async Task<IReadOnlyList<RunStatusUpdate>> ListStatusUpdatesAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid id,
+        long afterSeq,
+        int limit
+    )
+    {
+        if (afterSeq < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(afterSeq),
+                afterSeq,
+                "afterSeq cannot be negative."
+            );
+        }
+
+        if (limit <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(limit), limit, "limit must be positive.");
+        }
+
+        // When afterSeq is already the largest value a seq can ever take, Then no row could possibly
+        // sort after it -- return empty rather than overflow computing afterSeq + 1 below.
+        if (afterSeq == long.MaxValue)
+        {
+            return [];
+        }
+
+        // BETWEEN this Run's own next-Seq key and its own highest-possible-Seq key stays entirely
+        // within this Run's update rows and never crosses into another Run's rows sharing the same
+        // partition -- see RunStatusUpdateRowKeyPrefix's doc for why a shared 36-character RunId prefix
+        // makes that safe. A bare "RowKey > :cursor" comparator alone would not: DynamoDB allows only
+        // one condition on a Query's sort key, so without this upper bound the query would also return
+        // every later-sorting row of every OTHER Run in the same Application, since every Run's rows
+        // share one partition. Seq is dense (see fix_run_design.md decision 9), so afterSeq + 1 is
+        // exactly the smallest Seq an actual row after the cursor could have -- there is no gap a real
+        // row could occupy strictly between afterSeq and afterSeq + 1.
+        var response = await client.QueryAsync(
+            new QueryRequest
+            {
+                TableName = RunTableName,
+                KeyConditionExpression =
+                    "OrganizationId_ApplicationId = :partitionKey AND RowKey BETWEEN :low AND :high",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":partitionKey"] = new(
+                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                    ),
+                    [":low"] = new(DynamoDbMapper.RunStatusUpdateRowKey(id, afterSeq + 1)),
+                    [":high"] = new(DynamoDbMapper.RunStatusUpdateRowKey(id, long.MaxValue)),
+                },
+                ConsistentRead = true,
+                ScanIndexForward = true,
+                // One bounded page, not the LastEvaluatedKey loop GetByIdAsync and
+                // ListByApplicationAsync use -- this cursor is a public, client-driven pagination
+                // mechanism (see fix_run_design.md section 4), so a caller wanting more polls again with
+                // the last Seq it received rather than this method reading until exhausted.
+                Limit = limit,
+            }
+        );
+
+        return response.Items.Select(row => row.ToRunStatusUpdate()).ToList();
     }
 
     // Builds a header row's primary key -- the shared Key every Start/End/Update Stats UpdateItem

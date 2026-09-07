@@ -9,11 +9,13 @@ using Microsoft.Extensions.Options;
 namespace A2.Server.Tests.Repositories;
 
 /// <summary>Integration tests for <see cref="DynamoDbRunRepository"/> against DynamoDB Local, covering
-/// Create Run, Get Run, List Runs, Start Run, End Run, Update Run Stats, Update Run Heart Beat and the
-/// stale in-flight Run query: the transactional create, its Application/Environment existence checks,
-/// the TTL retention numbers, the LastEvaluatedKey pagination loop, Get Run's exclusion of status update
-/// rows, List Runs' sparse RunHeaderIndex query, the state machine's conditioned writes, and the sparse
-/// InFlightIndex query's stale-heartbeat-or-passed-deadline logic across its ten shards.</summary>
+/// Create Run, Get Run, List Runs, Start Run, End Run, Update Run Stats, Update Run Heart Beat, the
+/// stale in-flight Run query, and Append/List Run Status Update: the transactional create, its
+/// Application/Environment existence checks, the TTL retention numbers, the LastEvaluatedKey pagination
+/// loop, Get Run's exclusion of status update rows, List Runs' sparse RunHeaderIndex query, the state
+/// machine's conditioned writes, the sparse InFlightIndex query's stale-heartbeat-or-passed-deadline
+/// logic across its ten shards, the append transaction's two conditions, and the status update log's
+/// cursor query across the zero-padding boundary at ten.</summary>
 [Collection("DynamoDbLocal")]
 public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLocalFixture)
     : IAsyncLifetime
@@ -225,6 +227,20 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             Folder = "/",
             Tags = [],
             Activities = [],
+        };
+
+    private static RunStatusUpdate CreateStatusUpdate(long seq, DateTimeOffset? createdAt = null) =>
+        new()
+        {
+            Seq = seq,
+            Kind = RunStatusUpdateKind.AppendActivityResult,
+            CreatedAt = createdAt ?? FixedNow,
+            ActivityResult = new ActivityResult
+            {
+                ScenarioId = Guid.CreateVersion7(),
+                ActivityId = Guid.CreateVersion7(),
+                Status = ActivityResultStatus.Passed,
+            },
         };
 
     // Reads a Run's raw rows straight from the table, bypassing the repository, so a test can inspect
@@ -1303,6 +1319,245 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         // test & verify
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
             () => _repository.ListStaleInFlightRunsAsync(RunExecutionPolicy.InFlightShardCount, DateTimeOffset.UtcNow)
+        );
+    }
+
+    [Fact]
+    public async Task TryAppendStatusUpdateAsync_WhenRunIsRunning_AddsOneRowAndMovesLastSeq()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, FixedNow);
+        var update = CreateStatusUpdate(1);
+
+        // test
+        var result = await _repository.TryAppendStatusUpdateAsync(
+            organizationId,
+            applicationId,
+            runId,
+            update,
+            expiresAt: 12345
+        );
+        var headerRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+        var rawRows = await QueryRawRowsAsync(organizationId, applicationId);
+
+        // verify
+        Assert.True(result);
+        Assert.Equal("1", headerRow["LastSeq"].N);
+        var updateRow = Assert.Single(
+            rawRows,
+            row => row["RowKey"].S == DynamoDbMapper.RunStatusUpdateRowKey(runId, 1)
+        );
+        Assert.Equal("12345", updateRow["ExpiresAt"].N);
+    }
+
+    [Fact]
+    public async Task TryAppendStatusUpdateAsync_WhenSameSeqAppendedTwice_LeavesOneRowAndOneLastSeq()
+    {
+        // setup -- a retried append (at-least-once dispatch) targets the same Seq
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, FixedNow);
+        var update = CreateStatusUpdate(1);
+
+        // test
+        var first = await _repository.TryAppendStatusUpdateAsync(
+            organizationId,
+            applicationId,
+            runId,
+            update,
+            expiresAt: null
+        );
+        var retry = await _repository.TryAppendStatusUpdateAsync(
+            organizationId,
+            applicationId,
+            runId,
+            update,
+            expiresAt: null
+        );
+        var headerRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+        var rawRows = await QueryRawRowsAsync(organizationId, applicationId);
+
+        // verify
+        Assert.True(first);
+        Assert.False(retry);
+        Assert.Equal("1", headerRow["LastSeq"].N);
+        var updateRowKey = DynamoDbMapper.RunStatusUpdateRowKey(runId, 1);
+        Assert.Single(rawRows, row => row["RowKey"].S == updateRowKey);
+    }
+
+    [Fact]
+    public async Task TryAppendStatusUpdateAsync_WhenSeqIsNotGreaterThanLastSeq_FailsAndChangesNothing()
+    {
+        // setup -- LastSeq is already 5
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, FixedNow);
+        await _repository.TryAppendStatusUpdateAsync(
+            organizationId,
+            applicationId,
+            runId,
+            CreateStatusUpdate(5),
+            expiresAt: null
+        );
+
+        // test -- a lower Seq than the current LastSeq
+        var result = await _repository.TryAppendStatusUpdateAsync(
+            organizationId,
+            applicationId,
+            runId,
+            CreateStatusUpdate(3),
+            expiresAt: null
+        );
+        var headerRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+        var rawRows = await QueryRawRowsAsync(organizationId, applicationId);
+
+        // verify -- the header keeps LastSeq 5, and no row was written for the rejected Seq 3, proving
+        // the transaction rolled back the Put alongside the failed header condition.
+        Assert.False(result);
+        Assert.Equal("5", headerRow["LastSeq"].N);
+        Assert.DoesNotContain(
+            rawRows,
+            row => row["RowKey"].S == DynamoDbMapper.RunStatusUpdateRowKey(runId, 3)
+        );
+    }
+
+    [Fact]
+    public async Task TryAppendStatusUpdateAsync_WhenRunHasEnded_FailsAndChangesNothing()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, FixedNow);
+        await _repository.TryEndAsync(
+            organizationId,
+            applicationId,
+            runId,
+            RunStatus.Completed,
+            null,
+            FixedNow.AddMinutes(5)
+        );
+
+        // test
+        var result = await _repository.TryAppendStatusUpdateAsync(
+            organizationId,
+            applicationId,
+            runId,
+            CreateStatusUpdate(1),
+            expiresAt: null
+        );
+        var headerRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+        var rawRows = await QueryRawRowsAsync(organizationId, applicationId);
+
+        // verify -- the Run ended without ever taking Seq 1; nothing was written for it.
+        Assert.False(result);
+        Assert.Equal("0", headerRow["LastSeq"].N);
+        Assert.DoesNotContain(
+            rawRows,
+            row => row["RowKey"].S == DynamoDbMapper.RunStatusUpdateRowKey(runId, 1)
+        );
+    }
+
+    [Fact]
+    public async Task ListStatusUpdatesAsync_WhenReadingAfterCursor_ReturnsOnlyLaterUpdatesInOrder()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, FixedNow);
+        for (var seq = 1; seq <= 3; seq++)
+        {
+            await _repository.TryAppendStatusUpdateAsync(
+                organizationId,
+                applicationId,
+                runId,
+                CreateStatusUpdate(seq),
+                expiresAt: null
+            );
+        }
+
+        // test
+        var updates = await _repository.ListStatusUpdatesAsync(
+            organizationId,
+            applicationId,
+            runId,
+            afterSeq: 1,
+            limit: 100
+        );
+
+        // verify
+        Assert.Equal([2L, 3L], updates.Select(update => update.Seq));
+    }
+
+    [Fact]
+    public async Task ListStatusUpdatesAsync_WhenSequencesCrossTen_ReturnsExactlyTenElevenTwelve()
+    {
+        // setup -- append Seq 1 through 12, crossing the point where zero-padding starts to matter:
+        // an unpadded key would sort "#update#10" before "#update#9", which would corrupt this exact
+        // query the moment the log passes nine entries.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, FixedNow);
+        for (var seq = 1; seq <= 12; seq++)
+        {
+            await _repository.TryAppendStatusUpdateAsync(
+                organizationId,
+                applicationId,
+                runId,
+                CreateStatusUpdate(seq),
+                expiresAt: null
+            );
+        }
+
+        // test -- read from cursor 9
+        var updates = await _repository.ListStatusUpdatesAsync(
+            organizationId,
+            applicationId,
+            runId,
+            afterSeq: 9,
+            limit: 100
+        );
+
+        // verify -- exactly 10, 11 and 12, in that order
+        Assert.Equal([10L, 11L, 12L], updates.Select(update => update.Seq));
+    }
+
+    [Fact]
+    public async Task ListStatusUpdatesAsync_WhenAfterSeqIsNegative_Throws()
+    {
+        // test & verify
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            () =>
+                _repository.ListStatusUpdatesAsync(
+                    Guid.CreateVersion7(),
+                    Guid.CreateVersion7(),
+                    Guid.CreateVersion7(),
+                    afterSeq: -1,
+                    limit: 10
+                )
+        );
+    }
+
+    [Fact]
+    public async Task ListStatusUpdatesAsync_WhenLimitIsNotPositive_Throws()
+    {
+        // test & verify
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            () =>
+                _repository.ListStatusUpdatesAsync(
+                    Guid.CreateVersion7(),
+                    Guid.CreateVersion7(),
+                    Guid.CreateVersion7(),
+                    afterSeq: 0,
+                    limit: 0
+                )
         );
     }
 }

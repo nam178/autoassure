@@ -156,4 +156,65 @@ public interface IRunRepository
         int shard,
         DateTimeOffset heartbeatCutoff
     );
+
+    /// <summary>Appends one entry to the Run's status update log and advances its <c>LastSeq</c>, in a
+    /// single transaction: puts the update row at its own row key (see
+    /// <see cref="DynamoDbMapper.RunStatusUpdateRowKey"/>) conditioned on <c>attribute_not_exists</c>,
+    /// and sets the header's <c>LastSeq</c> to <paramref name="update"/>'s own
+    /// <see cref="RunStatusUpdate.Seq"/> conditioned on <c>LastSeq &lt; Seq AND Status = Running</c>.
+    /// Those two conditions, committed together, do three jobs: a retried append (dispatch is
+    /// at-least-once) fails both and changes nothing; a worker that was cancelled or swept cannot append
+    /// to a Run that has already ended; and the header always carries the newest sequence number (see
+    /// fix_run_design.md section 3).
+    ///
+    /// The owning worker allocates <see cref="RunStatusUpdate.Seq"/> in memory and supplies it on
+    /// <paramref name="update"/> -- this repository never invents one, since "one owner for life" means
+    /// nothing else ever contends for the next number. Sequence numbers are 1-based: the first update of
+    /// a Run's log has Seq 1, which is what lets <see cref="ListStatusUpdatesAsync"/>'s
+    /// <c>afterSeq = 0</c> mean "from the start" -- a fresh Run's <c>LastSeq</c> is 0, and the condition
+    /// <c>0 &lt; 1</c> is what lets that very first append through.
+    ///
+    /// <paramref name="expiresAt"/> must be the Run's own header <c>ExpiresAt</c> -- the same value
+    /// <see cref="GetByIdAsync"/> already returned on <c>Header.ExpiresAt</c> -- so the update row
+    /// expires with the rest of the Run's rows (see fix_run_design.md section 6). It is supplied by the
+    /// caller rather than looked up here: the owning worker already holds the header in memory for the
+    /// life of the Run, and re-reading it on every appended result would add a read to the hottest write
+    /// path this repository has, for a value the caller already has.
+    ///
+    /// Returns false, and writes nothing, when either condition fails: this Seq was already appended,
+    /// the header's <c>LastSeq</c> has already moved past it, or the Run's <c>Status</c> is not
+    /// Running.</summary>
+    Task<bool> TryAppendStatusUpdateAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid id,
+        RunStatusUpdate update,
+        long? expiresAt
+    );
+
+    /// <summary>Returns one page of the Run's status update log, strictly after
+    /// <paramref name="afterSeq"/>, in ascending sequence order -- the log only the client folds (see
+    /// fix_run_design.md section 7). This repository never folds, interprets, or derives Run state from
+    /// these rows; it hands them back exactly as appended.
+    ///
+    /// Pass <paramref name="afterSeq"/> as 0 to read from the start: sequence numbers are 1-based (see
+    /// <see cref="TryAppendStatusUpdateAsync"/>), so 0 excludes nothing real. Reads with
+    /// <c>ConsistentRead = true</c>.
+    ///
+    /// Returns at most <paramref name="limit"/> rows, in one bounded page. Unlike
+    /// <see cref="GetByIdAsync"/> and <see cref="ListByApplicationAsync"/>, this deliberately does not
+    /// loop on DynamoDB's <c>LastEvaluatedKey</c> to assemble a complete result -- the cursor here is a
+    /// public mechanism the client itself drives, polling again with the last Seq it holds, not an
+    /// internal read this repository must finish on its own before returning (see fix_run_design.md
+    /// section 4). A caller wanting more than one page polls again with the last Seq it received.
+    ///
+    /// Throws <see cref="ArgumentOutOfRangeException"/> when <paramref name="afterSeq"/> is negative or
+    /// <paramref name="limit"/> is not positive.</summary>
+    Task<IReadOnlyList<RunStatusUpdate>> ListStatusUpdatesAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid id,
+        long afterSeq,
+        int limit
+    );
 }
