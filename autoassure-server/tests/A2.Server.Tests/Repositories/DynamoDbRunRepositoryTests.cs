@@ -216,7 +216,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
 
         // test
         var result = await _repository.TryCreateAsync(run, scenarios);
-        var detail = await _repository.GetAsync(organizationId, applicationId, run.Id);
+        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify
         Assert.Equal(RunCreateResult.Success, result);
@@ -247,7 +247,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             CreateScenarioSnapshot("Retry-2"),
         };
         var result = await _repository.TryCreateAsync(run, duplicateScenarios);
-        var detail = await _repository.GetAsync(organizationId, applicationId, run.Id);
+        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify
         Assert.Equal(RunCreateResult.AlreadyExists, result);
@@ -268,7 +268,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
 
         // test
         var result = await _repository.TryCreateAsync(run, scenarios);
-        var detail = await _repository.GetAsync(organizationId, applicationId, run.Id);
+        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify
         Assert.Equal(RunCreateResult.ApplicationNotFound, result);
@@ -288,7 +288,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
 
         // test
         var result = await _repository.TryCreateAsync(run, scenarios);
-        var detail = await _repository.GetAsync(organizationId, applicationId, run.Id);
+        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify
         Assert.Equal(RunCreateResult.EnvironmentNotFound, result);
@@ -296,7 +296,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task GetAsync_WhenExpiresAtHasPassed_ReturnsNull()
+    public async Task GetByIdAsync_WhenExpiresAtHasPassed_ReturnsNull()
     {
         // setup -- a Manual Run "created" long enough ago that create-time + 3 years has already
         // passed, so its computed ExpiresAt is already in the past.
@@ -316,7 +316,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         await _repository.TryCreateAsync(run, [CreateScenarioSnapshot()]);
 
         // test
-        var detail = await _repository.GetAsync(organizationId, applicationId, run.Id);
+        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify
         Assert.Null(detail);
@@ -348,10 +348,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         // verify
         var expectedExpiresAt = createdAt.AddDays(7).ToUnixTimeSeconds();
         Assert.Equal(3, rawRows.Count); // header + 2 scenario rows
-        Assert.All(
-            rawRows,
-            row => Assert.Equal(expectedExpiresAt.ToString(), row["ExpiresAt"].N)
-        );
+        Assert.All(rawRows, row => Assert.Equal(expectedExpiresAt.ToString(), row["ExpiresAt"].N));
     }
 
     [Fact]
@@ -380,17 +377,14 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         // verify
         var expectedExpiresAt = createdAt.AddDays(3 * 365).ToUnixTimeSeconds();
         Assert.Equal(2, rawRows.Count); // header + 1 scenario row
-        Assert.All(
-            rawRows,
-            row => Assert.Equal(expectedExpiresAt.ToString(), row["ExpiresAt"].N)
-        );
+        Assert.All(rawRows, row => Assert.Equal(expectedExpiresAt.ToString(), row["ExpiresAt"].N));
     }
 
     [Fact]
-    public async Task GetAsync_WhenScenarioRowsSpanQueryPages_ReturnsAllScenariosComplete()
+    public async Task GetByIdAsync_WhenScenarioRowsSpanQueryPages_ReturnsAllScenariosComplete()
     {
         // setup -- enough Scenario rows, each padded well past DynamoDB's 1 MB single-page Query
-        // limit in total, to force GetAsync's LastEvaluatedKey loop to run more than once.
+        // limit in total, to force GetByIdAsync's LastEvaluatedKey loop to run more than once.
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
@@ -405,7 +399,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
 
         // test
         var createResult = await _repository.TryCreateAsync(run, scenarios);
-        var detail = await _repository.GetAsync(organizationId, applicationId, run.Id);
+        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify -- first, prove a single (non-looping) Query of this data really does get cut off,
         // so the assertion below is actually exercising the LastEvaluatedKey loop and not just
@@ -440,7 +434,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task GetAsync_WhenRunHasStatusUpdateRowWrittenDirectly_ReturnsNoStatusUpdates()
+    public async Task GetByIdAsync_WhenRunHasStatusUpdateRowWrittenDirectly_ReturnsNoStatusUpdates()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -468,7 +462,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         );
 
         // test
-        var detail = await _repository.GetAsync(organizationId, applicationId, run.Id);
+        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify -- only the real Scenario row comes back; the hand-written update row did not blow
         // up the read (it would fail to parse as a Scenario snapshot if it were included) and did not
@@ -478,10 +472,10 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task GetAsync_WhenRunDoesNotExist_ReturnsNull()
+    public async Task GetByIdAsync_WhenRunDoesNotExist_ReturnsNull()
     {
         // test
-        var result = await _repository.GetAsync(
+        var result = await _repository.GetByIdAsync(
             Guid.CreateVersion7(),
             Guid.CreateVersion7(),
             Guid.CreateVersion7()

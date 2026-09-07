@@ -39,7 +39,11 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         var transactItems = new List<TransactWriteItem>
         {
             ApplicationExistsCheck(run.OrganizationId, run.ApplicationId),
-            EnvironmentExistsCheck(run.OrganizationId, run.ApplicationId, run.Environment.Source.Id),
+            EnvironmentExistsCheck(
+                run.OrganizationId,
+                run.ApplicationId,
+                run.Environment.Source.Id
+            ),
             new TransactWriteItem
             {
                 Put = new Put
@@ -103,7 +107,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
     }
 
-    public async Task<RunDetail?> GetAsync(Guid organizationId, Guid applicationId, Guid id)
+    public async Task<RunDetail?> GetByIdAsync(Guid organizationId, Guid applicationId, Guid id)
     {
         var headerRowKey = DynamoDbMapper.RunHeaderRowKey(id);
 
@@ -140,8 +144,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             return null;
         }
 
-        var scenarios = rows
-            .Where(row => row["RowKey"].S != headerRowKey)
+        var scenarios = rows.Where(row => row["RowKey"].S != headerRowKey)
             .Select(row => row.ToRunScenarioSnapshot())
             .ToList();
 

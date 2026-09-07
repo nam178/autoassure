@@ -25,7 +25,11 @@ public interface IRunRepository
     /// Throws <see cref="ArgumentException"/> when <paramref name="scenarios"/> has more rows than
     /// <see cref="Quota.MaxScenariosPerRun"/> -- the header, the Application check and the Environment
     /// check already spend 3 of the 100 items DynamoDB's TransactWriteItems allows in one
-    /// transaction.</summary>
+    /// transaction.
+    ///
+    /// Named Create rather than Save: a Run header has no update-or-create semantics -- it is written
+    /// once and only ever changed through later, narrowly-conditioned operations, and can never be
+    /// re-created once it exists.</summary>
     Task<RunCreateResult> TryCreateAsync(Run run, IReadOnlyList<RunScenarioSnapshot> scenarios);
 
     /// <summary>Returns the Run's header together with its Scenario snapshots -- what the Run *is*,
@@ -33,5 +37,5 @@ public interface IRunRepository
     /// <c>ExpiresAt</c> has passed (a row can stay physically queryable for a while after DynamoDB's
     /// TTL sweep is due -- see fix_run_design.md section 6), or when the header exists but carries no
     /// Scenario rows, which reads as expired rather than as a corrupt/partial result.</summary>
-    Task<RunDetail?> GetAsync(Guid organizationId, Guid applicationId, Guid id);
+    Task<RunDetail?> GetByIdAsync(Guid organizationId, Guid applicationId, Guid id);
 }

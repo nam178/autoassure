@@ -44,9 +44,9 @@ public record Run
     public DateTimeOffset? LastHeartbeatAt { get; init; }
     public DateTimeOffset? DeadlineAt { get; init; }
 
-    /// <summary>DynamoDB TTL, epoch seconds. Null means never expire. Every row of this Run -- the header,
-    /// every Scenario snapshot and every status update -- carries the same value, written once at create
-    /// and never changed.</summary>
+    /// <summary>The point in time after which this Run stops being retained and can no longer be found.
+    /// Null means never expire. Every part of this Run -- the header, every Scenario snapshot and every
+    /// status update -- carries the same value, written once at create and never changed.</summary>
     public long? ExpiresAt { get; init; }
 }
 

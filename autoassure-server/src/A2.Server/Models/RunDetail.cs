@@ -1,8 +1,8 @@
 namespace A2.Server.Models;
 
 /// <summary>A Run's header together with everything it ran -- one snapshot per Scenario. This is what a
-/// Run *is*: its identity, its execution state, and a copy of what it tested, assembled from the header
-/// row and the Scenario snapshot rows. It never carries anything from the status update log -- what
+/// Run *is*: its identity, its execution state, and a copy of what it tested, assembled from the Run's
+/// own identity and the Scenarios it ran. It never carries anything from the status update log -- what
 /// happened during execution is a separate, append-only stream that only the client folds (see
 /// fix_run_design.md section 7).</summary>
 public record RunDetail

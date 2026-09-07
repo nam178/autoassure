@@ -126,6 +126,8 @@ public static partial class DynamoDbMapper
 
         if (run.ExpiresAt is { } expiresAt)
         {
+            // DynamoDB's TTL sweep reads this attribute as epoch seconds -- see RunRetentionPolicy for
+            // how the value is computed.
             row["ExpiresAt"] = new AttributeValue
             {
                 N = expiresAt.ToString(CultureInfo.InvariantCulture),
