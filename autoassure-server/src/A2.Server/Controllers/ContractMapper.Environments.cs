@@ -13,7 +13,6 @@ public static partial class ContractMapper
     // "did I paste the right key?" live, while a snapshot lives on for years.
     private const double SensitiveVariableFractionToKeep = 0.3;
 
-
     /// <summary>Combines an Environment with its Variables into the response returned to the client.</summary>
     public static EnvironmentResponse ToResponse(
         this Environment environment,
@@ -27,7 +26,8 @@ public static partial class ContractMapper
         );
 
     /// <summary>Maps a single Environment variable to its response representation. A sensitive
-    /// variable's Value is masked, keeping only its first 30% of characters.</summary>
+    /// variable's Value is masked, keeping only a leading slice worth 30% of the masked output's fixed
+    /// length -- see <see cref="SensitiveValueMasker"/>.</summary>
     private static EnvironmentVariableResponse ToResponse(this EnvironmentVariable variable) =>
         new(
             variable.Key,

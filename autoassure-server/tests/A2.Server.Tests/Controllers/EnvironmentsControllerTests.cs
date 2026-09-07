@@ -357,14 +357,14 @@ public sealed class EnvironmentsControllerTests
         // test
         var getResponse = await client.GetAsync($"/environments/{created.Id}");
 
-        // verify: 30% of the 10-character value stays visible, the rest becomes a fixed-length run
-        // of dots -- the real value is never returned whole.
+        // verify: a leading slice of the value's real characters stays visible, the rest becomes dots
+        // padded to the masker's fixed output length -- the real value is never returned whole, and the
+        // output length does not depend on the real value's length.
         var environment = await getResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
         var variable = Assert.Single(environment!.Variables);
         Assert.True(variable.IsSensitive);
         Assert.NotEqual("abcdefghij", variable.Value);
-        Assert.StartsWith("abc", variable.Value);
-        Assert.EndsWith("........", variable.Value);
+        Assert.Equal("abcdef..............", variable.Value);
     }
 
     [Fact]
