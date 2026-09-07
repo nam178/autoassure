@@ -118,7 +118,10 @@ public sealed class DynamoDbMapperRunTests
             ScenarioId = scenarioId,
             ActivityId = activityId,
             Status = ActivityResultStatus.Passed,
-            ResolvedPreconditions = new Dictionary<string, string> { ["Order Confirmation ID"] = "ORD-123" },
+            ResolvedPreconditions = new Dictionary<string, string>
+            {
+                ["Order Confirmation ID"] = "ORD-123",
+            },
             Evidence = new Dictionary<string, string> { ["Cart total"] = "$42.00" },
             ContinuationReasoning = "Retried after a transient 500.",
         };
@@ -203,7 +206,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void HeaderRow_AlwaysCarriesHeaderId()
+    public void HeaderRow_WhenMapped_AlwaysCarriesHeaderId()
     {
         // setup
         var run = SampleRun();
@@ -220,7 +223,10 @@ public sealed class DynamoDbMapperRunTests
     public void HeaderRow_WhenRunning_CarriesInFlightShard()
     {
         // setup
-        var run = SampleRun() with { Status = RunStatus.Running };
+        var run = SampleRun() with
+        {
+            Status = RunStatus.Running,
+        };
 
         // test
         var row = run.ToDynamoDbRow();
@@ -239,7 +245,10 @@ public sealed class DynamoDbMapperRunTests
     public void HeaderRow_WhenNotRunning_DoesNotCarryInFlightShard(RunStatus status)
     {
         // setup
-        var run = SampleRun() with { Status = status };
+        var run = SampleRun() with
+        {
+            Status = status,
+        };
 
         // test
         var row = run.ToDynamoDbRow();
@@ -249,7 +258,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void HeaderRow_UsesTheRunIdAloneAsItsRowKey()
+    public void HeaderRow_WhenMapped_UsesTheRunIdAloneAsItsRowKey()
     {
         // setup
         var run = SampleRun();
@@ -287,7 +296,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void ScenarioRow_UsesTheRunAndScenarioIdAsItsRowKey()
+    public void ScenarioRow_WhenMapped_UsesTheRunAndScenarioIdAsItsRowKey()
     {
         // setup
         var runId = Guid.NewGuid();
@@ -303,7 +312,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void ScenarioRow_NeverCarriesHeaderId()
+    public void ScenarioRow_WhenMapped_NeverCarriesHeaderId()
     {
         // setup
         var snapshot = SampleScenarioSnapshot(Guid.NewGuid());
@@ -387,7 +396,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void StatusUpdateRow_NeverCarriesHeaderId()
+    public void StatusUpdateRow_WhenMapped_NeverCarriesHeaderId()
     {
         // setup
         var update = new RunStatusUpdate
@@ -406,7 +415,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void StatusUpdateRow_UsesTheRunIdAndPaddedSeqAsItsRowKey()
+    public void StatusUpdateRow_WhenMapped_UsesTheRunIdAndPaddedSeqAsItsRowKey()
     {
         // setup
         var runId = Guid.NewGuid();
@@ -448,7 +457,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void RunStatusUpdateRowKey_PadsTheSequenceNumberToTwelveDigits()
+    public void RunStatusUpdateRowKey_WhenGivenASequenceNumber_PadsItToTwelveDigits()
     {
         // setup
         var runId = Guid.NewGuid();
