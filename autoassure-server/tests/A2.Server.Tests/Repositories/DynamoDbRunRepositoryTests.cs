@@ -8,9 +8,9 @@ using Microsoft.Extensions.Options;
 namespace A2.Server.Tests.Repositories;
 
 /// <summary>Integration tests for <see cref="DynamoDbRunRepository"/> against DynamoDB Local, covering
-/// Create Run and Get Run: the transactional create, its Application/Environment existence checks, the
-/// TTL retention numbers, the LastEvaluatedKey pagination loop, and Get Run's exclusion of status update
-/// rows.</summary>
+/// Create Run, Get Run and List Runs: the transactional create, its Application/Environment existence
+/// checks, the TTL retention numbers, the LastEvaluatedKey pagination loop, Get Run's exclusion of
+/// status update rows, and List Runs' sparse RunHeaderIndex query.</summary>
 [Collection("DynamoDbLocal")]
 public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLocalFixture)
     : IAsyncLifetime
@@ -52,6 +52,40 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
                 [
                     new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
                     new AttributeDefinition("RowKey", ScalarAttributeType.S),
+                    new AttributeDefinition("HeaderId", ScalarAttributeType.S),
+                ],
+                // Mirrors ../../autoassure-infra/dynamodb.tf's RunHeaderIndex exactly -- same sparse
+                // key shape and the same INCLUDE projection list -- so a test proves what the real
+                // index actually returns rather than what a looser local approximation would.
+                GlobalSecondaryIndexes =
+                [
+                    new GlobalSecondaryIndex
+                    {
+                        IndexName = "RunHeaderIndex",
+                        KeySchema =
+                        [
+                            new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                            new KeySchemaElement("HeaderId", KeyType.RANGE),
+                        ],
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.INCLUDE,
+                            NonKeyAttributes =
+                            [
+                                "Id",
+                                "Trigger",
+                                "Status",
+                                "StatusReason",
+                                "TotalActivityCount",
+                                "PassedActivityCount",
+                                "FailedActivityCount",
+                                "SkippedActivityCount",
+                                "CreatedAt",
+                                "StartedAt",
+                                "CompletedAt",
+                            ],
+                        },
+                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -483,5 +517,142 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
 
         // verify
         Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task ListRunsByApplicationAsync_WhenRunHasScenarios_ReturnsOneHeaderOnlySummary()
+    {
+        // setup -- a Run with several Scenario snapshots, so the table holds 4 rows for it (1 header +
+        // 3 Scenario rows). Listing must still return exactly one entry, and it must be the header
+        // shape, proving the sparse RunHeaderIndex is what answered the query rather than a scan of
+        // every row in the partition.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutApplicationAsync(organizationId, applicationId);
+        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
+        var run = CreateRun(organizationId, applicationId, environmentId);
+        var scenarios = new[]
+        {
+            CreateScenarioSnapshot("A"),
+            CreateScenarioSnapshot("B"),
+            CreateScenarioSnapshot("C"),
+        };
+        await _repository.TryCreateAsync(run, scenarios);
+
+        // test
+        var summaries = await _repository.ListRunsByApplicationAsync(organizationId, applicationId);
+
+        // verify
+        var summary = Assert.Single(summaries);
+        Assert.Equal(run.Id, summary.Id);
+        Assert.Equal(run.Trigger, summary.Trigger);
+        Assert.Equal(run.Status, summary.Status);
+        Assert.Equal(run.CreatedAt, summary.CreatedAt);
+    }
+
+    [Fact]
+    public async Task ListRunsByApplicationAsync_WhenRunBelongsToAnotherApplication_DoesNotReturnIt()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var otherApplicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutApplicationAsync(organizationId, applicationId);
+        await PutApplicationAsync(organizationId, otherApplicationId);
+        await PutEnvironmentAsync(organizationId, otherApplicationId, environmentId);
+        var otherApplicationRun = CreateRun(organizationId, otherApplicationId, environmentId);
+        await _repository.TryCreateAsync(otherApplicationRun, [CreateScenarioSnapshot()]);
+
+        // test
+        var summaries = await _repository.ListRunsByApplicationAsync(organizationId, applicationId);
+
+        // verify
+        Assert.Empty(summaries);
+    }
+
+    [Fact]
+    public async Task ListRunsByApplicationAsync_WhenTriggerIsAuthoring_NeverReturnsIt()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutApplicationAsync(organizationId, applicationId);
+        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
+        var manualRun = CreateRun(organizationId, applicationId, environmentId);
+        var authoringRun = CreateRun(
+            organizationId,
+            applicationId,
+            environmentId,
+            RunTrigger.Authoring
+        );
+        await _repository.TryCreateAsync(manualRun, [CreateScenarioSnapshot()]);
+        await _repository.TryCreateAsync(authoringRun, [CreateScenarioSnapshot()]);
+
+        // test
+        var summaries = await _repository.ListRunsByApplicationAsync(organizationId, applicationId);
+
+        // verify -- only the Manual Run comes back; there is no parameter to include Authoring runs.
+        var summary = Assert.Single(summaries);
+        Assert.Equal(manualRun.Id, summary.Id);
+    }
+
+    [Fact]
+    public async Task ListRunsByApplicationAsync_WhenMultipleRuns_ReturnsInCreationOrder()
+    {
+        // setup -- three Runs created in sequence. Guid.CreateVersion7() ids are time-sortable, so
+        // ascending id order is creation order.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutApplicationAsync(organizationId, applicationId);
+        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
+        var firstRun = CreateRun(organizationId, applicationId, environmentId);
+        await _repository.TryCreateAsync(firstRun, [CreateScenarioSnapshot()]);
+        var secondRun = CreateRun(organizationId, applicationId, environmentId);
+        await _repository.TryCreateAsync(secondRun, [CreateScenarioSnapshot()]);
+        var thirdRun = CreateRun(organizationId, applicationId, environmentId);
+        await _repository.TryCreateAsync(thirdRun, [CreateScenarioSnapshot()]);
+
+        // test
+        var summaries = await _repository.ListRunsByApplicationAsync(organizationId, applicationId);
+
+        // verify
+        Assert.Equal(
+            [firstRun.Id, secondRun.Id, thirdRun.Id],
+            summaries.Select(summary => summary.Id)
+        );
+    }
+
+    [Fact]
+    public async Task ListRunsByApplicationAsync_WhenExpiresAtHasPassed_ExcludesIt()
+    {
+        // setup -- one Run "created" long enough ago that its computed ExpiresAt has already passed,
+        // and one fresh Run in the same Application.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutApplicationAsync(organizationId, applicationId);
+        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
+        var longAgo = DateTimeOffset.UtcNow.AddYears(-4);
+        var expiredRun = CreateRun(
+            organizationId,
+            applicationId,
+            environmentId,
+            RunTrigger.Manual,
+            longAgo
+        );
+        var freshRun = CreateRun(organizationId, applicationId, environmentId);
+        await _repository.TryCreateAsync(expiredRun, [CreateScenarioSnapshot()]);
+        await _repository.TryCreateAsync(freshRun, [CreateScenarioSnapshot()]);
+
+        // test
+        var summaries = await _repository.ListRunsByApplicationAsync(organizationId, applicationId);
+
+        // verify
+        var summary = Assert.Single(summaries);
+        Assert.Equal(freshRun.Id, summary.Id);
     }
 }

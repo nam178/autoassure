@@ -159,6 +159,52 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         return new RunDetail { Header = header, Scenarios = scenarios };
     }
 
+    public async Task<IReadOnlyList<RunSummary>> ListRunsByApplicationAsync(
+        Guid organizationId,
+        Guid applicationId
+    )
+    {
+        // The sparse RunHeaderIndex holds exactly one entry per Run -- only header rows carry
+        // HeaderId -- so this Query can never read a Scenario snapshot or status update row, unlike a
+        // FilterExpression over the base table's partition, which fix_run_design.md forbids here
+        // because it would read and charge for every row the split exists to stop paying for.
+        // Excluding Authoring runs with a FilterExpression on Trigger alone is still cheap: it filters
+        // header-only projections, not full rows.
+        var rows = await QueryAllPagesAsync(
+            new QueryRequest
+            {
+                TableName = RunTableName,
+                IndexName = "RunHeaderIndex",
+                KeyConditionExpression = "OrganizationId_ApplicationId = :partitionKey",
+                FilterExpression = "#trigger <> :authoring",
+                ExpressionAttributeNames = new Dictionary<string, string>
+                {
+                    ["#trigger"] = "Trigger",
+                },
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":partitionKey"] = new(
+                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                    ),
+                    [":authoring"] = new(RunTrigger.Authoring.ToString()),
+                },
+                // The index's range key, HeaderId, is the Run's own UUIDv7 id, so ascending order (the
+                // default, set explicitly here) is creation order with no separate sort.
+                ScanIndexForward = true,
+            }
+        );
+
+        // RunHeaderIndex does not project ExpiresAt, so there is no expiry attribute to read here. It
+        // does project Trigger and CreatedAt, and TryCreateAsync always derives a header's ExpiresAt
+        // from exactly those two values via RunRetentionPolicy, so recomputing it here reproduces the
+        // stored value without needing it projected.
+        return rows.Select(row => row.ToRunSummary())
+            .Where(summary =>
+                !IsExpired(RunRetentionPolicy.ExpiresAt(summary.Trigger, summary.CreatedAt))
+            )
+            .ToList();
+    }
+
     private static bool IsExpired(long? expiresAt) =>
         expiresAt is { } value && value <= DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 

@@ -194,6 +194,47 @@ public static partial class DynamoDbMapper
                 : null,
         };
 
+    // ----- Header summary (RunHeaderIndex projection) -----
+
+    /// <summary>Builds a <see cref="RunSummary"/> from a <c>RunHeaderIndex</c> query result. Reads only
+    /// the attributes that index projects (see the GSI's <c>non_key_attributes</c> in dynamodb.tf) --
+    /// unlike <see cref="ToRun"/>, this never touches OrganizationId, ApplicationId, Environment,
+    /// LastSeq, TriggeredByUserId, LastHeartbeatAt, DeadlineAt or ExpiresAt, none of which the index
+    /// carries.</summary>
+    public static RunSummary ToRunSummary(this Dictionary<string, AttributeValue> row) =>
+        new()
+        {
+            Id = Guid.Parse(row["Id"].S),
+            Trigger = Enum.Parse<RunTrigger>(row["Trigger"].S),
+            Status = Enum.Parse<RunStatus>(row["Status"].S),
+            StatusReason = row.TryGetValue("StatusReason", out var statusReason)
+                ? Enum.Parse<RunStatusReason>(statusReason.S)
+                : null,
+            TotalActivityCount = int.Parse(
+                row["TotalActivityCount"].N,
+                CultureInfo.InvariantCulture
+            ),
+            PassedActivityCount = int.Parse(
+                row["PassedActivityCount"].N,
+                CultureInfo.InvariantCulture
+            ),
+            FailedActivityCount = int.Parse(
+                row["FailedActivityCount"].N,
+                CultureInfo.InvariantCulture
+            ),
+            SkippedActivityCount = int.Parse(
+                row["SkippedActivityCount"].N,
+                CultureInfo.InvariantCulture
+            ),
+            CreatedAt = DateTimeOffset.Parse(row["CreatedAt"].S, CultureInfo.InvariantCulture),
+            StartedAt = row.TryGetValue("StartedAt", out var startedAt)
+                ? DateTimeOffset.Parse(startedAt.S, CultureInfo.InvariantCulture)
+                : null,
+            CompletedAt = row.TryGetValue("CompletedAt", out var completedAt)
+                ? DateTimeOffset.Parse(completedAt.S, CultureInfo.InvariantCulture)
+                : null,
+        };
+
     // ----- Scenario snapshot row -----
 
     /// <summary>Builds a Scenario snapshot row. OrganizationId, ApplicationId and RunId are not part of

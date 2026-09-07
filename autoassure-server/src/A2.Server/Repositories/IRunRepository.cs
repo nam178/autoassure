@@ -38,4 +38,21 @@ public interface IRunRepository
     /// TTL sweep is due -- see fix_run_design.md section 6), or when the header exists but carries no
     /// Scenario rows, which reads as expired rather than as a corrupt/partial result.</summary>
     Task<RunDetail?> GetByIdAsync(Guid organizationId, Guid applicationId, Guid id);
+
+    /// <summary>Lists an Application's Runs as headers only, oldest first -- creation order falls out
+    /// of the Run id's UUIDv7 range key on the sparse <c>RunHeaderIndex</c> this reads, so no separate
+    /// sort is needed. Never reads a Scenario snapshot or status update row: the index holds one entry
+    /// per Run no matter how many rows that Run has written, which is what keeps this list cheap (see
+    /// fix_run_design.md section 3) -- a <c>FilterExpression</c> over the base table's partition would
+    /// read and charge for all of them instead, so this method never issues one against the base table.
+    ///
+    /// Excludes <see cref="RunTrigger.Authoring"/> runs and expired headers, and takes no parameter to
+    /// include either. An Authoring run is polled by its own id and gone within 7 days, and an expired
+    /// header is not a Run that still exists (see fix_run_design.md section 6). Nothing lists Runs by
+    /// Scenario -- that is out of scope (see fix_run_design.md section 6 and the goal file's "out of
+    /// scope" list).</summary>
+    Task<IReadOnlyList<RunSummary>> ListRunsByApplicationAsync(
+        Guid organizationId,
+        Guid applicationId
+    );
 }
