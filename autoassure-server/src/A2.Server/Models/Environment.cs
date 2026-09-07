@@ -1,6 +1,6 @@
 namespace A2.Server.Models;
 
-/// <summary>A deployment target (e.g. "Staging", "Production") that a Try/Run executes against.
+/// <summary>A deployment target (e.g. "Staging", "Production") that a test execution runs against.
 /// Variables live separately — see <see cref="EnvironmentVariable"/>.</summary>
 public record Environment
 {
