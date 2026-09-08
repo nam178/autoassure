@@ -34,6 +34,66 @@ export interface ActivityResponse {
   updatedAt: string;
 }
 
+/**
+ * The outcome of one Activity within a Run, as sent by a worker appending a status update and
+ *     as returned back to the client reading the log. ScenarioId and ActivityId identify rows in the Run's
+ *     OWN snapshot -- the ids the Get Run response's Scenario/Activity snapshots carry on their Source --
+ *     not the live Scenario or Activity, which may since have changed or been deleted.
+ */
+export interface ActivityResult {
+  /** @format uuid */
+  scenarioId: string;
+  /** @format uuid */
+  activityId: string;
+  /**
+   * What became of an Activity by the time its result was appended to a Run's status update log,
+   *     as returned to the client. Only Passed, Failed or Skipped are legal on an appended result -- Pending
+   *     and Running name the states before an Activity has concluded.
+   */
+  status: ActivityResultStatus;
+  /** @maxLength 50 */
+  resolvedPreconditions?: null | Record<string, string>;
+  /** @maxLength 50 */
+  evidence?: null | Record<string, string>;
+  /**
+   * Why this Activity was chosen for execution despite an earlier Activity failing.
+   * @maxLength 2000
+   */
+  continuationReasoning?: null | string;
+}
+
+/**
+ * What became of an Activity by the time its result was appended to a Run's status update log,
+ *     as returned to the client. Only Passed, Failed or Skipped are legal on an appended result -- Pending
+ *     and Running name the states before an Activity has concluded.
+ */
+export type ActivityResultStatus = number;
+
+/**
+ * Request body to append one entry to a Run's status update log, at the caller's own sequence
+ *      number. The owning worker allocates Seq in memory -- this API never invents one. Sequence numbers are
+ *      1-based and dense: the first update of a Run's log has Seq 1.
+ *
+ *      AppendActivityResult is the only kind of status update that exists today, so this always carries an
+ *      ActivityResult.
+ */
+export interface AppendRunStatusUpdateRequest {
+  /**
+   * @format int64
+   * @min 1
+   * @max 9223372036854776000
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  seq: number | string;
+  /**
+   * The outcome of one Activity within a Run, as sent by a worker appending a status update and
+   *     as returned back to the client reading the log. ScenarioId and ActivityId identify rows in the Run's
+   *     OWN snapshot -- the ids the Get Run response's Scenario/Activity snapshots carry on their Source --
+   *     not the live Scenario or Activity, which may since have changed or been deleted.
+   */
+  activityResult: ActivityResult;
+}
+
 /** An Application, as returned to the client. */
 export interface ApplicationResponse {
   /** @format uuid */
@@ -83,6 +143,15 @@ export interface CreateApplicationRequest {
 }
 
 /**
+ * Request body to Try a single Scenario against an Environment. The Scenario comes from the
+ *     URL (`POST /scenarios/{id}/runs`); this only supplies the Environment to run against.
+ */
+export interface CreateAuthoringRunRequest {
+  /** @format uuid */
+  environmentId: string;
+}
+
+/**
  * Request body to create a new Environment for an Application. No Variables at creation —
  *     set those afterward via `PUT /environments/{id}/variables/{key}`.
  */
@@ -123,6 +192,20 @@ export interface CreatePreconditionRequest {
 }
 
 /**
+ * Request body to start a Manual Run of one or more Scenarios against an Environment. Every id
+ *     in ScenarioIds must reference a Scenario belonging to the Application named in the URL.
+ */
+export interface CreateRunRequest {
+  /**
+   * @maxItems 97
+   * @minItems 1
+   */
+  scenarioIds: string[];
+  /** @format uuid */
+  environmentId: string;
+}
+
+/**
  * Request body to create a new Scenario for an Application. Folder defaults to "/" when
  *     not given; Tags default to empty.
  */
@@ -138,6 +221,24 @@ export interface CreateScenarioRequest {
   folder?: null | string;
   /** @maxItems 20 */
   tags?: null | string[];
+}
+
+/**
+ * Request body to end a Running Run. TerminalStatus must be Completed, Cancelled or Abandoned --
+ *     Pending and Running are rejected, since those are states the server itself moves a Run through, never
+ *     an outcome a caller declares. StatusReason may only be given alongside Abandoned; Completed and
+ *     Cancelled are self-explanatory and must leave it null.
+ */
+export interface EndRunRequest {
+  /**
+   * A Run's execution state, as returned to the client. Carries no pass/fail judgment: a Run
+   *      whose every Activity failed is still Completed, and the activity counts say how it went.
+   *
+   *      Only Completed, Cancelled and Abandoned are legal terminal values to send on End Run -- Pending and
+   *      Running name states the server itself moves a Run through and are rejected there.
+   */
+  terminalStatus: RunStatus;
+  statusReason?: null | RunStatusReason;
 }
 
 /** Whether an Environment is a live Production system or a non-production one (staging, dev, ...). */
@@ -252,6 +353,287 @@ export interface ReorderActivitiesRequest {
   orderedActivityIds: string[];
 }
 
+/**
+ * An Activity as it was when a Run was created, together with the Preconditions and
+ *     EvidenceDefinitions it referenced at that moment, as returned to the client.
+ */
+export interface RunActivitySnapshotResponse {
+  /**
+   * Where a Run snapshot was copied from, as returned to the client: provenance only. Id may no
+   *     longer resolve to a live row -- the source can have been edited, archived or deleted since this Run
+   *     was created -- so it should be treated as a hint for "open the current version, if it still exists",
+   *     never as a live reference.
+   */
+  source: SnapshotSourceResponse;
+  /**
+   * @format int32
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  order: number | string;
+  description: string;
+  preconditions: RunPreconditionSnapshotResponse[];
+  evidenceDefinitions: RunEvidenceDefinitionSnapshotResponse[];
+}
+
+/**
+ * The Environment a Run ran against, as it was when the Run was created, as returned to the
+ *     client.
+ */
+export interface RunEnvironmentSnapshotResponse {
+  /**
+   * Where a Run snapshot was copied from, as returned to the client: provenance only. Id may no
+   *     longer resolve to a live row -- the source can have been edited, archived or deleted since this Run
+   *     was created -- so it should be treated as a hint for "open the current version, if it still exists",
+   *     never as a live reference.
+   */
+  source: SnapshotSourceResponse;
+  name: string;
+  /** Whether an Environment is a live Production system or a non-production one (staging, dev, ...). */
+  classification: EnvironmentClassification;
+  variables: RunEnvironmentVariableSnapshotResponse[];
+}
+
+/**
+ * An Environment variable as it was when a Run was created, as returned to the client. When
+ *     IsSensitive is true, Value is already masked -- more heavily than the live Environment API masks it,
+ *     since a Run snapshot lives for three years.
+ */
+export interface RunEnvironmentVariableSnapshotResponse {
+  key: string;
+  value: string;
+  isSensitive: boolean;
+  /** @format uuid */
+  createdByUserId: string;
+  /** @format uuid */
+  updatedByUserId: string;
+  /** @format date-time */
+  createdAt: string;
+  /** @format date-time */
+  updatedAt: string;
+}
+
+/** An EvidenceDefinition as it was when a Run was created, as returned to the client. */
+export interface RunEvidenceDefinitionSnapshotResponse {
+  /**
+   * Where a Run snapshot was copied from, as returned to the client: provenance only. Id may no
+   *     longer resolve to a live row -- the source can have been edited, archived or deleted since this Run
+   *     was created -- so it should be treated as a hint for "open the current version, if it still exists",
+   *     never as a live reference.
+   */
+  source: SnapshotSourceResponse;
+  name: string;
+  description: string;
+  exampleValue: string;
+}
+
+/** A Precondition as it was when a Run was created, as returned to the client. */
+export interface RunPreconditionSnapshotResponse {
+  /**
+   * Where a Run snapshot was copied from, as returned to the client: provenance only. Id may no
+   *     longer resolve to a live row -- the source can have been edited, archived or deleted since this Run
+   *     was created -- so it should be treated as a hint for "open the current version, if it still exists",
+   *     never as a live reference.
+   */
+  source: SnapshotSourceResponse;
+  name: string;
+  /** Where a Precondition's value comes from at execution time. */
+  valueSource: PreconditionValueSource;
+  exampleValue: string;
+}
+
+/**
+ * A Run's identity, execution state and what it ran, as returned to the client. Never carries
+ *     the status update log -- LastSeq and Status are what tell a client whether it is worth polling List
+ *     Run Status Updates and when to stop. ApplicationId is included even under the nested
+ *     `/applications/{appId}/runs/{id}` route because the authoring create route
+ *     (`POST /scenarios/{id}/runs`) is flat and returns this same shape -- without it, a client
+ *     following an authoring Run would have no way to build its polling URLs.
+ */
+export interface RunResponse {
+  /** @format uuid */
+  id: string;
+  /** @format uuid */
+  applicationId: string;
+  /**
+   * Where a Run came from, as returned to the client. Affects retention and whether the Run
+   *     shows up in the Application's Runs panel -- nothing about how it executes.
+   */
+  trigger: RunTrigger;
+  /**
+   * A Run's execution state, as returned to the client. Carries no pass/fail judgment: a Run
+   *      whose every Activity failed is still Completed, and the activity counts say how it went.
+   *
+   *      Only Completed, Cancelled and Abandoned are legal terminal values to send on End Run -- Pending and
+   *      Running name states the server itself moves a Run through and are rejected there.
+   */
+  status: RunStatus;
+  /** Only set when Status is Abandoned. */
+  statusReason?: null | RunStatusReason;
+  /**
+   * @format int32
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  totalActivityCount: number | string;
+  /**
+   * @format int32
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  passedActivityCount: number | string;
+  /**
+   * @format int32
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  failedActivityCount: number | string;
+  /**
+   * @format int32
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  skippedActivityCount: number | string;
+  /**
+   * The Environment a Run ran against, as it was when the Run was created, as returned to the
+   *     client.
+   */
+  environment: RunEnvironmentSnapshotResponse;
+  /** One snapshot per Scenario the Run ran, in no particular order. */
+  scenarios: RunScenarioSnapshotResponse[];
+  /**
+   * The highest sequence number appended to this Run's status update log so far. A client
+   *     that already holds up to this sequence has nothing new to poll for.
+   * @format int64
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  lastSeq: number | string;
+  /**
+   * Who triggered this Run. Null for a Scheduled Run -- a system timer has no user id.
+   * @format uuid
+   */
+  triggeredByUserId?: null | string;
+  /** @format date-time */
+  createdAt: string;
+  /** @format date-time */
+  startedAt?: null | string;
+  /** @format date-time */
+  completedAt?: null | string;
+}
+
+/**
+ * A Scenario as it was when a Run was created, together with its Activities in order, as
+ *     returned to the client. Never changes when the live Scenario is edited or deleted afterward.
+ */
+export interface RunScenarioSnapshotResponse {
+  /**
+   * Where a Run snapshot was copied from, as returned to the client: provenance only. Id may no
+   *     longer resolve to a live row -- the source can have been edited, archived or deleted since this Run
+   *     was created -- so it should be treated as a hint for "open the current version, if it still exists",
+   *     never as a live reference.
+   */
+  source: SnapshotSourceResponse;
+  title: string;
+  description: string;
+  folder: string;
+  tags: string[];
+  activities: RunActivitySnapshotResponse[];
+}
+
+/**
+ * A Run's execution state, as returned to the client. Carries no pass/fail judgment: a Run
+ *      whose every Activity failed is still Completed, and the activity counts say how it went.
+ *
+ *      Only Completed, Cancelled and Abandoned are legal terminal values to send on End Run -- Pending and
+ *      Running name states the server itself moves a Run through and are rejected there.
+ */
+export type RunStatus = number;
+
+export type RunStatusReason = number;
+
+/**
+ * What a Run status update row records, as returned to the client. AppendActivityResult is
+ *     the only kind that exists today -- see the server's design notes for what earns a new one.
+ */
+export type RunStatusUpdateKind = number;
+
+/**
+ * One entry of a Run's status update log, as returned to the client. The API hands these back
+ *     exactly as appended, in sequence order -- it never folds or interprets them; only the client
+ *     does.
+ */
+export interface RunStatusUpdateResponse {
+  /**
+   * @format int64
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  seq: number | string;
+  /**
+   * What a Run status update row records, as returned to the client. AppendActivityResult is
+   *     the only kind that exists today -- see the server's design notes for what earns a new one.
+   */
+  kind: RunStatusUpdateKind;
+  /** @format date-time */
+  createdAt: string;
+  /**
+   * Set when Kind is AppendActivityResult -- the only kind today, so always set in
+   *     practice.
+   */
+  activityResult?: null | ActivityResult;
+}
+
+/**
+ * A Run's identity and execution state only -- no Environment, no Scenarios -- exactly what the
+ *     Application's Runs panel shows for one row of the list. Authoring Runs never appear here; fetch one by
+ *     id instead.
+ */
+export interface RunSummaryResponse {
+  /** @format uuid */
+  id: string;
+  /**
+   * Where a Run came from, as returned to the client. Affects retention and whether the Run
+   *     shows up in the Application's Runs panel -- nothing about how it executes.
+   */
+  trigger: RunTrigger;
+  /**
+   * A Run's execution state, as returned to the client. Carries no pass/fail judgment: a Run
+   *      whose every Activity failed is still Completed, and the activity counts say how it went.
+   *
+   *      Only Completed, Cancelled and Abandoned are legal terminal values to send on End Run -- Pending and
+   *      Running name states the server itself moves a Run through and are rejected there.
+   */
+  status: RunStatus;
+  /** Only set when Status is Abandoned. */
+  statusReason?: null | RunStatusReason;
+  /**
+   * @format int32
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  totalActivityCount: number | string;
+  /**
+   * @format int32
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  passedActivityCount: number | string;
+  /**
+   * @format int32
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  failedActivityCount: number | string;
+  /**
+   * @format int32
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  skippedActivityCount: number | string;
+  /** @format date-time */
+  createdAt: string;
+  /** @format date-time */
+  startedAt?: null | string;
+  /** @format date-time */
+  completedAt?: null | string;
+}
+
+/**
+ * Where a Run came from, as returned to the client. Affects retention and whether the Run
+ *     shows up in the Application's Runs panel -- nothing about how it executes.
+ */
+export type RunTrigger = number;
+
 /** A Scenario, as returned to the client. */
 export interface ScenarioResponse {
   /** @format uuid */
@@ -271,6 +653,25 @@ export interface SetEnvironmentVariableRequest {
    *     false.
    */
   isSensitive?: boolean;
+}
+
+/**
+ * Where a Run snapshot was copied from, as returned to the client: provenance only. Id may no
+ *     longer resolve to a live row -- the source can have been edited, archived or deleted since this Run
+ *     was created -- so it should be treated as a hint for "open the current version, if it still exists",
+ *     never as a live reference.
+ */
+export interface SnapshotSourceResponse {
+  /** @format uuid */
+  id: string;
+  /** @format uuid */
+  createdByUserId: string;
+  /** @format uuid */
+  updatedByUserId: string;
+  /** @format date-time */
+  createdAt: string;
+  /** @format date-time */
+  updatedAt: string;
 }
 
 /**
@@ -321,6 +722,41 @@ export interface UpdatePreconditionRequest {
   valueSource: PreconditionValueSource;
   /** @maxLength 10000 */
   exampleValue: string;
+}
+
+/**
+ * Request body to overwrite a Running Run's four activity counts with absolute values -- never
+ *     an increment, so a retried call does no harm.
+ */
+export interface UpdateRunStatsRequest {
+  /**
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  totalActivityCount: number | string;
+  /**
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  passedActivityCount: number | string;
+  /**
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  failedActivityCount: number | string;
+  /**
+   * @format int32
+   * @min 0
+   * @max 2147483647
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  skippedActivityCount: number | string;
 }
 
 /** Request body to edit an existing Scenario's Title/Description/Folder/Tags. */
@@ -602,6 +1038,30 @@ export class Api<SecurityDataType extends unknown> {
     /**
      * No description
      *
+     * @tags AuthoringRuns
+     * @name CreateAuthoringRun
+     * @request POST:/scenarios/{id}/runs
+     * @response `200` `RunResponse` OK
+     * @response `400` `ErrorResponse` EnvironmentId does not reference an Environment belonging to the Scenario's Application. Returns 400 when the request fails a validation constraint.
+     * @response `404` `ProblemDetails` No Scenario with the given id exists in the caller's Organization.
+     */
+    createAuthoringRun: (
+      id: string,
+      data: CreateAuthoringRunRequest,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<RunResponse, ErrorResponse | ProblemDetails>({
+        path: `/scenarios/${id}/runs`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
      * @tags Scenarios
      * @name GetScenarioById
      * @request GET:/scenarios/{id}
@@ -869,6 +1329,212 @@ export class Api<SecurityDataType extends unknown> {
       this.http.request<PreconditionResponse[], any>({
         path: `/applications/${appId}/preconditions`,
         method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Runs
+     * @name CreateRun
+     * @request POST:/applications/{appId}/runs
+     * @response `200` `RunResponse` OK
+     * @response `400` `ErrorResponse` EnvironmentId does not reference an Environment belonging to this Application, ScenarioIds contains a duplicate, or ScenarioIds contains an id that does not reference a Scenario belonging to this Application. Returns 400 when the request fails a validation constraint.
+     * @response `404` `ProblemDetails` No Application with the given appId exists in the caller's Organization, or it no longer exists (deleted after this request started).
+     */
+    createRun: (
+      appId: string,
+      data: CreateRunRequest,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<RunResponse, ErrorResponse | ProblemDetails>({
+        path: `/applications/${appId}/runs`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Runs
+     * @name ListRuns
+     * @request GET:/applications/{appId}/runs
+     * @response `200` `(RunSummaryResponse)[]` OK
+     */
+    listRuns: (appId: string, params: RequestParams = {}) =>
+      this.http.request<RunSummaryResponse[], any>({
+        path: `/applications/${appId}/runs`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Runs
+     * @name GetRunById
+     * @request GET:/applications/{appId}/runs/{id}
+     * @response `200` `RunResponse` OK
+     * @response `404` `ProblemDetails` No Run with the given id exists in this Application, in the caller's Organization.
+     */
+    getRunById: (appId: string, id: string, params: RequestParams = {}) =>
+      this.http.request<RunResponse, ProblemDetails>({
+        path: `/applications/${appId}/runs/${id}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Runs
+     * @name StartRun
+     * @request POST:/applications/{appId}/runs/{id}/start
+     * @response `204` `void` No Content
+     * @response `404` `ProblemDetails` No Run with the given id exists in this Application, in the caller's Organization.
+     * @response `409` `ErrorResponse` The Run's Status is not Pending.
+     */
+    startRun: (appId: string, id: string, params: RequestParams = {}) =>
+      this.http.request<void, ProblemDetails | ErrorResponse>({
+        path: `/applications/${appId}/runs/${id}/start`,
+        method: "POST",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Runs
+     * @name EndRun
+     * @request POST:/applications/{appId}/runs/{id}/end
+     * @response `204` `void` No Content
+     * @response `400` `ErrorResponse` TerminalStatus is Pending or Running, or StatusReason is set while TerminalStatus is not Abandoned. Returns 400 when the request fails a validation constraint.
+     * @response `404` `ProblemDetails` No Run with the given id exists in this Application, in the caller's Organization.
+     * @response `409` `ErrorResponse` The Run's Status is not Running.
+     */
+    endRun: (
+      appId: string,
+      id: string,
+      data: EndRunRequest,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<void, ErrorResponse | ProblemDetails>({
+        path: `/applications/${appId}/runs/${id}/end`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Runs
+     * @name UpdateRunHeartbeat
+     * @request POST:/applications/{appId}/runs/{id}/heartbeat
+     * @response `204` `void` No Content
+     * @response `404` `ProblemDetails` No Run with the given id exists in this Application, in the caller's Organization.
+     * @response `409` `ErrorResponse` The Run's Status is not Running.
+     */
+    updateRunHeartbeat: (
+      appId: string,
+      id: string,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<void, ProblemDetails | ErrorResponse>({
+        path: `/applications/${appId}/runs/${id}/heartbeat`,
+        method: "POST",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Runs
+     * @name UpdateRunStats
+     * @request POST:/applications/{appId}/runs/{id}/stats
+     * @response `204` `void` No Content
+     * @response `400` `void` Returns 400 when the request fails a validation constraint.
+     * @response `404` `ProblemDetails` No Run with the given id exists in this Application, in the caller's Organization.
+     * @response `409` `ErrorResponse` The Run's Status is not Running.
+     */
+    updateRunStats: (
+      appId: string,
+      id: string,
+      data: UpdateRunStatsRequest,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<void, void | ProblemDetails | ErrorResponse>({
+        path: `/applications/${appId}/runs/${id}/stats`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags RunStatusUpdates
+     * @name AppendRunStatusUpdate
+     * @request POST:/applications/{appId}/runs/{id}/status-updates
+     * @response `200` `RunStatusUpdateResponse` OK
+     * @response `400` `ErrorResponse` ActivityResult.Status is Pending or Running. Returns 400 when the request fails a validation constraint.
+     * @response `404` `ProblemDetails` No Run with the given id exists in this Application, in the caller's Organization.
+     * @response `409` `ErrorResponse` Seq is not greater than the Run's current LastSeq, or the Run's Status is not Running.
+     */
+    appendRunStatusUpdate: (
+      appId: string,
+      id: string,
+      data: AppendRunStatusUpdateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<
+        RunStatusUpdateResponse,
+        ErrorResponse | ProblemDetails
+      >({
+        path: `/applications/${appId}/runs/${id}/status-updates`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags RunStatusUpdates
+     * @name ListRunStatusUpdates
+     * @request GET:/applications/{appId}/runs/{id}/status-updates
+     * @response `200` `(RunStatusUpdateResponse)[]` OK
+     * @response `400` `ErrorResponse` after is negative.
+     */
+    listRunStatusUpdates: (
+      appId: string,
+      id: string,
+      query?: {
+        /**
+         * Return only updates with a higher Seq than this. Pass 0 (the default) to read
+         *     from the start of the log.
+         * @format int64
+         * @default 0
+         * @pattern ^-?(?:0|[1-9]\d*)$
+         */
+        after?: number | string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.http.request<RunStatusUpdateResponse[], ErrorResponse>({
+        path: `/applications/${appId}/runs/${id}/status-updates`,
+        method: "GET",
+        query: query,
         format: "json",
         ...params,
       }),

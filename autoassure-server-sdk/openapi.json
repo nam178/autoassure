@@ -701,6 +701,107 @@
         }
       }
     },
+    "/scenarios/{id}/runs": {
+      "post": {
+        "tags": [
+          "AuthoringRuns"
+        ],
+        "operationId": "CreateAuthoringRun",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAuthoringRunRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAuthoringRunRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAuthoringRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "EnvironmentId does not reference an Environment belonging to the Scenario's\n    Application. Returns 400 when the request fails a validation constraint.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No Scenario with the given id exists in the caller's Organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/applications/{appId}/environments": {
       "post": {
         "tags": [
@@ -1583,6 +1684,801 @@
         }
       }
     },
+    "/applications/{appId}/runs": {
+      "post": {
+        "tags": [
+          "Runs"
+        ],
+        "operationId": "CreateRun",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRunRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRunRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "EnvironmentId does not reference an Environment belonging to this\n    Application, ScenarioIds contains a duplicate, or ScenarioIds contains an id that does not\n    reference a Scenario belonging to this Application. Returns 400 when the request fails a validation constraint.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No Application with the given appId exists in the caller's Organization, or\n    it no longer exists (deleted after this request started).",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Runs"
+        ],
+        "operationId": "ListRuns",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunSummaryResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunSummaryResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunSummaryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/applications/{appId}/runs/{id}": {
+      "get": {
+        "tags": [
+          "Runs"
+        ],
+        "operationId": "GetRunById",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No Run with the given id exists in this Application, in the caller's\n    Organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/applications/{appId}/runs/{id}/start": {
+      "post": {
+        "tags": [
+          "Runs"
+        ],
+        "operationId": "StartRun",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "No Run with the given id exists in this Application, in the caller's\n    Organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The Run's Status is not Pending.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/applications/{appId}/runs/{id}/end": {
+      "post": {
+        "tags": [
+          "Runs"
+        ],
+        "operationId": "EndRun",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndRunRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndRunRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "TerminalStatus is Pending or Running, or StatusReason is set while\n    TerminalStatus is not Abandoned. Returns 400 when the request fails a validation constraint.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No Run with the given id exists in this Application, in the caller's\n    Organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The Run's Status is not Running.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/applications/{appId}/runs/{id}/heartbeat": {
+      "post": {
+        "tags": [
+          "Runs"
+        ],
+        "operationId": "UpdateRunHeartbeat",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "No Run with the given id exists in this Application, in the caller's\n    Organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The Run's Status is not Running.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/applications/{appId}/runs/{id}/stats": {
+      "post": {
+        "tags": [
+          "Runs"
+        ],
+        "operationId": "UpdateRunStats",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRunStatsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRunStatsRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRunStatsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "No Run with the given id exists in this Application, in the caller's\n    Organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The Run's Status is not Running.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Returns 400 when the request fails a validation constraint."
+          }
+        }
+      }
+    },
+    "/applications/{appId}/runs/{id}/status-updates": {
+      "post": {
+        "tags": [
+          "RunStatusUpdates"
+        ],
+        "operationId": "AppendRunStatusUpdate",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppendRunStatusUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppendRunStatusUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppendRunStatusUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunStatusUpdateResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunStatusUpdateResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunStatusUpdateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ActivityResult.Status is Pending or Running. Returns 400 when the request fails a validation constraint.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No Run with the given id exists in this Application, in the caller's\n    Organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Seq is not greater than the Run's current LastSeq, or the Run's Status is not\n    Running.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "RunStatusUpdates"
+        ],
+        "operationId": "ListRunStatusUpdates",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "description": "Return only updates with a higher Seq than this. Pass 0 (the default) to read\n    from the start of the log.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int64",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunStatusUpdateResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunStatusUpdateResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunStatusUpdateResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "after is negative.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/applications/{appId}/scenarios": {
       "post": {
         "tags": [
@@ -2058,6 +2954,83 @@
         },
         "description": "A single step within a Scenario, as returned to the client."
       },
+      "ActivityResult": {
+        "required": [
+          "scenarioId",
+          "activityId",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "scenarioId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "activityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ActivityResultStatus"
+          },
+          "resolvedPreconditions": {
+            "maxLength": 50,
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "evidence": {
+            "maxLength": 50,
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "continuationReasoning": {
+            "maxLength": 2000,
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Why this Activity was chosen for execution despite an earlier Activity failing."
+          }
+        },
+        "description": "The outcome of one Activity within a Run, as sent by a worker appending a status update and\n    as returned back to the client reading the log. ScenarioId and ActivityId identify rows in the Run's\n    OWN snapshot -- the ids the Get Run response's Scenario/Activity snapshots carry on their Source --\n    not the live Scenario or Activity, which may since have changed or been deleted."
+      },
+      "ActivityResultStatus": {
+        "type": "integer",
+        "description": "What became of an Activity by the time its result was appended to a Run's status update log,\n    as returned to the client. Only Passed, Failed or Skipped are legal on an appended result -- Pending\n    and Running name the states before an Activity has concluded."
+      },
+      "AppendRunStatusUpdateRequest": {
+        "required": [
+          "seq",
+          "activityResult"
+        ],
+        "type": "object",
+        "properties": {
+          "seq": {
+            "maximum": 9223372036854776000,
+            "minimum": 1,
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "activityResult": {
+            "$ref": "#/components/schemas/ActivityResult"
+          }
+        },
+        "description": "Request body to append one entry to a Run's status update log, at the caller's own sequence\n     number. The owning worker allocates Seq in memory -- this API never invents one. Sequence numbers are\n     1-based and dense: the first update of a Run's log has Seq 1.\n\n     AppendActivityResult is the only kind of status update that exists today, so this always carries an\n     ActivityResult."
+      },
       "ApplicationResponse": {
         "required": [
           "id",
@@ -2163,6 +3136,19 @@
         },
         "description": "Request body to create a new Application in the caller's Organization."
       },
+      "CreateAuthoringRunRequest": {
+        "required": [
+          "environmentId"
+        ],
+        "type": "object",
+        "properties": {
+          "environmentId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "description": "Request body to Try a single Scenario against an Environment. The Scenario comes from the\n    URL (`POST /scenarios/{id}/runs`); this only supplies the Environment to run against."
+      },
       "CreateEnvironmentRequest": {
         "required": [
           "name",
@@ -2228,6 +3214,29 @@
         },
         "description": "Request body to add a Precondition to an Application's library."
       },
+      "CreateRunRequest": {
+        "required": [
+          "scenarioIds",
+          "environmentId"
+        ],
+        "type": "object",
+        "properties": {
+          "scenarioIds": {
+            "maxItems": 97,
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "environmentId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "description": "Request body to start a Manual Run of one or more Scenarios against an Environment. Every id\n    in ScenarioIds must reference a Scenario belonging to the Application named in the URL."
+      },
       "CreateScenarioRequest": {
         "required": [
           "title",
@@ -2263,6 +3272,28 @@
           }
         },
         "description": "Request body to create a new Scenario for an Application. Folder defaults to \"/\" when\n    not given; Tags default to empty."
+      },
+      "EndRunRequest": {
+        "required": [
+          "terminalStatus"
+        ],
+        "type": "object",
+        "properties": {
+          "terminalStatus": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "statusReason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RunStatusReason"
+              }
+            ]
+          }
+        },
+        "description": "Request body to end a Running Run. TerminalStatus must be Completed, Cancelled or Abandoned --\n    Pending and Running are rejected, since those are states the server itself moves a Run through, never\n    an outcome a caller declares. StatusReason may only be given alongside Abandoned; Completed and\n    Cancelled are self-explanatory and must leave it null."
       },
       "EnvironmentClassification": {
         "type": "integer",
@@ -2498,6 +3529,459 @@
         },
         "description": "Request body to reorder a Scenario's Activities. Must contain exactly one entry per\n    Activity currently in the Scenario, as a permutation of their ids."
       },
+      "RunActivitySnapshotResponse": {
+        "required": [
+          "source",
+          "order",
+          "description",
+          "preconditions",
+          "evidenceDefinitions"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/SnapshotSourceResponse"
+          },
+          "order": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "description": {
+            "type": "string"
+          },
+          "preconditions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunPreconditionSnapshotResponse"
+            }
+          },
+          "evidenceDefinitions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunEvidenceDefinitionSnapshotResponse"
+            }
+          }
+        },
+        "description": "An Activity as it was when a Run was created, together with the Preconditions and\n    EvidenceDefinitions it referenced at that moment, as returned to the client."
+      },
+      "RunEnvironmentSnapshotResponse": {
+        "required": [
+          "source",
+          "name",
+          "classification",
+          "variables"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/SnapshotSourceResponse"
+          },
+          "name": {
+            "type": "string"
+          },
+          "classification": {
+            "$ref": "#/components/schemas/EnvironmentClassification"
+          },
+          "variables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunEnvironmentVariableSnapshotResponse"
+            }
+          }
+        },
+        "description": "The Environment a Run ran against, as it was when the Run was created, as returned to the\n    client."
+      },
+      "RunEnvironmentVariableSnapshotResponse": {
+        "required": [
+          "key",
+          "value",
+          "isSensitive",
+          "createdByUserId",
+          "updatedByUserId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "isSensitive": {
+            "type": "boolean"
+          },
+          "createdByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "updatedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "An Environment variable as it was when a Run was created, as returned to the client. When\n    IsSensitive is true, Value is already masked -- more heavily than the live Environment API masks it,\n    since a Run snapshot lives for three years."
+      },
+      "RunEvidenceDefinitionSnapshotResponse": {
+        "required": [
+          "source",
+          "name",
+          "description",
+          "exampleValue"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/SnapshotSourceResponse"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "exampleValue": {
+            "type": "string"
+          }
+        },
+        "description": "An EvidenceDefinition as it was when a Run was created, as returned to the client."
+      },
+      "RunPreconditionSnapshotResponse": {
+        "required": [
+          "source",
+          "name",
+          "valueSource",
+          "exampleValue"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/SnapshotSourceResponse"
+          },
+          "name": {
+            "type": "string"
+          },
+          "valueSource": {
+            "$ref": "#/components/schemas/PreconditionValueSource"
+          },
+          "exampleValue": {
+            "type": "string"
+          }
+        },
+        "description": "A Precondition as it was when a Run was created, as returned to the client."
+      },
+      "RunResponse": {
+        "required": [
+          "id",
+          "applicationId",
+          "trigger",
+          "status",
+          "totalActivityCount",
+          "passedActivityCount",
+          "failedActivityCount",
+          "skippedActivityCount",
+          "environment",
+          "scenarios",
+          "lastSeq",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "applicationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/RunTrigger"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "statusReason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Only set when Status is Abandoned.",
+                "$ref": "#/components/schemas/RunStatusReason"
+              }
+            ]
+          },
+          "totalActivityCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "passedActivityCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failedActivityCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "skippedActivityCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "environment": {
+            "$ref": "#/components/schemas/RunEnvironmentSnapshotResponse"
+          },
+          "scenarios": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunScenarioSnapshotResponse"
+            },
+            "description": "One snapshot per Scenario the Run ran, in no particular order."
+          },
+          "lastSeq": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The highest sequence number appended to this Run's status update log so far. A client\n    that already holds up to this sequence has nothing new to poll for.",
+            "format": "int64"
+          },
+          "triggeredByUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Who triggered this Run. Null for a Scheduled Run -- a system timer has no user id.",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        },
+        "description": "A Run's identity, execution state and what it ran, as returned to the client. Never carries\n    the status update log -- LastSeq and Status are what tell a client whether it is worth polling List\n    Run Status Updates and when to stop. ApplicationId is included even under the nested\n    `/applications/{appId}/runs/{id}` route because the authoring create route\n    (`POST /scenarios/{id}/runs`) is flat and returns this same shape -- without it, a client\n    following an authoring Run would have no way to build its polling URLs."
+      },
+      "RunScenarioSnapshotResponse": {
+        "required": [
+          "source",
+          "title",
+          "description",
+          "folder",
+          "tags",
+          "activities"
+        ],
+        "type": "object",
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/SnapshotSourceResponse"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "folder": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "activities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunActivitySnapshotResponse"
+            }
+          }
+        },
+        "description": "A Scenario as it was when a Run was created, together with its Activities in order, as\n    returned to the client. Never changes when the live Scenario is edited or deleted afterward."
+      },
+      "RunStatus": {
+        "type": "integer",
+        "description": "A Run's execution state, as returned to the client. Carries no pass/fail judgment: a Run\n     whose every Activity failed is still Completed, and the activity counts say how it went.\n\n     Only Completed, Cancelled and Abandoned are legal terminal values to send on End Run -- Pending and\n     Running name states the server itself moves a Run through and are rejected there."
+      },
+      "RunStatusReason": {
+        "type": "integer"
+      },
+      "RunStatusUpdateKind": {
+        "type": "integer",
+        "description": "What a Run status update row records, as returned to the client. AppendActivityResult is\n    the only kind that exists today -- see the server's design notes for what earns a new one."
+      },
+      "RunStatusUpdateResponse": {
+        "required": [
+          "seq",
+          "kind",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "seq": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/RunStatusUpdateKind"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "activityResult": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Set when Kind is AppendActivityResult -- the only kind today, so always set in\n    practice.",
+                "$ref": "#/components/schemas/ActivityResult"
+              }
+            ]
+          }
+        },
+        "description": "One entry of a Run's status update log, as returned to the client. The API hands these back\n    exactly as appended, in sequence order -- it never folds or interprets them; only the client\n    does."
+      },
+      "RunSummaryResponse": {
+        "required": [
+          "id",
+          "trigger",
+          "status",
+          "totalActivityCount",
+          "passedActivityCount",
+          "failedActivityCount",
+          "skippedActivityCount",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/RunTrigger"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "statusReason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Only set when Status is Abandoned.",
+                "$ref": "#/components/schemas/RunStatusReason"
+              }
+            ]
+          },
+          "totalActivityCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "passedActivityCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failedActivityCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "skippedActivityCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        },
+        "description": "A Run's identity and execution state only -- no Environment, no Scenarios -- exactly what the\n    Application's Runs panel shows for one row of the list. Authoring Runs never appear here; fetch one by\n    id instead."
+      },
+      "RunTrigger": {
+        "type": "integer",
+        "description": "Where a Run came from, as returned to the client. Affects retention and whether the Run\n    shows up in the Application's Runs panel -- nothing about how it executes."
+      },
       "ScenarioResponse": {
         "required": [
           "id",
@@ -2546,6 +4030,39 @@
           }
         },
         "description": "Request body to upsert a single Environment variable's value."
+      },
+      "SnapshotSourceResponse": {
+        "required": [
+          "id",
+          "createdByUserId",
+          "updatedByUserId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "updatedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Where a Run snapshot was copied from, as returned to the client: provenance only. Id may no\n    longer resolve to a live row -- the source can have been edited, archived or deleted since this Run\n    was created -- so it should be treated as a hint for \"open the current version, if it still exists\",\n    never as a live reference."
       },
       "UpdateActivityRequest": {
         "required": [
@@ -2647,6 +4164,58 @@
         },
         "description": "Request body to edit an existing Precondition."
       },
+      "UpdateRunStatsRequest": {
+        "required": [
+          "totalActivityCount",
+          "passedActivityCount",
+          "failedActivityCount",
+          "skippedActivityCount"
+        ],
+        "type": "object",
+        "properties": {
+          "totalActivityCount": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "passedActivityCount": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failedActivityCount": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "skippedActivityCount": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "Request body to overwrite a Running Run's four activity counts with absolute values -- never\n    an increment, so a retried call does no harm."
+      },
       "UpdateScenarioRequest": {
         "required": [
           "title",
@@ -2723,6 +4292,9 @@
       "name": "Auth"
     },
     {
+      "name": "AuthoringRuns"
+    },
+    {
       "name": "Environments"
     },
     {
@@ -2730,6 +4302,12 @@
     },
     {
       "name": "Preconditions"
+    },
+    {
+      "name": "Runs"
+    },
+    {
+      "name": "RunStatusUpdates"
     },
     {
       "name": "Scenarios"
