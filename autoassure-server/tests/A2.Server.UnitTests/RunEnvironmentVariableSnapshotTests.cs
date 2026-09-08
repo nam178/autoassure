@@ -36,9 +36,9 @@ public sealed class RunEnvironmentVariableSnapshotTests
     }
 
     [Fact]
-    public void FromEnvironmentVariable_WhenVariableIsSensitive_MasksTheValueAtFifteenPercent()
+    public void FromEnvironmentVariable_WhenVariableIsSensitive_MasksTheValue()
     {
-        // setup: a value whose first 15% of the fixed 20-character mask length is "abc" (3 characters).
+        // setup
         var variable = new EnvironmentVariable
         {
             OrganizationId = Guid.NewGuid(),
@@ -55,9 +55,9 @@ public sealed class RunEnvironmentVariableSnapshotTests
         // test
         var snapshot = RunEnvironmentVariableSnapshot.FromEnvironmentVariable(variable);
 
-        // verify: the snapshot never holds the real secret, and it keeps less than the API's own 30% mask.
+        // verify: the snapshot never holds the real secret.
         Assert.NotEqual(variable.Value, snapshot.Value);
-        Assert.Equal(SensitiveValueMasker.Mask(variable.Value, 0.15), snapshot.Value);
+        Assert.Equal(SensitiveValueMasker.Mask(variable.Value), snapshot.Value);
         Assert.True(snapshot.IsSensitive);
     }
 }

@@ -7,32 +7,28 @@ public sealed class SensitiveValueMaskerTests
 {
     // Mirrors the private MaskedLength constant in SensitiveValueMasker: every masked output must be
     // exactly this many characters, whatever the real value's length.
-    private const int ExpectedMaskedLength = 20;
+    private const int ExpectedMaskedLength = 10;
 
     [Theory]
-    [InlineData("", 0.3, "")] // empty string: nothing to reveal
-    [InlineData("a", 0.3, "a")] // one character: shorter than the visible slice, so shown in full
-    [InlineData("abcdefghij", 0.3, "abcdef")] // 10 characters: 30% of the fixed length (20) is 6
-    [InlineData("abcdefghij", 0.15, "abc")] // 10 characters: 15% of the fixed length (20) is 3
-    [InlineData("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz", 0.15, "abc")] // a long value: still capped at 15% of the fixed length, not 15% of its own length
-    public void Mask_WhenGivenVariousInputs_KeepsOnlyTheLeadingFraction(
+    [InlineData("", "**********")] // empty: nothing to reveal
+    [InlineData("abcdefg", "**********")] // 7 characters: shorter than the 8-character reveal threshold
+    [InlineData("abcdefgh", "ab********")] // 8 characters: exactly at the threshold, so the leading 2 show
+    [InlineData("abcdefghij", "ab********")] // 10 characters: still just the leading 2
+    [InlineData("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz", "ab********")] // a long value: still capped at 2 leading characters, not a fraction of its own length
+    public void Mask_WhenGivenVariousInputs_RevealsAtMostTwoLeadingCharacters(
         string value,
-        double fractionToKeep,
-        string expectedPrefix
+        string expectedMasked
     )
     {
         // test
-        var masked = SensitiveValueMasker.Mask(value, fractionToKeep);
+        var masked = SensitiveValueMasker.Mask(value);
 
         // verify
-        Assert.StartsWith(expectedPrefix, masked);
-        Assert.Equal(expectedPrefix, masked[..expectedPrefix.Length]);
+        Assert.Equal(expectedMasked, masked);
     }
 
-    [Theory]
-    [InlineData(0.3)]
-    [InlineData(0.15)]
-    public void Mask_WhenGivenVariousLengths_ReturnsConstantLengthOutput(double fractionToKeep)
+    [Fact]
+    public void Mask_WhenGivenVariousLengths_ReturnsConstantLengthOutput()
     {
         // setup: values of very different lengths, including empty and one character, must all mask to
         // the same total length -- otherwise the masked output's length would leak the real value's length.
@@ -40,43 +36,42 @@ public sealed class SensitiveValueMaskerTests
         [
             "",
             "a",
-            "abcdefghij",
+            "abcdefg",
+            "abcdefgh",
             "a-very-long-value-that-is-much-longer-than-the-others-here",
             new string('x', 500),
         ];
 
         // test
-        var maskedLengths = values.Select(value =>
-            SensitiveValueMasker.Mask(value, fractionToKeep).Length
-        );
+        var maskedLengths = values.Select(value => SensitiveValueMasker.Mask(value).Length);
 
         // verify: every input, regardless of its own length, produces output of the same fixed length.
         Assert.All(maskedLengths, length => Assert.Equal(ExpectedMaskedLength, length));
     }
 
     [Fact]
-    public void Mask_WhenValueIsNonEmpty_NeverReturnsEmptyOrFullyVisibleOutput()
+    public void Mask_WhenValueIsShorterThanTheRevealThreshold_HidesItCompletely()
     {
-        // setup
-        var shortMasked = SensitiveValueMasker.Mask("short", 0.3);
-        var longMasked = SensitiveValueMasker.Mask("a-much-much-much-longer-value-than-short", 0.3);
+        // setup: a value one character short of the 8-character threshold that gates revealing any of
+        // the real value -- revealing where its stars start would otherwise leak its exact length.
+        var masked = SensitiveValueMasker.Mask("shortpw");
 
-        // test & verify: both are the fixed length, non-empty, and still carry at least one dot so
-        // neither looks like an unmasked value.
-        Assert.Equal(ExpectedMaskedLength, shortMasked.Length);
-        Assert.Equal(ExpectedMaskedLength, longMasked.Length);
-        Assert.Contains('.', shortMasked);
-        Assert.Contains('.', longMasked);
+        // test & verify
+        Assert.Equal("**********", masked);
     }
 
-    [Theory]
-    [InlineData(-0.1)]
-    [InlineData(1.1)]
-    public void Mask_WhenFractionOutOfRange_Throws(double fractionToKeep)
+    [Fact]
+    public void Mask_WhenValueMeetsTheRevealThreshold_NeverReturnsFullyVisibleOutput()
     {
-        // test & verify
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            SensitiveValueMasker.Mask("value", fractionToKeep)
-        );
+        // setup
+        var shortMasked = SensitiveValueMasker.Mask("shortpwd");
+        var longMasked = SensitiveValueMasker.Mask("a-much-much-much-longer-value-than-short");
+
+        // test & verify: both are the fixed length and still carry stars, so neither looks like an
+        // unmasked value.
+        Assert.Equal(ExpectedMaskedLength, shortMasked.Length);
+        Assert.Equal(ExpectedMaskedLength, longMasked.Length);
+        Assert.Contains('*', shortMasked);
+        Assert.Contains('*', longMasked);
     }
 }

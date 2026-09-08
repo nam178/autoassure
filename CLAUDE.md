@@ -8,3 +8,6 @@ This repository contains:
 - autoassure-server-sdk: generated TS SDK
 - autoassure-web: uses the SDK to talk to the backend.
 - autoassure-infra: Terraform for AWS infra.
+
+Breaking changes are welcome. No need to make backward-compatibility. AutoAssure
+has not yet been released to the public.

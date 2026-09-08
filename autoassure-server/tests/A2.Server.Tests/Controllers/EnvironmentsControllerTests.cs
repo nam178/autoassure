@@ -317,7 +317,11 @@ public sealed class EnvironmentsControllerTests
         var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_URL",
-            new SetEnvironmentVariableRequest { Value = "https://staging.example.com", IsSensitive = false }
+            new SetEnvironmentVariableRequest
+            {
+                Value = "https://staging.example.com",
+                IsSensitive = false,
+            }
         );
 
         // test
@@ -357,14 +361,14 @@ public sealed class EnvironmentsControllerTests
         // test
         var getResponse = await client.GetAsync($"/environments/{created.Id}");
 
-        // verify: a leading slice of the value's real characters stays visible, the rest becomes dots
+        // verify: a leading slice of the value's real characters stays visible, the rest becomes stars
         // padded to the masker's fixed output length -- the real value is never returned whole, and the
         // output length does not depend on the real value's length.
         var environment = await getResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
         var variable = Assert.Single(environment!.Variables);
         Assert.True(variable.IsSensitive);
         Assert.NotEqual("abcdefghij", variable.Value);
-        Assert.Equal("abcdef..............", variable.Value);
+        Assert.Equal("ab********", variable.Value);
     }
 
     [Fact]
@@ -447,7 +451,11 @@ public sealed class EnvironmentsControllerTests
         // test
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_URL",
-            new SetEnvironmentVariableRequest { Value = "https://staging.example.com", IsSensitive = false }
+            new SetEnvironmentVariableRequest
+            {
+                Value = "https://staging.example.com",
+                IsSensitive = false,
+            }
         );
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_KEY",
@@ -487,7 +495,11 @@ public sealed class EnvironmentsControllerTests
         var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_URL",
-            new SetEnvironmentVariableRequest { Value = "https://staging.example.com", IsSensitive = false }
+            new SetEnvironmentVariableRequest
+            {
+                Value = "https://staging.example.com",
+                IsSensitive = false,
+            }
         );
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_KEY",
@@ -735,7 +747,11 @@ public sealed class EnvironmentsControllerTests
         // test
         var response = await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_URL",
-            new SetEnvironmentVariableRequest { Value = new string('a', valueLength), IsSensitive = false }
+            new SetEnvironmentVariableRequest
+            {
+                Value = new string('a', valueLength),
+                IsSensitive = false,
+            }
         );
 
         // verify

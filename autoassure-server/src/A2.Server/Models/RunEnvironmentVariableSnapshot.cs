@@ -17,10 +17,6 @@ public record RunEnvironmentVariableSnapshot
     public required DateTimeOffset CreatedAt { get; init; }
     public required DateTimeOffset UpdatedAt { get; init; }
 
-    // A run snapshot lives for three years, far longer than the 30% the API keeps for a still-editable
-    // variable. Keeping less of the value visible for that long is the deliberate trade the design makes.
-    private const double SensitiveFractionToKeep = 0.15;
-
     /// <summary>Copies an EnvironmentVariable as it is right now, masking the value first when the
     /// variable is sensitive. OrganizationId is left out -- it already lives on the Run header, and a Run
     /// never spans two of either. EnvironmentId is left out -- it is already known from the enclosing
@@ -33,7 +29,7 @@ public record RunEnvironmentVariableSnapshot
         {
             Key = environmentVariable.Key,
             Value = environmentVariable.IsSensitive
-                ? SensitiveValueMasker.Mask(environmentVariable.Value, SensitiveFractionToKeep)
+                ? SensitiveValueMasker.Mask(environmentVariable.Value)
                 : environmentVariable.Value,
             IsSensitive = environmentVariable.IsSensitive,
             CreatedByUserId = environmentVariable.CreatedByUserId,
