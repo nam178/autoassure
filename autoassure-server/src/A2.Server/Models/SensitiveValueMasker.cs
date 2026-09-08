@@ -22,7 +22,12 @@ public static class SensitiveValueMasker
     /// <summary>Keeps <paramref name="value"/>'s leading <see cref="VisibleLength"/> characters when it's
     /// at least <see cref="MinimumLengthToReveal"/> characters long, and pads the remainder with stars up
     /// to <see cref="MaskedLength"/>. A value shorter than the threshold is hidden completely, rather than
-    /// revealing any of it, so the output's shape never depends on the real value's length.</summary>
+    /// revealing any of it, so the output's shape never depends on the real value's length.
+    ///
+    /// Idempotent: masking an already-masked value returns it unchanged, since the masked output is
+    /// itself at least <see cref="MinimumLengthToReveal"/> characters and its own leading
+    /// <see cref="VisibleLength"/> characters are already whatever this call would reveal. Safe to call
+    /// on a value that may or may not already be masked.</summary>
     public static string Mask(string value) =>
         value.Length >= MinimumLengthToReveal
             ? value[..VisibleLength] + new string('*', MaskedLength - VisibleLength)

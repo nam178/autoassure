@@ -2,7 +2,8 @@ using A2.Server.Models;
 
 namespace A2.Server.UnitTests;
 
-/// <summary>Unit tests for <see cref="RunEnvironmentVariableSnapshot.FromEnvironmentVariable"/>.</summary>
+/// <summary>Unit tests for <see cref="RunEnvironmentVariableSnapshot.FromEnvironmentVariable"/> and
+/// <see cref="RunEnvironmentVariableSnapshot.Masked"/>.</summary>
 public sealed class RunEnvironmentVariableSnapshotTests
 {
     [Fact]
@@ -36,7 +37,7 @@ public sealed class RunEnvironmentVariableSnapshotTests
     }
 
     [Fact]
-    public void FromEnvironmentVariable_WhenVariableIsSensitive_MasksTheValue()
+    public void FromEnvironmentVariable_WhenVariableIsSensitive_StoresTheRealValueUnmasked()
     {
         // setup
         var variable = new EnvironmentVariable
@@ -55,9 +56,77 @@ public sealed class RunEnvironmentVariableSnapshotTests
         // test
         var snapshot = RunEnvironmentVariableSnapshot.FromEnvironmentVariable(variable);
 
-        // verify: the snapshot never holds the real secret.
-        Assert.NotEqual(variable.Value, snapshot.Value);
-        Assert.Equal(SensitiveValueMasker.Mask(variable.Value), snapshot.Value);
+        // verify: a future execution agent needs the real credential from this snapshot, so Create no
+        // longer masks it -- only Masked() does, and only from Start Run onward.
+        Assert.Equal(variable.Value, snapshot.Value);
         Assert.True(snapshot.IsSensitive);
+    }
+
+    [Fact]
+    public void Masked_WhenVariableIsSensitive_ReturnsTheMaskedValue()
+    {
+        // setup
+        var snapshot = new RunEnvironmentVariableSnapshot
+        {
+            Key = "API_KEY",
+            Value = "abcdefghijklmnopqrstuvwxyz",
+            IsSensitive = true,
+            CreatedByUserId = Guid.NewGuid(),
+            UpdatedByUserId = Guid.NewGuid(),
+            CreatedAt = DateTimeOffset.Parse("2026-01-01T00:00:00Z"),
+            UpdatedAt = DateTimeOffset.Parse("2026-02-01T00:00:00Z"),
+        };
+
+        // test
+        var masked = snapshot.Masked();
+
+        // verify
+        Assert.Equal(SensitiveValueMasker.Mask(snapshot.Value), masked.Value);
+        Assert.NotEqual(snapshot.Value, masked.Value);
+    }
+
+    [Fact]
+    public void Masked_WhenVariableIsNotSensitive_LeavesTheValueUntouched()
+    {
+        // setup
+        var snapshot = new RunEnvironmentVariableSnapshot
+        {
+            Key = "BASE_URL",
+            Value = "https://staging.example.com",
+            IsSensitive = false,
+            CreatedByUserId = Guid.NewGuid(),
+            UpdatedByUserId = Guid.NewGuid(),
+            CreatedAt = DateTimeOffset.Parse("2026-01-01T00:00:00Z"),
+            UpdatedAt = DateTimeOffset.Parse("2026-02-01T00:00:00Z"),
+        };
+
+        // test
+        var masked = snapshot.Masked();
+
+        // verify
+        Assert.Equal(snapshot.Value, masked.Value);
+    }
+
+    [Fact]
+    public void Masked_WhenCalledTwiceOnASensitiveVariable_IsIdempotent()
+    {
+        // setup
+        var snapshot = new RunEnvironmentVariableSnapshot
+        {
+            Key = "API_KEY",
+            Value = "abcdefghijklmnopqrstuvwxyz",
+            IsSensitive = true,
+            CreatedByUserId = Guid.NewGuid(),
+            UpdatedByUserId = Guid.NewGuid(),
+            CreatedAt = DateTimeOffset.Parse("2026-01-01T00:00:00Z"),
+            UpdatedAt = DateTimeOffset.Parse("2026-02-01T00:00:00Z"),
+        };
+
+        // test
+        var maskedOnce = snapshot.Masked();
+        var maskedTwice = maskedOnce.Masked();
+
+        // verify
+        Assert.Equal(maskedOnce.Value, maskedTwice.Value);
     }
 }

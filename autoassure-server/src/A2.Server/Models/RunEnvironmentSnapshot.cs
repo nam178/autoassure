@@ -30,4 +30,13 @@ public record RunEnvironmentSnapshot
             Classification = environment.Classification,
             Variables = variables,
         };
+
+    /// <summary>Masks every sensitive variable's value (see
+    /// <see cref="RunEnvironmentVariableSnapshot.Masked"/>), leaving non-sensitive ones untouched.
+    /// Idempotent: calling it again on the result returns an equivalent snapshot.</summary>
+    public RunEnvironmentSnapshot Masked() =>
+        this with
+        {
+            Variables = Variables.Select(v => v.Masked()).ToList(),
+        };
 }

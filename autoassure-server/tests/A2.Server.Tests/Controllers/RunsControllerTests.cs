@@ -484,6 +484,21 @@ public sealed class RunsControllerTests
         return environment!.Id;
     }
 
+    private static async Task SetEnvironmentVariableAsync(
+        HttpClient client,
+        Guid environmentId,
+        string key,
+        string value,
+        bool isSensitive
+    )
+    {
+        var response = await client.PutAsJsonAsync(
+            $"/environments/{environmentId}/variables/{key}",
+            new SetEnvironmentVariableRequest { Value = value, IsSensitive = isSensitive }
+        );
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
     private static async Task<Guid> CreateScenarioAsync(
         HttpClient client,
         Guid appId,
@@ -573,6 +588,59 @@ public sealed class RunsControllerTests
         var scenario = Assert.Single(run.Scenarios);
         Assert.Equal("Checkout completes", scenario.Title);
         Assert.Single(scenario.Activities);
+    }
+
+    [Fact]
+    public async Task Create_WhenEnvironmentHasSensitiveVariable_MasksItInTheResponse()
+    {
+        // setup -- storage now holds the real value at Create time (this change removed masking there),
+        // but the response must still mask it by default -- Create is not the one caller that gets the
+        // real value back (only Start Run's winning claim is).
+        var client = await CreateClientWithMembershipAsync();
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
+        const string secret = "abcdefghijklmnopqrstuvwxyz";
+        await SetEnvironmentVariableAsync(
+            client,
+            environmentId,
+            "API_KEY",
+            secret,
+            isSensitive: true
+        );
+
+        // test
+        var run = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+
+        // verify
+        var variable = Assert.Single(run.Environment.Variables, v => v.Key == "API_KEY");
+        Assert.Equal(Models.SensitiveValueMasker.Mask(secret), variable.Value);
+        Assert.NotEqual(secret, variable.Value);
+    }
+
+    [Fact]
+    public async Task GetById_WhenRunIsStillPendingWithSensitiveVariable_MasksItInTheResponse()
+    {
+        // setup -- a Pending Run's storage still holds the real value (Start Run has not run yet, so
+        // nothing has overwritten it), but Get Run must mask it regardless of what storage holds.
+        var client = await CreateClientWithMembershipAsync();
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
+        const string secret = "abcdefghijklmnopqrstuvwxyz";
+        await SetEnvironmentVariableAsync(
+            client,
+            environmentId,
+            "API_KEY",
+            secret,
+            isSensitive: true
+        );
+        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+
+        // test
+        var fetched = await (
+            await client.GetAsync($"/applications/{appId}/runs/{created.Id}")
+        ).Content.ReadFromJsonAsync<RunResponse>();
+
+        // verify
+        var variable = Assert.Single(fetched!.Environment.Variables, v => v.Key == "API_KEY");
+        Assert.Equal(Models.SensitiveValueMasker.Mask(secret), variable.Value);
     }
 
     [Fact]
@@ -730,7 +798,7 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task Start_WhenPending_Succeeds()
+    public async Task Start_WhenPending_ReturnsRunningRunWithOkStatus()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -744,11 +812,55 @@ public sealed class RunsControllerTests
         );
 
         // verify
-        Assert.Equal(HttpStatusCode.NoContent, startResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
+        var started = await startResponse.Content.ReadFromJsonAsync<RunResponse>();
+        Assert.Equal(RunStatus.Running, started!.Status);
+        Assert.NotNull(started.StartedAt);
         var fetched = await (
             await client.GetAsync($"/applications/{appId}/runs/{created.Id}")
         ).Content.ReadFromJsonAsync<RunResponse>();
         Assert.Equal(RunStatus.Running, fetched!.Status);
+    }
+
+    [Fact]
+    public async Task Start_WhenEnvironmentHasSensitiveVariable_ReturnsTheRealValueUnmasked()
+    {
+        // setup -- a sensitive variable set before the Run is created, so Create's own snapshot
+        // (unmasked as of this change) carries the real value into storage.
+        var client = await CreateClientWithMembershipAsync();
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
+        const string secret = "abcdefghijklmnopqrstuvwxyz";
+        await SetEnvironmentVariableAsync(
+            client,
+            environmentId,
+            "API_KEY",
+            secret,
+            isSensitive: true
+        );
+        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+
+        // test
+        var startResponse = await client.PostAsync(
+            $"/applications/{appId}/runs/{created.Id}/start",
+            null
+        );
+
+        // verify -- the winning claim's own response is the one place the real secret comes back.
+        Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
+        var started = await startResponse.Content.ReadFromJsonAsync<RunResponse>();
+        var variable = Assert.Single(started!.Environment.Variables, v => v.Key == "API_KEY");
+        Assert.Equal(secret, variable.Value);
+
+        // verify -- every later read masks it again, since storage was overwritten with the masked
+        // snapshot the instant the Run was claimed.
+        var fetched = await (
+            await client.GetAsync($"/applications/{appId}/runs/{created.Id}")
+        ).Content.ReadFromJsonAsync<RunResponse>();
+        var fetchedVariable = Assert.Single(
+            fetched!.Environment.Variables,
+            v => v.Key == "API_KEY"
+        );
+        Assert.Equal(Models.SensitiveValueMasker.Mask(secret), fetchedVariable.Value);
     }
 
     [Fact]

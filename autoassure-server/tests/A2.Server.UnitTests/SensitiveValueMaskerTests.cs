@@ -74,4 +74,21 @@ public sealed class SensitiveValueMaskerTests
         Assert.Contains('*', shortMasked);
         Assert.Contains('*', longMasked);
     }
+
+    [Theory]
+    [InlineData("a-value-well-past-the-reveal-threshold")] // long enough to reveal characters
+    [InlineData("shortpw")] // short: fully starred
+    [InlineData("abcdefgh")] // exactly at the 8-character reveal threshold
+    public void Mask_WhenCalledOnAnAlreadyMaskedValue_ReturnsTheSameOutput(string value)
+    {
+        // setup
+        var maskedOnce = SensitiveValueMasker.Mask(value);
+
+        // test
+        var maskedTwice = SensitiveValueMasker.Mask(maskedOnce);
+
+        // verify: masking is idempotent -- an already-masked value re-masks to itself, since Start Run's
+        // storage overwrite and the response mapper's default masking can both run on the same value.
+        Assert.Equal(maskedOnce, maskedTwice);
+    }
 }

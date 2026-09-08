@@ -55,19 +55,32 @@ public interface IRunRepository
 
     /// <summary>Claims a Pending Run for execution: sets <c>Status</c> to Running, stamps
     /// <paramref name="startedAt"/> onto <c>StartedAt</c> and the first <c>LastHeartbeatAt</c>, derives
-    /// <c>DeadlineAt</c> from it via <see cref="RunExecutionPolicy.MaxRunDuration"/>, and marks the Run
-    /// in-flight so the sweeper's (task 8) index can find it. <c>Status</c> is the only concurrency
-    /// control -- conditioning this write on <c>Status = Pending</c> is what lets exactly one of several
-    /// racing claims win.
+    /// <c>DeadlineAt</c> from it via <see cref="RunExecutionPolicy.MaxRunDuration"/>, marks the Run
+    /// in-flight so the sweeper's (task 8) index can find it, and overwrites the stored <c>Environment</c>
+    /// with <paramref name="maskedEnvironment"/>. That last write is what wipes the real sensitive values
+    /// captured at create time (see <see cref="RunEnvironmentVariableSnapshot.FromEnvironmentVariable"/>)
+    /// out of storage the instant the Run is claimed -- the winning caller already has them in hand from
+    /// its own pre-claim read, since that read happened before this write executes, so nothing needs them
+    /// from storage again. <paramref name="maskedEnvironment"/> is supplied by the caller rather than
+    /// computed here, the same pattern <see cref="TryAppendStatusUpdateAsync"/>'s <c>expiresAt</c> param
+    /// follows: the caller already holds the pre-claim header in memory, so this repository never
+    /// re-reads or re-masks it. <c>Status</c> is the only concurrency control -- conditioning this write
+    /// on <c>Status = Pending</c> is what lets exactly one of several racing claims win.
     ///
-    /// Returns false, and writes nothing, when the Run's <c>Status</c> is not Pending -- including a
+    /// On success, returns the exact values just written -- <c>StartedAt</c>, <c>LastHeartbeatAt</c> and
+    /// <c>DeadlineAt</c> -- as a <see cref="RunStartResult"/>, so a caller builds its response from what
+    /// was actually persisted rather than re-deriving the same values a second time and risking the two
+    /// drifting apart.
+    ///
+    /// Returns null, and writes nothing, when the Run's <c>Status</c> is not Pending -- including a
     /// second claim racing an already-successful one, which is what makes duplicate dispatch harmless
     /// (see fix_run_design.md section 5).</summary>
-    Task<bool> TryStartAsync(
+    Task<RunStartResult?> TryStartAsync(
         Guid organizationId,
         Guid applicationId,
         Guid id,
-        DateTimeOffset startedAt
+        DateTimeOffset startedAt,
+        RunEnvironmentSnapshot maskedEnvironment
     );
 
     /// <summary>Moves a Running Run to one of its terminal states, stamping <paramref name="completedAt"/>

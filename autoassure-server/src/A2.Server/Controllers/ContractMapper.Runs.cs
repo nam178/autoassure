@@ -19,8 +19,16 @@ namespace A2.Server.Controllers;
 public static partial class ContractMapper
 {
     /// <summary>Assembles a RunDetail (header plus Scenario snapshots) into the full response returned
-    /// by Create Run and Get Run. Never carries the status update log -- see RunResponse's doc.</summary>
-    public static RunResponse ToResponse(this RunDetail detail) =>
+    /// by Create Run, Get Run and Start Run. Never carries the status update log -- see RunResponse's
+    /// doc.
+    ///
+    /// <paramref name="maskSensitiveValues"/> defaults to true, masking every sensitive variable's value
+    /// (see <see cref="SensitiveValueMasker.Mask"/>) regardless of whether storage currently holds the
+    /// real value or an already-masked one -- masking an already-masked value is harmless. The only
+    /// caller that passes false is Start Run's success path: the winning claim gets the real values back
+    /// exactly once, from the pre-claim read it already made before <c>TryStartAsync</c> overwrote
+    /// storage with the masked snapshot.</summary>
+    public static RunResponse ToResponse(this RunDetail detail, bool maskSensitiveValues = true) =>
         new()
         {
             Id = detail.Header.Id,
@@ -32,7 +40,7 @@ public static partial class ContractMapper
             PassedActivityCount = detail.Header.PassedActivityCount,
             FailedActivityCount = detail.Header.FailedActivityCount,
             SkippedActivityCount = detail.Header.SkippedActivityCount,
-            Environment = detail.Header.Environment.ToResponse(),
+            Environment = detail.Header.Environment.ToResponse(maskSensitiveValues),
             Scenarios = detail.Scenarios.Select(s => s.ToResponse()).ToList(),
             LastSeq = detail.Header.LastSeq,
             TriggeredByUserId = detail.Header.TriggeredByUserId,
@@ -77,23 +85,28 @@ public static partial class ContractMapper
         };
 
     private static RunEnvironmentSnapshotResponse ToResponse(
-        this RunEnvironmentSnapshot snapshot
+        this RunEnvironmentSnapshot snapshot,
+        bool maskSensitiveValues
     ) =>
         new()
         {
             Source = snapshot.Source.ToResponse(),
             Name = snapshot.Name,
             Classification = snapshot.Classification.ToContract(),
-            Variables = snapshot.Variables.Select(v => v.ToResponse()).ToList(),
+            Variables = snapshot.Variables.Select(v => v.ToResponse(maskSensitiveValues)).ToList(),
         };
 
     private static RunEnvironmentVariableSnapshotResponse ToResponse(
-        this RunEnvironmentVariableSnapshot snapshot
+        this RunEnvironmentVariableSnapshot snapshot,
+        bool maskSensitiveValues
     ) =>
         new()
         {
             Key = snapshot.Key,
-            Value = snapshot.Value,
+            Value =
+                maskSensitiveValues && snapshot.IsSensitive
+                    ? SensitiveValueMasker.Mask(snapshot.Value)
+                    : snapshot.Value,
             IsSensitive = snapshot.IsSensitive,
             CreatedByUserId = snapshot.CreatedByUserId,
             UpdatedByUserId = snapshot.UpdatedByUserId,

@@ -386,7 +386,11 @@ public static partial class DynamoDbMapper
             UpdatedAt = DateTimeOffset.Parse(value.M["UpdatedAt"].S, CultureInfo.InvariantCulture),
         };
 
-    private static AttributeValue ToAttributeValue(this RunEnvironmentSnapshot snapshot) =>
+    // Internal rather than private: DynamoDbRunRepository (same assembly, different class) calls this
+    // directly to write TryStartAsync's masked Environment overwrite, without re-reading or recomputing
+    // it. Not public -- nothing outside this assembly's repository layer should build a raw
+    // AttributeValue.
+    internal static AttributeValue ToAttributeValue(this RunEnvironmentSnapshot snapshot) =>
         new AttributeValue
         {
             M = new Dictionary<string, AttributeValue>

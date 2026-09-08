@@ -206,11 +206,12 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             .ToList();
     }
 
-    public async Task<bool> TryStartAsync(
+    public async Task<RunStartResult?> TryStartAsync(
         Guid organizationId,
         Guid applicationId,
         Guid id,
-        DateTimeOffset startedAt
+        DateTimeOffset startedAt,
+        RunEnvironmentSnapshot maskedEnvironment
     )
     {
         // When a Run is claimed, Then its DeadlineAt is fixed from this same instant so the sweeper
@@ -225,9 +226,14 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 {
                     TableName = RunTableName,
                     Key = HeaderKey(organizationId, applicationId, id),
+                    // Overwriting Environment with the caller's already-masked snapshot here, atomically
+                    // with the Pending->Running transition, is what wipes the real sensitive values
+                    // captured at create time out of storage the instant the Run is claimed -- see this
+                    // method's doc on IRunRepository.
                     UpdateExpression =
                         "SET #status = :running, StartedAt = :startedAt, DeadlineAt = :deadlineAt, "
-                        + "LastHeartbeatAt = :startedAt, InFlightShard = :shard",
+                        + "LastHeartbeatAt = :startedAt, InFlightShard = :shard, "
+                        + "Environment = :maskedEnvironment",
                     // Status is the only concurrency control (see fix_run_design.md section 5) -- this
                     // is what lets exactly one of several racing claims win, and it doubles as an
                     // existence check: a Run that does not exist has no Status attribute at all, so the
@@ -244,14 +250,20 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                         [":startedAt"] = new(startedAt.ToString("O")),
                         [":deadlineAt"] = new(deadlineAt.ToString("O")),
                         [":shard"] = new(DynamoDbMapper.RunInFlightShard(id)),
+                        [":maskedEnvironment"] = maskedEnvironment.ToAttributeValue(),
                     },
                 }
             );
-            return true;
+            return new RunStartResult
+            {
+                StartedAt = startedAt,
+                LastHeartbeatAt = startedAt,
+                DeadlineAt = deadlineAt,
+            };
         }
         catch (ConditionalCheckFailedException)
         {
-            return false;
+            return null;
         }
     }
 

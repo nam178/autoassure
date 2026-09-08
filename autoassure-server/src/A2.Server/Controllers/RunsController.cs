@@ -120,28 +120,62 @@ public class RunsController(
         return detail is null ? NotFound() : Ok(detail.ToResponse());
     }
 
+    /// <summary>Claims a Pending Run for execution and returns it, unmasked, to the winning caller only
+    /// -- the one time in this API's life a sensitive Environment variable's real value is ever returned.
+    /// Every other response (Create Run, Get Run) always masks sensitive values regardless of what
+    /// storage currently holds; see <see cref="ContractMapper.ToResponse(RunDetail, bool)"/>.</summary>
     /// <response code="404">No Run with the given id exists in this Application, in the caller's
     /// Organization.</response>
     /// <response code="409">The Run's Status is not Pending.</response>
     [HttpPost("applications/{appId:guid}/runs/{id:guid}/start", Name = "StartRun")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(RunResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
-    public async Task<ActionResult> Start(Guid appId, Guid id)
+    public async Task<ActionResult<RunResponse>> Start(Guid appId, Guid id)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
 
         // A Run's own existence is checked with a Get first, since TryStartAsync's condition alone
         // cannot tell "does not exist" apart from "exists but is not Pending" -- both fail the same way.
-        if (await runRepository.GetByIdAsync(organizationId, appId, id) is null)
+        // This read happens before TryStartAsync's write below, so detail.Header.Environment still holds
+        // the real (unmasked) values -- TryStartAsync has not yet overwritten storage with the masked
+        // snapshot computed from it.
+        var detail = await runRepository.GetByIdAsync(organizationId, appId, id);
+        if (detail is null)
         {
             return NotFound();
         }
 
-        var started = await runRepository.TryStartAsync(organizationId, appId, id, clock.UtcNow);
-        return started
-            ? NoContent()
-            : Conflict(new ErrorResponse("The Run's Status is not Pending."));
+        var maskedEnvironment = detail.Header.Environment.Masked();
+        var started = await runRepository.TryStartAsync(
+            organizationId,
+            appId,
+            id,
+            clock.UtcNow,
+            maskedEnvironment
+        );
+        if (started is null)
+        {
+            return Conflict(new ErrorResponse("The Run's Status is not Pending."));
+        }
+
+        // When the claim wins, Then this applies exactly the values TryStartAsync reports it wrote, so
+        // the response reflects what was actually persisted instead of a second, independent derivation
+        // that could drift from the repository's own. Environment stays the original unmasked value from
+        // detail.Header.Environment, not the masked one just written to storage, since this response is
+        // the winning caller's one chance to get the real values back.
+        var startedHeader = detail.Header with
+        {
+            Status = ModelRunStatus.Running,
+            StartedAt = started.StartedAt,
+            LastHeartbeatAt = started.LastHeartbeatAt,
+            DeadlineAt = started.DeadlineAt,
+        };
+        return Ok(
+            new RunDetail { Header = startedHeader, Scenarios = detail.Scenarios }.ToResponse(
+                maskSensitiveValues: false
+            )
+        );
     }
 
     /// <response code="400">TerminalStatus is Pending or Running, or StatusReason is set while

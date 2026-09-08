@@ -200,6 +200,22 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             Variables = [],
         };
 
+    private static RunEnvironmentVariableSnapshot CreateVariableSnapshot(
+        string key,
+        string value,
+        bool isSensitive
+    ) =>
+        new()
+        {
+            Key = key,
+            Value = value,
+            IsSensitive = isSensitive,
+            CreatedByUserId = Guid.CreateVersion7(),
+            UpdatedByUserId = Guid.CreateVersion7(),
+            CreatedAt = FixedNow,
+            UpdatedAt = FixedNow,
+        };
+
     private static Run CreateRun(
         Guid organizationId,
         Guid applicationId,
@@ -740,12 +756,16 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             organizationId,
             applicationId,
             runId,
-            startedAt
+            startedAt,
+            CreateEnvironmentSnapshot(environmentId)
         );
         var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
 
         // verify
-        Assert.True(result);
+        Assert.NotNull(result);
+        Assert.Equal(startedAt, result.StartedAt);
+        Assert.Equal(startedAt, result.LastHeartbeatAt);
+        Assert.Equal(startedAt + RunExecutionPolicy.MaxRunDuration, result.DeadlineAt);
         Assert.Equal(RunStatus.Running.ToString(), row["Status"].S);
         Assert.Equal(startedAt.ToString("O"), row["StartedAt"].S);
         Assert.Equal(startedAt.ToString("O"), row["LastHeartbeatAt"].S);
@@ -754,6 +774,74 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             row["DeadlineAt"].S
         );
         Assert.Equal(DynamoDbMapper.RunInFlightShard(runId), row["InFlightShard"].S);
+    }
+
+    [Fact]
+    public async Task TryStartAsync_WhenSucceeds_OverwritesStoredEnvironmentWithTheMaskedSnapshot()
+    {
+        // setup -- a Pending Run whose Environment snapshot carries the real (unmasked) value of a
+        // sensitive variable, the way TryCreateAsync stores it since Create no longer masks at write
+        // time.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutApplicationAsync(organizationId, applicationId);
+        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
+        var sensitiveVariable = CreateVariableSnapshot(
+            "API_KEY",
+            "abcdefghijklmnopqrstuvwxyz",
+            isSensitive: true
+        );
+        var plainVariable = CreateVariableSnapshot(
+            "BASE_URL",
+            "https://staging.example.com",
+            isSensitive: false
+        );
+        var environment = CreateEnvironmentSnapshot(environmentId) with
+        {
+            Variables = [sensitiveVariable, plainVariable],
+        };
+        var run = CreateRun(organizationId, applicationId, environmentId) with
+        {
+            Environment = environment,
+        };
+        await _repository.TryCreateAsync(run, [CreateScenarioSnapshot()]);
+        var startedAt = FixedNow;
+
+        // test
+        var result = await _repository.TryStartAsync(
+            organizationId,
+            applicationId,
+            run.Id,
+            startedAt,
+            environment.Masked()
+        );
+        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
+
+        // verify -- storage now holds the masked sensitive value and the untouched plain value, proving
+        // the Environment attribute was actually overwritten, not just returned masked.
+        Assert.NotNull(result);
+        var storedSensitive = Assert.Single(
+            detail!.Header.Environment.Variables,
+            v => v.Key == "API_KEY"
+        );
+        Assert.Equal(SensitiveValueMasker.Mask(sensitiveVariable.Value), storedSensitive.Value);
+        Assert.NotEqual(sensitiveVariable.Value, storedSensitive.Value);
+        var storedPlain = Assert.Single(
+            detail.Header.Environment.Variables,
+            v => v.Key == "BASE_URL"
+        );
+        Assert.Equal(plainVariable.Value, storedPlain.Value);
+
+        // verify -- a second racing claim still fails and changes nothing, same as without variables.
+        var secondClaim = await _repository.TryStartAsync(
+            organizationId,
+            applicationId,
+            run.Id,
+            startedAt.AddSeconds(1),
+            environment.Masked()
+        );
+        Assert.Null(secondClaim);
     }
 
     [Theory]
@@ -769,7 +857,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
-        await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+        await _repository.TryStartAsync(
+            organizationId,
+            applicationId,
+            runId,
+            FixedNow,
+            CreateEnvironmentSnapshot(environmentId)
+        );
         if (notPending != RunStatus.Running)
         {
             await _repository.TryEndAsync(
@@ -788,12 +882,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             organizationId,
             applicationId,
             runId,
-            FixedNow.AddMinutes(1)
+            FixedNow.AddMinutes(1),
+            CreateEnvironmentSnapshot(environmentId)
         );
         var afterRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
 
         // verify
-        Assert.False(result);
+        Assert.Null(result);
         Assert.Equal(beforeRow["Status"].S, afterRow["Status"].S);
         Assert.Equal(beforeRow.ContainsKey("StartedAt"), afterRow.ContainsKey("StartedAt"));
     }
@@ -810,17 +905,24 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         // test -- two sequential claims stand in for two racing workers; the second one arriving after
         // the first already flipped Status is enough to prove the conditional write, without needing
         // real concurrent threads.
-        var first = await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+        var first = await _repository.TryStartAsync(
+            organizationId,
+            applicationId,
+            runId,
+            FixedNow,
+            CreateEnvironmentSnapshot(environmentId)
+        );
         var second = await _repository.TryStartAsync(
             organizationId,
             applicationId,
             runId,
-            FixedNow.AddSeconds(1)
+            FixedNow.AddSeconds(1),
+            CreateEnvironmentSnapshot(environmentId)
         );
 
         // verify
-        Assert.True(first);
-        Assert.False(second);
+        Assert.NotNull(first);
+        Assert.Null(second);
     }
 
     [Theory]
@@ -836,7 +938,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
-        await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+        await _repository.TryStartAsync(
+            organizationId,
+            applicationId,
+            runId,
+            FixedNow,
+            CreateEnvironmentSnapshot(environmentId)
+        );
         var completedAt = FixedNow.AddMinutes(5);
         RunStatusReason? statusReason =
             terminalStatus == RunStatus.Abandoned ? RunStatusReason.HeartbeatLost : null;
@@ -882,7 +990,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
         if (notRunning != RunStatus.Pending)
         {
-            await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+            await _repository.TryStartAsync(
+                organizationId,
+                applicationId,
+                runId,
+                FixedNow,
+                CreateEnvironmentSnapshot(environmentId)
+            );
             await _repository.TryEndAsync(
                 organizationId,
                 applicationId,
@@ -925,7 +1039,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var environmentId = Guid.CreateVersion7();
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
         var startedAt = FixedNow;
-        await _repository.TryStartAsync(organizationId, applicationId, runId, startedAt);
+        await _repository.TryStartAsync(
+            organizationId,
+            applicationId,
+            runId,
+            startedAt,
+            CreateEnvironmentSnapshot(environmentId)
+        );
 
         // test -- the sweeper's cutoff is before the Run's actual heartbeat, so the heartbeat is fresh
         // relative to it and the sweeper must not end the Run
@@ -955,7 +1075,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var environmentId = Guid.CreateVersion7();
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
         var startedAt = FixedNow;
-        await _repository.TryStartAsync(organizationId, applicationId, runId, startedAt);
+        await _repository.TryStartAsync(
+            organizationId,
+            applicationId,
+            runId,
+            startedAt,
+            CreateEnvironmentSnapshot(environmentId)
+        );
 
         // test -- the sweeper's cutoff is after the Run's last heartbeat, so the heartbeat reads as
         // stale and the sweeper may abandon the Run
@@ -985,7 +1111,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
-        await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+        await _repository.TryStartAsync(
+            organizationId,
+            applicationId,
+            runId,
+            FixedNow,
+            CreateEnvironmentSnapshot(environmentId)
+        );
 
         // test -- a second call with different, still-absolute numbers proves a retry (or a later
         // progress update) simply overwrites rather than accumulating.
@@ -1034,7 +1166,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
         if (notRunning != RunStatus.Pending)
         {
-            await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+            await _repository.TryStartAsync(
+                organizationId,
+                applicationId,
+                runId,
+                FixedNow,
+                CreateEnvironmentSnapshot(environmentId)
+            );
             await _repository.TryEndAsync(
                 organizationId,
                 applicationId,
@@ -1072,7 +1210,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     )
     {
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
-        await _repository.TryStartAsync(organizationId, applicationId, runId, startedAt);
+        await _repository.TryStartAsync(
+            organizationId,
+            applicationId,
+            runId,
+            startedAt,
+            CreateEnvironmentSnapshot(environmentId)
+        );
         return runId;
     }
 
@@ -1130,7 +1274,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
         if (notRunning != RunStatus.Pending)
         {
-            await _repository.TryStartAsync(organizationId, applicationId, runId, FixedNow);
+            await _repository.TryStartAsync(
+                organizationId,
+                applicationId,
+                runId,
+                FixedNow,
+                CreateEnvironmentSnapshot(environmentId)
+            );
             await _repository.TryEndAsync(
                 organizationId,
                 applicationId,
@@ -1304,7 +1454,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         {
             var run = CreateRun(organizationId, applicationId, environmentId);
             await _repository.TryCreateAsync(run, [CreateScenarioSnapshot()]);
-            await _repository.TryStartAsync(organizationId, applicationId, run.Id, startedAt);
+            await _repository.TryStartAsync(
+                organizationId,
+                applicationId,
+                run.Id,
+                startedAt,
+                CreateEnvironmentSnapshot(environmentId)
+            );
             runIds.Add(run.Id);
         }
         var cutoff = DateTimeOffset.UtcNow.AddSeconds(-90);

@@ -11,7 +11,11 @@ namespace A2.Server.Services;
 public interface IRunSnapshotBuilder
 {
     /// <summary>Copies <paramref name="environment"/> and its current variables into a
-    /// <see cref="RunEnvironmentSnapshot"/>, masking sensitive variable values on the way in.</summary>
+    /// <see cref="RunEnvironmentSnapshot"/>, value included whole even for a sensitive variable -- a
+    /// future execution agent needs the real credential from this snapshot to connect to systems under
+    /// test. Nothing is masked here: masking happens later, when the Run is claimed (see
+    /// <c>IRunRepository.TryStartAsync</c>) and at the response-mapping boundary (see
+    /// <c>ContractMapper.ToResponse(RunDetail, bool)</c>).</summary>
     Task<RunEnvironmentSnapshot> BuildEnvironmentSnapshotAsync(
         Guid organizationId,
         Environment environment
