@@ -648,11 +648,8 @@ export interface ScenarioResponse {
 export interface SetEnvironmentVariableRequest {
   /** @maxLength 4000 */
   value: string;
-  /**
-   * When true, the API masks this variable's value on every future read. Defaults to
-   *     false.
-   */
-  isSensitive?: boolean;
+  /** When true, the API masks this variable's value on every future read. */
+  isSensitive: boolean;
 }
 
 /**

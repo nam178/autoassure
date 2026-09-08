@@ -35,6 +35,7 @@ public sealed class RunEnvironmentSnapshotTests
                     UpdatedByUserId = Guid.NewGuid(),
                     CreatedAt = DateTimeOffset.UtcNow,
                     UpdatedAt = DateTimeOffset.UtcNow,
+                    IsSensitive = false,
                 }
             ),
         ];

@@ -287,42 +287,4 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
         Assert.True(variable.IsSensitive);
         Assert.Equal("super-secret-value", variable.Value);
     }
-
-    [Fact]
-    public async Task ListByEnvironmentAsync_WhenRowHasNoIsSensitiveAttribute_ReadsBackAsFalse()
-    {
-        // setup: put a row directly, bypassing TrySaveAsync, to simulate a row written before
-        // IsSensitive existed.
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
-        var userId = Guid.CreateVersion7();
-        var now = DateTimeOffset.UtcNow.ToString("O");
-        await _client.PutItemAsync(
-            new PutItemRequest
-            {
-                TableName = EnvironmentVariableTableName,
-                Item = new Dictionary<string, AttributeValue>
-                {
-                    ["OrganizationId_EnvironmentId"] = new($"{organizationId}_{environmentId}"),
-                    ["Key"] = new("LEGACY_KEY"),
-                    ["Value"] = new("legacy-value"),
-                    ["OrganizationId"] = new(organizationId.ToString()),
-                    ["EnvironmentId"] = new(environmentId.ToString()),
-                    ["CreatedByUserId"] = new(userId.ToString()),
-                    ["UpdatedByUserId"] = new(userId.ToString()),
-                    ["CreatedAt"] = new(now),
-                    ["UpdatedAt"] = new(now),
-                },
-            }
-        );
-
-        // test
-        var result = await _repository.ListByEnvironmentAsync(organizationId, environmentId);
-
-        // verify
-        var variable = Assert.Single(result);
-        Assert.False(variable.IsSensitive);
-    }
 }

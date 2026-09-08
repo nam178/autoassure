@@ -24,6 +24,6 @@ public static partial class DynamoDbMapper
             FirstName = row["FirstName"].S,
             LastName = row["LastName"].S,
             Email = row["Email"].S,
-            EmailVerified = row["EmailVerified"].BOOL ?? false,
+            EmailVerified = row["EmailVerified"].RequireBool("EmailVerified"),
         };
 }

@@ -435,7 +435,7 @@ public static partial class DynamoDbMapper
         {
             Key = value.M["Key"].S,
             Value = value.M["Value"].S,
-            IsSensitive = value.M["IsSensitive"].BOOL ?? false,
+            IsSensitive = value.M["IsSensitive"].RequireBool("IsSensitive"),
             CreatedByUserId = Guid.Parse(value.M["CreatedByUserId"].S),
             UpdatedByUserId = Guid.Parse(value.M["UpdatedByUserId"].S),
             CreatedAt = DateTimeOffset.Parse(value.M["CreatedAt"].S, CultureInfo.InvariantCulture),

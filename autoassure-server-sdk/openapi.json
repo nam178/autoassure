@@ -4016,7 +4016,8 @@
       },
       "SetEnvironmentVariableRequest": {
         "required": [
-          "value"
+          "value",
+          "isSensitive"
         ],
         "type": "object",
         "properties": {
@@ -4026,7 +4027,7 @@
           },
           "isSensitive": {
             "type": "boolean",
-            "description": "When true, the API masks this variable's value on every future read. Defaults to\n    false."
+            "description": "When true, the API masks this variable's value on every future read."
           }
         },
         "description": "Request body to upsert a single Environment variable's value."

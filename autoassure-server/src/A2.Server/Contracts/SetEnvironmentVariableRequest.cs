@@ -8,7 +8,6 @@ public record SetEnvironmentVariableRequest
     [Required, MaxLength(4000)]
     public required string Value { get; init; }
 
-    /// <summary>When true, the API masks this variable's value on every future read. Defaults to
-    /// false.</summary>
-    public bool IsSensitive { get; init; }
+    /// <summary>When true, the API masks this variable's value on every future read.</summary>
+    public required bool IsSensitive { get; init; }
 }

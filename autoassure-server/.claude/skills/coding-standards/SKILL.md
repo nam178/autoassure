@@ -59,6 +59,7 @@ description:
 - DynamoDB can handle empty string. But can't handle empty string within a set. Watch out.
 - In each query, MUST handle exception EXPLICITLY instead of having a "shared" private method for exception handling.
 - MUST document limits (max 25 items per update etc)
+- If data from database don't match the format in-memory (null, wrong type/shape, etc.), throw CorruptedDynamoDbRowException. Don't fix it or map to a default value. AutoAssure has not been released yet.
 
 # Services (Business Logic Layer)
 

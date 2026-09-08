@@ -25,7 +25,7 @@ public static partial class DynamoDbMapper
         {
             Id = Guid.Parse(row["Id"].S),
             Name = row["Name"].S,
-            IsPersonal = row["IsPersonal"].BOOL ?? false,
+            IsPersonal = row["IsPersonal"].RequireBool("IsPersonal"),
             CreatedByUserId = Guid.Parse(row["CreatedByUserId"].S),
             UpdatedByUserId = Guid.Parse(row["UpdatedByUserId"].S),
             CreatedAt = DateTimeOffset.Parse(row["CreatedAt"].S, CultureInfo.InvariantCulture),
