@@ -1908,6 +1908,7 @@
         "tags": [
           "Runs"
         ],
+        "summary": "Claims a Pending Run for execution and returns it, unmasked, to the winning caller only\n    -- the one time in this API's life a sensitive Environment variable's real value is ever returned.\n    Every other response (Create Run, Get Run) always masks sensitive values regardless of what\n    storage currently holds; see RunResponse ContractMapper.ToResponse(RunDetail detail, bool maskSensitiveValues = true).",
         "operationId": "StartRun",
         "parameters": [
           {
@@ -1930,8 +1931,25 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "No Content"
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            }
           },
           "404": {
             "description": "No Run with the given id exists in this Application, in the caller's\n    Organization.",

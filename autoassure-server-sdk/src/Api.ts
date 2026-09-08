@@ -1392,15 +1392,17 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Runs
      * @name StartRun
+     * @summary Claims a Pending Run for execution and returns it, unmasked, to the winning caller only -- the one time in this API's life a sensitive Environment variable's real value is ever returned. Every other response (Create Run, Get Run) always masks sensitive values regardless of what storage currently holds; see RunResponse ContractMapper.ToResponse(RunDetail detail, bool maskSensitiveValues = true).
      * @request POST:/applications/{appId}/runs/{id}/start
-     * @response `204` `void` No Content
+     * @response `200` `RunResponse` OK
      * @response `404` `ProblemDetails` No Run with the given id exists in this Application, in the caller's Organization.
      * @response `409` `ErrorResponse` The Run's Status is not Pending.
      */
     startRun: (appId: string, id: string, params: RequestParams = {}) =>
-      this.http.request<void, ProblemDetails | ErrorResponse>({
+      this.http.request<RunResponse, ProblemDetails | ErrorResponse>({
         path: `/applications/${appId}/runs/${id}/start`,
         method: "POST",
+        format: "json",
         ...params,
       }),
 
