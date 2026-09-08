@@ -33,7 +33,8 @@ public static class SensitiveValueMasker
         // When a value and a fraction to keep are given, Then reveal that fraction of the fixed output
         // length in real leading characters -- capped at however many the value actually has -- and fill
         // the rest with dots, so the total length never varies with the real value's length.
-        var targetVisibleLength = (int)Math.Round(MaskedLength * fractionToKeep, MidpointRounding.AwayFromZero);
+        var targetVisibleLength = (int)
+            Math.Round(MaskedLength * fractionToKeep, MidpointRounding.AwayFromZero);
         var visibleLength = Math.Min(value.Length, targetVisibleLength);
         return value[..visibleLength] + new string('.', MaskedLength - visibleLength);
     }

@@ -62,7 +62,11 @@ public sealed class RunActivitySnapshotTests
         ];
 
         // test
-        var snapshot = RunActivitySnapshot.FromActivity(activity, preconditions, evidenceDefinitions);
+        var snapshot = RunActivitySnapshot.FromActivity(
+            activity,
+            preconditions,
+            evidenceDefinitions
+        );
 
         // verify
         Assert.Equal(activity.Id, snapshot.Source.Id);

@@ -1091,7 +1091,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
-        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, FixedNow);
+        var runId = await CreateRunningRunAsync(
+            organizationId,
+            applicationId,
+            environmentId,
+            FixedNow
+        );
 
         // test
         var heartbeatAt = FixedNow.AddSeconds(30);
@@ -1113,7 +1118,9 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     [InlineData(RunStatus.Completed)]
     [InlineData(RunStatus.Cancelled)]
     [InlineData(RunStatus.Abandoned)]
-    public async Task TryHeartbeatAsync_WhenRunIsNotRunning_FailsAndChangesNothing(RunStatus notRunning)
+    public async Task TryHeartbeatAsync_WhenRunIsNotRunning_FailsAndChangesNothing(
+        RunStatus notRunning
+    )
     {
         // setup -- reach notRunning by claiming the Run and, unless it must stay Pending, ending it once
         // with that status, so the real test call beats a Run that is not Running.
@@ -1146,7 +1153,10 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
 
         // verify -- the call changed nothing; LastHeartbeatAt (present or absent) is unchanged.
         Assert.False(result);
-        Assert.Equal(beforeRow.ContainsKey("LastHeartbeatAt"), afterRow.ContainsKey("LastHeartbeatAt"));
+        Assert.Equal(
+            beforeRow.ContainsKey("LastHeartbeatAt"),
+            afterRow.ContainsKey("LastHeartbeatAt")
+        );
         if (beforeRow.TryGetValue("LastHeartbeatAt", out var lastHeartbeatAt))
         {
             Assert.Equal(lastHeartbeatAt.S, afterRow["LastHeartbeatAt"].S);
@@ -1162,7 +1172,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
         var startedAt = DateTimeOffset.UtcNow.AddMinutes(-2);
-        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, startedAt);
+        var runId = await CreateRunningRunAsync(
+            organizationId,
+            applicationId,
+            environmentId,
+            startedAt
+        );
         var cutoff = DateTimeOffset.UtcNow.AddSeconds(-90);
 
         // test
@@ -1211,7 +1226,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var environmentId = Guid.CreateVersion7();
         var startedAt =
             DateTimeOffset.UtcNow - RunExecutionPolicy.MaxRunDuration - TimeSpan.FromHours(1);
-        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, startedAt);
+        var runId = await CreateRunningRunAsync(
+            organizationId,
+            applicationId,
+            environmentId,
+            startedAt
+        );
         await _repository.TryHeartbeatAsync(
             organizationId,
             applicationId,
@@ -1243,7 +1263,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
         var startedAt = DateTimeOffset.UtcNow.AddHours(-5);
-        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, startedAt);
+        var runId = await CreateRunningRunAsync(
+            organizationId,
+            applicationId,
+            environmentId,
+            startedAt
+        );
         await _repository.TryEndAsync(
             organizationId,
             applicationId,
@@ -1317,8 +1342,11 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     public async Task ListStaleInFlightRunsAsync_WhenShardIsOutOfRange_Throws()
     {
         // test & verify
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
-            () => _repository.ListStaleInFlightRunsAsync(RunExecutionPolicy.InFlightShardCount, DateTimeOffset.UtcNow)
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _repository.ListStaleInFlightRunsAsync(
+                RunExecutionPolicy.InFlightShardCount,
+                DateTimeOffset.UtcNow
+            )
         );
     }
 
@@ -1329,7 +1357,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
-        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, FixedNow);
+        var runId = await CreateRunningRunAsync(
+            organizationId,
+            applicationId,
+            environmentId,
+            FixedNow
+        );
         var update = CreateStatusUpdate(1);
 
         // test
@@ -1360,7 +1393,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
-        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, FixedNow);
+        var runId = await CreateRunningRunAsync(
+            organizationId,
+            applicationId,
+            environmentId,
+            FixedNow
+        );
         var update = CreateStatusUpdate(1);
 
         // test
@@ -1396,7 +1434,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
-        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, FixedNow);
+        var runId = await CreateRunningRunAsync(
+            organizationId,
+            applicationId,
+            environmentId,
+            FixedNow
+        );
         await _repository.TryAppendStatusUpdateAsync(
             organizationId,
             applicationId,
@@ -1433,7 +1476,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
-        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, FixedNow);
+        var runId = await CreateRunningRunAsync(
+            organizationId,
+            applicationId,
+            environmentId,
+            FixedNow
+        );
         await _repository.TryEndAsync(
             organizationId,
             applicationId,
@@ -1470,7 +1518,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
-        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, FixedNow);
+        var runId = await CreateRunningRunAsync(
+            organizationId,
+            applicationId,
+            environmentId,
+            FixedNow
+        );
         for (var seq = 1; seq <= 3; seq++)
         {
             await _repository.TryAppendStatusUpdateAsync(
@@ -1504,7 +1557,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
-        var runId = await CreateRunningRunAsync(organizationId, applicationId, environmentId, FixedNow);
+        var runId = await CreateRunningRunAsync(
+            organizationId,
+            applicationId,
+            environmentId,
+            FixedNow
+        );
         for (var seq = 1; seq <= 12; seq++)
         {
             await _repository.TryAppendStatusUpdateAsync(
@@ -1533,15 +1591,14 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     public async Task ListStatusUpdatesAsync_WhenAfterSeqIsNegative_Throws()
     {
         // test & verify
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
-            () =>
-                _repository.ListStatusUpdatesAsync(
-                    Guid.CreateVersion7(),
-                    Guid.CreateVersion7(),
-                    Guid.CreateVersion7(),
-                    afterSeq: -1,
-                    limit: 10
-                )
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _repository.ListStatusUpdatesAsync(
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                afterSeq: -1,
+                limit: 10
+            )
         );
     }
 
@@ -1549,15 +1606,14 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     public async Task ListStatusUpdatesAsync_WhenLimitIsNotPositive_Throws()
     {
         // test & verify
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
-            () =>
-                _repository.ListStatusUpdatesAsync(
-                    Guid.CreateVersion7(),
-                    Guid.CreateVersion7(),
-                    Guid.CreateVersion7(),
-                    afterSeq: 0,
-                    limit: 0
-                )
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            _repository.ListStatusUpdatesAsync(
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7(),
+                afterSeq: 0,
+                limit: 0
+            )
         );
     }
 }

@@ -586,7 +586,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons?.Any(reason => reason.Code == "ConditionalCheckFailed")
-                == true)
+                == true
+            )
         {
             return false;
         }

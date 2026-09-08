@@ -53,8 +53,9 @@ description:
     - GetX (), ListX ()..
 - If an entity has a relationship, like Scenario belongs to App, MUST check if the other entity exist when
   insert/updating with ConditionExpression.
-- When deleting a parent, make sure all children are deleted FIRST, if they can't be deleted together in one
-  transaction.
+- Repository methods should support filtering. This is so upper layers can decide whenever to filter out
+  deleted/archived rows.
+- Lifecycle state and deletion have their own protocol — See `entity-lifecycle` skill.
 - DynamoDB can handle empty string. But can't handle empty string within a set. Watch out.
 - In each query, MUST handle exception EXPLICITLY instead of having a "shared" private method for exception handling.
 - MUST document limits (max 25 items per update etc)
@@ -76,6 +77,9 @@ description:
     - MUST use C# records using get/init accessors (NOT positional record style).
 - Controllers:
     - Must specify operation name, example: [HttpPost (Name = "CreateApplication")]
+    - If an entity has LifecycleState: 
+      - List API MUST return only `Active`. Add "/archived" sibling API for return only archived.
+      - Get API MUST return only `Active` or `Archived`, and 404 for `Deleting`.
     - Non-success HTTP status codes:
         - MUST use ErrorResponse for response body, with user friendly message.
         - Must document with [ProducesResponseType (typeof (ErrorResponse), ...]
