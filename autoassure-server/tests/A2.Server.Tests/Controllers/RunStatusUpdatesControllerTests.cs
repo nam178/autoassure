@@ -399,7 +399,10 @@ public sealed class RunStatusUpdatesControllerTests
             new PutItemRequest
             {
                 TableName = "Organizations",
-                Item = new Dictionary<string, AttributeValue> { ["Id"] = new(organizationId.ToString()) },
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    ["Id"] = new(organizationId.ToString()),
+                },
             }
         );
         await _client.PutItemAsync(
@@ -528,7 +531,10 @@ public sealed class RunStatusUpdatesControllerTests
         );
         var run = (await createResponse.Content.ReadFromJsonAsync<RunResponse>())!;
 
-        var startResponse = await client.PostAsync($"/applications/{appId}/runs/{run.Id}/start", null);
+        var startResponse = await client.PostAsync(
+            $"/applications/{appId}/runs/{run.Id}/start",
+            null
+        );
         Assert.Equal(HttpStatusCode.NoContent, startResponse.StatusCode);
 
         return (appId, run.Id, scenarioId, activityIds);
@@ -603,6 +609,64 @@ public sealed class RunStatusUpdatesControllerTests
         Assert.Single(updates!);
     }
 
+    [Theory]
+    [InlineData(ActivityResultStatus.Pending, HttpStatusCode.BadRequest)]
+    [InlineData(ActivityResultStatus.Running, HttpStatusCode.BadRequest)]
+    [InlineData(ActivityResultStatus.Passed, HttpStatusCode.OK)]
+    [InlineData(ActivityResultStatus.Failed, HttpStatusCode.OK)]
+    [InlineData(ActivityResultStatus.Skipped, HttpStatusCode.OK)]
+    public async Task Append_WhenActivityResultStatusIsPendingOrRunning_ReturnsBadRequest(
+        ActivityResultStatus status,
+        HttpStatusCode expectedStatus
+    )
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(client);
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{appId}/runs/{runId}/status-updates",
+            new AppendRunStatusUpdateRequest
+            {
+                Seq = 1,
+                ActivityResult = new ActivityResult
+                {
+                    ScenarioId = scenarioId,
+                    ActivityId = activityIds[0],
+                    Status = status,
+                },
+            }
+        );
+
+        // verify
+        Assert.Equal(expectedStatus, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(
+        """{"activityResult":{"scenarioId":"11111111-1111-1111-1111-111111111111","activityId":"11111111-1111-1111-1111-111111111111","status":2}}"""
+    )] // seq missing
+    [InlineData("""{"seq":1}""")] // activityResult missing
+    [InlineData(
+        """{"seq":1,"activityResult":{"scenarioId":"11111111-1111-1111-1111-111111111111","activityId":"11111111-1111-1111-1111-111111111111","status":99}}"""
+    )] // status out of enum range
+    public async Task Append_WhenRequestHasInvalidShape_ReturnsBadRequest(string rawJson)
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+
+        // test
+        var response = await client.PostAsync(
+            $"/applications/{appId}/runs/{Guid.CreateVersion7()}/status-updates",
+            new StringContent(rawJson, Encoding.UTF8, "application/json")
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task Append_WhenRunDoesNotExist_ReturnsNotFound()
     {
@@ -652,6 +716,38 @@ public sealed class RunStatusUpdatesControllerTests
                     ScenarioId = scenarioId,
                     ActivityId = activityIds[0],
                     Status = ActivityResultStatus.Passed,
+                },
+            }
+        );
+
+        // verify
+        Assert.Equal(expectedStatus, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(2000, HttpStatusCode.OK)]
+    [InlineData(2001, HttpStatusCode.BadRequest)]
+    public async Task Append_WhenContinuationReasoningLengthAtBoundary_EnforcesLengthLimit(
+        int continuationReasoningLength,
+        HttpStatusCode expectedStatus
+    )
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(client);
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{appId}/runs/{runId}/status-updates",
+            new AppendRunStatusUpdateRequest
+            {
+                Seq = 1,
+                ActivityResult = new ActivityResult
+                {
+                    ScenarioId = scenarioId,
+                    ActivityId = activityIds[0],
+                    Status = ActivityResultStatus.Passed,
+                    ContinuationReasoning = new string('a', continuationReasoningLength),
                 },
             }
         );
@@ -727,7 +823,10 @@ public sealed class RunStatusUpdatesControllerTests
         );
         var run = (await createResponse.Content.ReadFromJsonAsync<RunResponse>())!;
 
-        var startResponse = await client.PostAsync($"/applications/{appId}/runs/{run.Id}/start", null);
+        var startResponse = await client.PostAsync(
+            $"/applications/{appId}/runs/{run.Id}/start",
+            null
+        );
         Assert.Equal(HttpStatusCode.NoContent, startResponse.StatusCode);
 
         // The client folds the log as it goes: a Dictionary keyed by ActivityId standing in for the

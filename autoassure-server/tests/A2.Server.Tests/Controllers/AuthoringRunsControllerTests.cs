@@ -400,7 +400,10 @@ public sealed class AuthoringRunsControllerTests
             new PutItemRequest
             {
                 TableName = "Organizations",
-                Item = new Dictionary<string, AttributeValue> { ["Id"] = new(organizationId.ToString()) },
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    ["Id"] = new(organizationId.ToString()),
+                },
             }
         );
         await _client.PutItemAsync(
@@ -540,6 +543,26 @@ public sealed class AuthoringRunsControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("""{}""")] // environmentId missing
+    [InlineData("""{"environmentId":123}""")] // environmentId wrong type
+    public async Task Create_WhenRequestHasInvalidShape_ReturnsBadRequest(string rawJson)
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+
+        // test
+        var response = await client.PostAsync(
+            $"/scenarios/{scenarioId}/runs",
+            new StringContent(rawJson, Encoding.UTF8, "application/json")
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]

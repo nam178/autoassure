@@ -20,7 +20,9 @@ namespace A2.Server.Tests.Controllers;
 /// against DynamoDB Local: Create Run (Manual), Get Run, List Runs, Start Run and End Run, plus the
 /// nested route's read-after-write fix, snapshot immutability, and the 404/409 rules.</summary>
 [Collection("DynamoDbLocal")]
-public sealed class RunsControllerTests : IClassFixture<WebApplicationFactory<Program>>, IAsyncLifetime
+public sealed class RunsControllerTests
+    : IClassFixture<WebApplicationFactory<Program>>,
+        IAsyncLifetime
 {
     private const string SigningKey = "test-signing-key-at-least-32-bytes-long";
     private const string Issuer = "autoassure-server";
@@ -400,7 +402,10 @@ public sealed class RunsControllerTests : IClassFixture<WebApplicationFactory<Pr
             new PutItemRequest
             {
                 TableName = "Organizations",
-                Item = new Dictionary<string, AttributeValue> { ["Id"] = new(organizationId.ToString()) },
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    ["Id"] = new(organizationId.ToString()),
+                },
             }
         );
         await _client.PutItemAsync(
@@ -521,10 +526,11 @@ public sealed class RunsControllerTests : IClassFixture<WebApplicationFactory<Pr
 
     // Seeds an Application with one Environment and one Scenario carrying one Activity, ready to create
     // a Run over. Returns (appId, environmentId, scenarioId).
-    private static async Task<(Guid AppId, Guid EnvironmentId, Guid ScenarioId)> SeedRunnableAppAsync(
-        HttpClient client,
-        string scenarioTitle = "Checkout completes"
-    )
+    private static async Task<(
+        Guid AppId,
+        Guid EnvironmentId,
+        Guid ScenarioId
+    )> SeedRunnableAppAsync(HttpClient client, string scenarioTitle = "Checkout completes")
     {
         var appId = await CreateApplicationAsync(client);
         var environmentId = await CreateEnvironmentAsync(client, appId);
@@ -812,7 +818,11 @@ public sealed class RunsControllerTests : IClassFixture<WebApplicationFactory<Pr
         var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
         var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
         await client.PostAsync($"/applications/{appId}/runs/{created.Id}/start", null);
-        var endRequest = new EndRunRequest { TerminalStatus = RunStatus.Completed, StatusReason = null };
+        var endRequest = new EndRunRequest
+        {
+            TerminalStatus = RunStatus.Completed,
+            StatusReason = null,
+        };
         var firstEnd = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs/{created.Id}/end",
             endRequest
@@ -979,6 +989,50 @@ public sealed class RunsControllerTests : IClassFixture<WebApplicationFactory<Pr
     }
 
     [Fact]
+    public async Task Create_WhenScenarioIdsCountAtUpperBoundary_Succeeds()
+    {
+        // setup -- Quota.MaxScenariosPerRun is 97; every id must reference a real Scenario belonging to
+        // this Application for the request to pass validation and actually succeed.
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var environmentId = await CreateEnvironmentAsync(client, appId);
+        var scenarioIds = new List<Guid>();
+        for (var i = 0; i < 97; i++)
+        {
+            scenarioIds.Add(await CreateScenarioAsync(client, appId, $"Scenario {i}"));
+        }
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{appId}/runs",
+            new CreateRunRequest { ScenarioIds = scenarioIds, EnvironmentId = environmentId }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WhenScenarioIdsCountExceedsUpperBoundary_ReturnsBadRequest()
+    {
+        // setup -- 98 exceeds Quota.MaxScenariosPerRun (97), so [MaxLength] rejects this before any id is
+        // looked up -- the ids need not reference real Scenarios.
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var environmentId = await CreateEnvironmentAsync(client, appId);
+        var scenarioIds = Enumerable.Range(0, 98).Select(_ => Guid.CreateVersion7()).ToList();
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{appId}/runs",
+            new CreateRunRequest { ScenarioIds = scenarioIds, EnvironmentId = environmentId }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Create_WhenScenarioIdsHasDuplicate_ReturnsBadRequest()
     {
         // setup
@@ -1011,11 +1065,7 @@ public sealed class RunsControllerTests : IClassFixture<WebApplicationFactory<Pr
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",
-            new CreateRunRequest
-            {
-                ScenarioIds = [otherScenarioId],
-                EnvironmentId = environmentId,
-            }
+            new CreateRunRequest { ScenarioIds = [otherScenarioId], EnvironmentId = environmentId }
         );
 
         // verify
@@ -1034,11 +1084,7 @@ public sealed class RunsControllerTests : IClassFixture<WebApplicationFactory<Pr
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",
-            new CreateRunRequest
-            {
-                ScenarioIds = [scenarioId],
-                EnvironmentId = otherEnvironmentId,
-            }
+            new CreateRunRequest { ScenarioIds = [scenarioId], EnvironmentId = otherEnvironmentId }
         );
 
         // verify
@@ -1067,9 +1113,7 @@ public sealed class RunsControllerTests : IClassFixture<WebApplicationFactory<Pr
 
     [Theory]
     [InlineData("""{"environmentId":"11111111-1111-1111-1111-111111111111"}""")] // scenarioIds missing
-    [InlineData(
-        """{"scenarioIds":["11111111-1111-1111-1111-111111111111"]}"""
-    )] // environmentId missing
+    [InlineData("""{"scenarioIds":["11111111-1111-1111-1111-111111111111"]}""")] // environmentId missing
     public async Task Create_WhenRequestHasInvalidShape_ReturnsBadRequest(string rawJson)
     {
         // setup

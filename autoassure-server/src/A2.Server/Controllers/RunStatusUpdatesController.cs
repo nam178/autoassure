@@ -24,6 +24,7 @@ public class RunStatusUpdatesController(
     // it received, rather than this endpoint looping to assemble a complete result.
     private const int MaxStatusUpdatesPerPage = 1000;
 
+    /// <response code="400">ActivityResult.Status is Pending or Running.</response>
     /// <response code="404">No Run with the given id exists in this Application, in the caller's
     /// Organization.</response>
     /// <response code="409">Seq is not greater than the Run's current LastSeq, or the Run's Status is not
@@ -33,6 +34,7 @@ public class RunStatusUpdatesController(
         Name = "AppendRunStatusUpdate"
     )]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<RunStatusUpdateResponse>> Append(
@@ -41,6 +43,16 @@ public class RunStatusUpdatesController(
         AppendRunStatusUpdateRequest request
     )
     {
+        if (
+            request.ActivityResult.Status == ActivityResultStatus.Pending
+            || request.ActivityResult.Status == ActivityResultStatus.Running
+        )
+        {
+            return BadRequest(
+                new ErrorResponse("ActivityResult.Status must be Passed, Failed or Skipped.")
+            );
+        }
+
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
 
         // The append transaction needs the Run's own ExpiresAt to stamp onto the new row (see

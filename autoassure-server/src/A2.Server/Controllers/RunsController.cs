@@ -43,8 +43,11 @@ public class RunsController(
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
 
-        // The Application is the URL resource -- its non-existence must win as a 404 over a 400 for an
-        // invalid request body, so it is checked before validating anything else below.
+        // The Application is the URL resource -- its non-existence must win as a 404 over a 400 for a
+        // semantically invalid body (an EnvironmentId/ScenarioIds that don't exist), so it is checked
+        // before validating those below. A structurally invalid body (missing field, wrong type) fails
+        // ASP.NET's automatic model validation before this action ever runs, and gets 400 like any other
+        // endpoint in this codebase.
         if (await applicationRepository.GetByIdAsync(organizationId, appId) is null)
         {
             return NotFound();

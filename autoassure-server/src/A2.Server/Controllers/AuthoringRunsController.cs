@@ -36,7 +36,10 @@ public class AuthoringRunsController(
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
 
         // The Scenario is this route's URL resource -- its non-existence must win as a 404 over a 400
-        // for an invalid request body, so it is checked before validating EnvironmentId below.
+        // for a semantically invalid body (an EnvironmentId that doesn't exist), so it is checked before
+        // validating that below. A structurally invalid body (missing field, wrong type) fails ASP.NET's
+        // automatic model validation before this action ever runs, and gets 400 like any other endpoint
+        // in this codebase.
         var scenario = await scenarioRepository.GetByIdAsync(organizationId, id);
         if (scenario is null)
         {
