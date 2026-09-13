@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using A2.Server.Common;
 using A2.Server.Contracts;
-using A2.Server.Models;
 using A2.Server.Repositories;
 using A2.Server.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -66,22 +65,25 @@ public class RunsController(
             );
         }
 
-        var scenarios = new List<Scenario>(request.ScenarioIds.Count);
-        foreach (var scenarioId in request.ScenarioIds)
+        var foundScenarios = await scenarioRepository.GetByIdsAsync(
+            organizationId,
+            applicationId,
+            request.ScenarioIds
+        );
+        var foundScenariosById = foundScenarios.ToDictionary(scenario => scenario.Id);
+        if (request.ScenarioIds.Any(scenarioId => !foundScenariosById.ContainsKey(scenarioId)))
         {
-            var scenario = await scenarioRepository.GetByIdAsync(organizationId, scenarioId);
-            if (scenario is null || scenario.ApplicationId != applicationId)
-            {
-                return BadRequest(
-                    new ErrorResponse(
-                        "ScenarioIds contains an id that does not reference a Scenario belonging to "
-                            + "this Application."
-                    )
-                );
-            }
-
-            scenarios.Add(scenario);
+            return BadRequest(
+                new ErrorResponse(
+                    "ScenarioIds contains an id that does not reference a Scenario belonging to "
+                        + "this Application."
+                )
+            );
         }
+
+        var scenarios = request
+            .ScenarioIds.Select(scenarioId => foundScenariosById[scenarioId])
+            .ToList();
 
         var environmentSnapshot = await runSnapshotBuilder.BuildEnvironmentSnapshotAsync(
             organizationId,
@@ -93,9 +95,6 @@ public class RunsController(
             scenarios
         );
 
-        // TotalActivityCount is counted from the snapshot just built, never read off the live
-        // Scenario's own denormalized ActivityCount -- that field can drift (see
-        // fix_run_design.md section 5 and the `// BUG:` in DynamoDbActivityRepository).
         var run = new Run
         {
             Id = Guid.CreateVersion7(),
@@ -115,9 +114,6 @@ public class RunsController(
         {
             RunCreateResult.Success => Ok(run.ToResponse()),
             RunCreateResult.ApplicationNotFound => NotFound(),
-            // Run.Id is a freshly generated UUIDv7, so this can only mean an id collision -- not
-            // something a retry or a different request body can fix, but still a real enum value this
-            // switch must handle rather than assume away.
             RunCreateResult.AlreadyExists => Conflict(
                 new ErrorResponse("A Run with this Id already exists.")
             ),
@@ -137,6 +133,8 @@ public class RunsController(
         return Ok(runs.Select(r => r.ToResponse()).ToList());
     }
 
+    /// <summary>Lists the Runs currently Running for this Application, strongly consistent -- a Run that
+    /// just started is never briefly missing from this result, unlike <see cref="List"/>.</summary>
     [HttpGet("applications/{applicationId:guid}/runs/running", Name = "ListRunningRuns")]
     public async Task<ActionResult<IReadOnlyList<RunningRunResponse>>> ListRunning(
         Guid applicationId
@@ -159,10 +157,10 @@ public class RunsController(
         return run is null ? NotFound() : Ok(run.ToResponse());
     }
 
-    /// <summary>
-    /// Starts a run. This returns the run's environment variable values, including raw secrets.
-    /// After that, all secrets will be masked for storage.
-    /// </summary>
+    /// <summary>Claims a Pending Run for execution and returns it, unmasked, to the winning caller only
+    /// -- the one time in this API's life a sensitive Environment variable's real value is ever returned.
+    /// Every other response (Create Run, Get Run) always masks sensitive values regardless of what
+    /// storage currently holds; see <see cref="ContractMapper.ToResponse(Run, bool)"/>.</summary>
     /// <response code="404">No Run with the given runId exists in this Application, in the caller's
     /// Organization.</response>
     /// <response code="409">The Run's Status is not Pending.</response>

@@ -11,7 +11,6 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
 {
     private const string IdIndexName = "IdIndex";
 
-    // BatchGetItem allows at most 100 keys per call, so a request over that limit must be chunked.
     private const int BatchGetChunkSize = 100;
 
     // Partition key attribute names of the two mapping tables. They hold
@@ -163,7 +162,6 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
         IReadOnlyList<Guid> scenarioIds
     )
     {
-        // An empty BatchGetItem request is invalid, so short-circuit instead of calling DynamoDB.
         if (scenarioIds.Count == 0)
         {
             return [];
@@ -192,9 +190,6 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
                 },
             };
 
-            // When BatchGetItemAsync is throttled, Then it returns the un-fetched keys in
-            // UnprocessedKeys instead of throwing -- retry those until none remain, otherwise some
-            // requested Scenarios would be silently missing from the result.
             while (requestItems.Count > 0)
             {
                 var response = await client.BatchGetItemAsync(
