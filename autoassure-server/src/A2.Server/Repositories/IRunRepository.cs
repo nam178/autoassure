@@ -9,8 +9,14 @@ public interface IRunRepository
 
     Task<Run?> GetByIdAsync(Guid organizationId, Guid applicationId, Guid runId);
 
-    /// <summary>Lists an Application's Runs, newest first</summary>
-    Task<IReadOnlyList<RunInfo>> ListByApplicationAsync(Guid organizationId, Guid applicationId);
+    /// <summary>Lists an Application's Runs, newest first, restricted to the given
+    /// <paramref name="triggers"/>.</summary>
+    /// <exception cref="ArgumentException"><paramref name="triggers"/> is empty.</exception>
+    Task<IReadOnlyList<RunInfo>> ListByApplicationAsync(
+        Guid organizationId,
+        Guid applicationId,
+        IReadOnlyCollection<RunTrigger> triggers
+    );
 
     Task<RunStartResult?> TryMarkAsStartedAsync(
         Guid organizationId,

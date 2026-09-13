@@ -101,11 +101,17 @@ public class RunsController(
         );
     }
 
+    /// <summary>Never returns Authoring Runs -- those are scratch runs against a Scenario under
+    /// construction, not runs of the Application's saved Scenarios.</summary>
     [HttpGet("applications/{appId:guid}/runs", Name = "ListRuns")]
     public async Task<ActionResult<IReadOnlyList<RunSummaryResponse>>> List(Guid appId)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var runs = await runRepository.ListByApplicationAsync(organizationId, appId);
+        var runs = await runRepository.ListByApplicationAsync(
+            organizationId,
+            appId,
+            [ModelRunTrigger.Manual, ModelRunTrigger.Scheduled]
+        );
         return Ok(runs.Select(r => r.ToResponse()).ToList());
     }
 

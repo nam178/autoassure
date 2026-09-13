@@ -133,27 +133,44 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
 
     public async Task<IReadOnlyList<RunInfo>> ListByApplicationAsync(
         Guid organizationId,
-        Guid applicationId
+        Guid applicationId,
+        IReadOnlyCollection<RunTrigger> triggers
     )
     {
+        if (triggers.Count == 0)
+        {
+            throw new ArgumentException("triggers cannot be empty.", nameof(triggers));
+        }
+
+        var expressionAttributeValues = new Dictionary<string, AttributeValue>
+        {
+            [":partitionKey"] = new(
+                DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+            ),
+        };
+        var triggerPlaceholders = triggers
+            .Select(
+                (trigger, index) =>
+                {
+                    var placeholder = $":trigger{index}";
+                    expressionAttributeValues[placeholder] = new AttributeValue(trigger.ToString());
+                    return placeholder;
+                }
+            )
+            .ToList();
+
         var rows = await QueryAllPagesAsync(
             new QueryRequest
             {
                 TableName = RunTableName,
                 IndexName = "RunHeaderIndex",
                 KeyConditionExpression = "OrganizationId_ApplicationId = :partitionKey",
-                FilterExpression = "#trigger <> :authoring",
+                FilterExpression = $"#trigger IN ({string.Join(", ", triggerPlaceholders)})",
                 ExpressionAttributeNames = new Dictionary<string, string>
                 {
                     ["#trigger"] = "Trigger",
                 },
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
-                {
-                    [":partitionKey"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
-                    ),
-                    [":authoring"] = new(RunTrigger.Authoring.ToString()),
-                },
+                ExpressionAttributeValues = expressionAttributeValues,
                 // The index's range key, HeaderId, is the Run's own UUIDv7 id, so descending order is
                 // newest-first with no separate sort.
                 ScanIndexForward = false,

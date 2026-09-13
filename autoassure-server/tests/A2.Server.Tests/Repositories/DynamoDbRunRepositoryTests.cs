@@ -601,7 +601,11 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         await _repository.TryCreateAsync(run with { Scenarios = scenarios });
 
         // test
-        var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
+        var summaries = await _repository.ListByApplicationAsync(
+            organizationId,
+            applicationId,
+            [RunTrigger.Manual, RunTrigger.Scheduled]
+        );
 
         // verify
         var summary = Assert.Single(summaries);
@@ -631,7 +635,11 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         );
 
         // test
-        var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
+        var summaries = await _repository.ListByApplicationAsync(
+            organizationId,
+            applicationId,
+            [RunTrigger.Manual, RunTrigger.Scheduled]
+        );
 
         // verify
         var summary = Assert.Single(summaries);
@@ -658,14 +666,18 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         );
 
         // test
-        var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
+        var summaries = await _repository.ListByApplicationAsync(
+            organizationId,
+            applicationId,
+            [RunTrigger.Manual, RunTrigger.Scheduled]
+        );
 
         // verify
         Assert.Empty(summaries);
     }
 
     [Fact]
-    public async Task ListByApplicationAsync_WhenTriggerIsAuthoring_NeverReturnsIt()
+    public async Task ListByApplicationAsync_WhenTriggersExcludesAuthoring_DoesNotReturnAuthoringRuns()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -689,11 +701,63 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         );
 
         // test
-        var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
+        var summaries = await _repository.ListByApplicationAsync(
+            organizationId,
+            applicationId,
+            [RunTrigger.Manual, RunTrigger.Scheduled]
+        );
 
-        // verify -- only the Manual Run comes back; there is no parameter to include Authoring runs.
+        // verify
         var summary = Assert.Single(summaries);
         Assert.Equal(manualRun.Id, summary.Id);
+    }
+
+    [Fact]
+    public async Task ListByApplicationAsync_WhenTriggersIncludesAuthoring_ReturnsAuthoringRuns()
+    {
+        // setup -- proves the trigger filter is a plain allow-list rather than a hardcoded Authoring
+        // exclusion: a caller that asks for Authoring gets it back.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutApplicationAsync(organizationId, applicationId);
+        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
+        var authoringRun = CreateRun(
+            organizationId,
+            applicationId,
+            environmentId,
+            RunTrigger.Authoring
+        );
+        await _repository.TryCreateAsync(
+            authoringRun with
+            {
+                Scenarios = [CreateScenarioSnapshot()],
+            }
+        );
+
+        // test
+        var summaries = await _repository.ListByApplicationAsync(
+            organizationId,
+            applicationId,
+            [RunTrigger.Authoring]
+        );
+
+        // verify
+        var summary = Assert.Single(summaries);
+        Assert.Equal(authoringRun.Id, summary.Id);
+    }
+
+    [Fact]
+    public async Task ListByApplicationAsync_WhenTriggersIsEmpty_Throws()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+
+        // test & verify
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _repository.ListByApplicationAsync(organizationId, applicationId, [])
+        );
     }
 
     [Fact]
@@ -714,7 +778,11 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         await _repository.TryCreateAsync(thirdRun);
 
         // test
-        var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
+        var summaries = await _repository.ListByApplicationAsync(
+            organizationId,
+            applicationId,
+            [RunTrigger.Manual, RunTrigger.Scheduled]
+        );
 
         // verify
         Assert.Equal(
