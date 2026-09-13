@@ -60,11 +60,6 @@ public static partial class DynamoDbMapper
             ["HeaderId"] = new(run.Id.ToString()),
         };
 
-        if (run.StatusReason is { } statusReason)
-        {
-            row["StatusReason"] = new(statusReason.ToString());
-        }
-
         if (run.TriggeredByUserId is { } triggeredByUserId)
         {
             row["TriggeredByUserId"] = new(triggeredByUserId.ToString());
@@ -102,9 +97,6 @@ public static partial class DynamoDbMapper
             ApplicationId = Guid.Parse(row["ApplicationId"].S),
             Trigger = Enum.Parse<RunTrigger>(row["Trigger"].S),
             Status = Enum.Parse<RunStatus>(row["Status"].S),
-            StatusReason = row.TryGetValue("StatusReason", out var statusReason)
-                ? Enum.Parse<RunStatusReason>(statusReason.S)
-                : null,
             TotalActivityCount = int.Parse(
                 row["TotalActivityCount"].N,
                 CultureInfo.InvariantCulture
@@ -154,9 +146,6 @@ public static partial class DynamoDbMapper
             Id = Guid.Parse(row["Id"].S),
             Trigger = Enum.Parse<RunTrigger>(row["Trigger"].S),
             Status = Enum.Parse<RunStatus>(row["Status"].S),
-            StatusReason = row.TryGetValue("StatusReason", out var statusReason)
-                ? Enum.Parse<RunStatusReason>(statusReason.S)
-                : null,
             TotalActivityCount = int.Parse(
                 row["TotalActivityCount"].N,
                 CultureInfo.InvariantCulture

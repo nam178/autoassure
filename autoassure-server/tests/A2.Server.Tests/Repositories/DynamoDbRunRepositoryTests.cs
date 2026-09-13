@@ -80,7 +80,6 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
                                 "Id",
                                 "Trigger",
                                 "Status",
-                                "StatusReason",
                                 "TotalActivityCount",
                                 "PassedActivityCount",
                                 "FailedActivityCount",
@@ -864,7 +863,6 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             applicationId,
             runId,
             terminalStatus,
-            terminalStatus == RunStatus.Abandoned ? RunStatusReason.WorkerCrashed : null,
             FixedNow.AddMinutes(5)
         );
 
@@ -1093,7 +1091,6 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
                 applicationId,
                 runId,
                 notPending,
-                notPending == RunStatus.Abandoned ? RunStatusReason.WorkerCrashed : null,
                 FixedNow
             );
         }
@@ -1168,8 +1165,6 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             CreateEnvironmentSnapshot(environmentId)
         );
         var completedAt = FixedNow.AddMinutes(5);
-        RunStatusReason? statusReason =
-            terminalStatus == RunStatus.Abandoned ? RunStatusReason.HeartbeatLost : null;
 
         // test
         var result = await _repository.TryMarkAsEndedAsync(
@@ -1177,7 +1172,6 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             applicationId,
             runId,
             terminalStatus,
-            statusReason,
             completedAt
         );
         var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
@@ -1188,14 +1182,6 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         Assert.Equal(terminalStatus.ToString(), row["Status"].S);
         Assert.Equal(completedAt.ToString("O"), row["CompletedAt"].S);
         Assert.Empty(runningRunRow);
-        if (statusReason is { } reason)
-        {
-            Assert.Equal(reason.ToString(), row["StatusReason"].S);
-        }
-        else
-        {
-            Assert.False(row.ContainsKey("StatusReason"));
-        }
     }
 
     [Theory]
@@ -1227,7 +1213,6 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
                 applicationId,
                 runId,
                 notRunning,
-                notRunning == RunStatus.Abandoned ? RunStatusReason.WorkerCrashed : null,
                 FixedNow.AddMinutes(5)
             );
         }
@@ -1239,7 +1224,6 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             applicationId,
             runId,
             RunStatus.Completed,
-            null,
             FixedNow.AddMinutes(10)
         );
         var afterRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
@@ -1253,79 +1237,6 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         {
             Assert.Equal(completedAt.S, afterRow["CompletedAt"].S);
         }
-    }
-
-    [Fact]
-    public async Task TryMarkAsEndedAsync_WhenHeartbeatCutoffIsBeforeLastHeartbeat_Fails()
-    {
-        // setup -- a Running Run whose heartbeat was just set by Start Run
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
-        var startedAt = FixedNow;
-        await _repository.TryMarkAsStartedAsync(
-            organizationId,
-            applicationId,
-            runId,
-            startedAt,
-            CreateEnvironmentSnapshot(environmentId)
-        );
-
-        // test -- the cutoff is before the Run's actual heartbeat, so the heartbeat is fresh relative to
-        // it and this caller must not end the Run
-        var staleBeforeCutoff = startedAt.AddSeconds(-90);
-        var result = await _repository.TryMarkAsEndedAsync(
-            organizationId,
-            applicationId,
-            runId,
-            RunStatus.Abandoned,
-            RunStatusReason.HeartbeatLost,
-            FixedNow.AddMinutes(5),
-            heartbeatCutoff: staleBeforeCutoff
-        );
-        var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
-
-        // verify -- the Run is still Running; the condition rejected the fresh heartbeat
-        Assert.False(result);
-        Assert.Equal(RunStatus.Running.ToString(), row["Status"].S);
-    }
-
-    [Fact]
-    public async Task TryMarkAsEndedAsync_WhenHeartbeatCutoffIsAfterLastHeartbeat_Succeeds()
-    {
-        // setup
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
-        var startedAt = FixedNow;
-        await _repository.TryMarkAsStartedAsync(
-            organizationId,
-            applicationId,
-            runId,
-            startedAt,
-            CreateEnvironmentSnapshot(environmentId)
-        );
-
-        // test -- the cutoff is after the Run's last heartbeat, so the heartbeat reads as stale and this
-        // caller may abandon the Run
-        var cutoffAfterHeartbeat = startedAt.AddSeconds(90);
-        var result = await _repository.TryMarkAsEndedAsync(
-            organizationId,
-            applicationId,
-            runId,
-            RunStatus.Abandoned,
-            RunStatusReason.HeartbeatLost,
-            FixedNow.AddMinutes(5),
-            heartbeatCutoff: cutoffAfterHeartbeat
-        );
-        var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
-
-        // verify
-        Assert.True(result);
-        Assert.Equal(RunStatus.Abandoned.ToString(), row["Status"].S);
-        Assert.Equal(RunStatusReason.HeartbeatLost.ToString(), row["StatusReason"].S);
     }
 
     [Fact]
@@ -1409,7 +1320,6 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
                 applicationId,
                 runId,
                 notRunning,
-                notRunning == RunStatus.Abandoned ? RunStatusReason.WorkerCrashed : null,
                 FixedNow.AddMinutes(5)
             );
         }
@@ -1512,7 +1422,6 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
                 applicationId,
                 runId,
                 notRunning,
-                notRunning == RunStatus.Abandoned ? RunStatusReason.WorkerCrashed : null,
                 FixedNow.AddMinutes(5)
             );
         }
@@ -1670,7 +1579,6 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             applicationId,
             runId,
             RunStatus.Completed,
-            null,
             FixedNow.AddMinutes(5)
         );
 

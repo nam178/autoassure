@@ -10,9 +10,6 @@ public record RunSummaryResponse
     public required RunTrigger Trigger { get; init; }
     public required RunStatus Status { get; init; }
 
-    /// <summary>Only set when Status is Abandoned.</summary>
-    public RunStatusReason? StatusReason { get; init; }
-
     public required int TotalActivityCount { get; init; }
     public required int PassedActivityCount { get; init; }
     public required int FailedActivityCount { get; init; }

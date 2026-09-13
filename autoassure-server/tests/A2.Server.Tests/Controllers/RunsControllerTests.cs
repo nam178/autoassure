@@ -246,7 +246,6 @@ public sealed class RunsControllerTests
                                 "Id",
                                 "Trigger",
                                 "Status",
-                                "StatusReason",
                                 "TotalActivityCount",
                                 "PassedActivityCount",
                                 "FailedActivityCount",
@@ -961,7 +960,7 @@ public sealed class RunsControllerTests
         // test
         var endResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs/{created.Id}/end",
-            new EndRunRequest { TerminalStatus = RunStatus.Completed, StatusReason = null }
+            new EndRunRequest { TerminalStatus = RunStatus.Completed }
         );
 
         // verify
@@ -980,11 +979,7 @@ public sealed class RunsControllerTests
         var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
         var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
         await client.PostAsync($"/applications/{appId}/runs/{created.Id}/start", null);
-        var endRequest = new EndRunRequest
-        {
-            TerminalStatus = RunStatus.Completed,
-            StatusReason = null,
-        };
+        var endRequest = new EndRunRequest { TerminalStatus = RunStatus.Completed };
         var firstEnd = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs/{created.Id}/end",
             endRequest
@@ -1012,7 +1007,7 @@ public sealed class RunsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs/{created.Id}/end",
-            new EndRunRequest { TerminalStatus = RunStatus.Completed, StatusReason = null }
+            new EndRunRequest { TerminalStatus = RunStatus.Completed }
         );
 
         // verify
@@ -1033,30 +1028,7 @@ public sealed class RunsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs/{created.Id}/end",
-            new EndRunRequest { TerminalStatus = notTerminal, StatusReason = null }
-        );
-
-        // verify
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task End_WhenStatusReasonSetForNonAbandoned_ReturnsBadRequest()
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
-        await client.PostAsync($"/applications/{appId}/runs/{created.Id}/start", null);
-
-        // test
-        var response = await client.PostAsJsonAsync(
-            $"/applications/{appId}/runs/{created.Id}/end",
-            new EndRunRequest
-            {
-                TerminalStatus = RunStatus.Completed,
-                StatusReason = RunStatusReason.WorkerCrashed,
-            }
+            new EndRunRequest { TerminalStatus = notTerminal }
         );
 
         // verify
@@ -1466,7 +1438,7 @@ public sealed class RunsControllerTests
             .CreateClient()
             .PostAsJsonAsync(
                 $"/applications/{Guid.CreateVersion7()}/runs/{Guid.CreateVersion7()}/end",
-                new EndRunRequest { TerminalStatus = RunStatus.Completed, StatusReason = null }
+                new EndRunRequest { TerminalStatus = RunStatus.Completed }
             );
 
         // verify

@@ -3,13 +3,11 @@ using A2.Server.Models;
 using ContractActivityResult = A2.Server.Contracts.ActivityResult;
 using ContractActivityResultStatus = A2.Server.Contracts.ActivityResultStatus;
 using ContractRunStatus = A2.Server.Contracts.RunStatus;
-using ContractRunStatusReason = A2.Server.Contracts.RunStatusReason;
 using ContractRunStatusUpdateKind = A2.Server.Contracts.RunStatusUpdateKind;
 using ContractRunTrigger = A2.Server.Contracts.RunTrigger;
 using ModelActivityResult = A2.Server.Models.ActivityResult;
 using ModelActivityResultStatus = A2.Server.Models.ActivityResultStatus;
 using ModelRunStatus = A2.Server.Models.RunStatus;
-using ModelRunStatusReason = A2.Server.Models.RunStatusReason;
 using ModelRunStatusUpdateKind = A2.Server.Models.RunStatusUpdateKind;
 using ModelRunTrigger = A2.Server.Models.RunTrigger;
 
@@ -32,7 +30,6 @@ public static partial class ContractMapper
             ApplicationId = run.ApplicationId,
             Trigger = run.Trigger.ToContract(),
             Status = run.Status.ToContract(),
-            StatusReason = run.StatusReason?.ToContract(),
             TotalActivityCount = run.TotalActivityCount,
             PassedActivityCount = run.PassedActivityCount,
             FailedActivityCount = run.FailedActivityCount,
@@ -53,7 +50,6 @@ public static partial class ContractMapper
             Id = info.Id,
             Trigger = info.Trigger.ToContract(),
             Status = info.Status.ToContract(),
-            StatusReason = info.StatusReason?.ToContract(),
             TotalActivityCount = info.TotalActivityCount,
             PassedActivityCount = info.PassedActivityCount,
             FailedActivityCount = info.FailedActivityCount,
@@ -216,24 +212,6 @@ public static partial class ContractMapper
             ModelRunStatus.Cancelled => ContractRunStatus.Cancelled,
             ModelRunStatus.Abandoned => ContractRunStatus.Abandoned,
             _ => throw new ArgumentOutOfRangeException(nameof(status)),
-        };
-
-    public static ModelRunStatusReason ToModel(this ContractRunStatusReason reason) =>
-        reason switch
-        {
-            ContractRunStatusReason.HeartbeatLost => ModelRunStatusReason.HeartbeatLost,
-            ContractRunStatusReason.DeadlineExceeded => ModelRunStatusReason.DeadlineExceeded,
-            ContractRunStatusReason.WorkerCrashed => ModelRunStatusReason.WorkerCrashed,
-            _ => throw new ArgumentOutOfRangeException(nameof(reason)),
-        };
-
-    private static ContractRunStatusReason ToContract(this ModelRunStatusReason reason) =>
-        reason switch
-        {
-            ModelRunStatusReason.HeartbeatLost => ContractRunStatusReason.HeartbeatLost,
-            ModelRunStatusReason.DeadlineExceeded => ContractRunStatusReason.DeadlineExceeded,
-            ModelRunStatusReason.WorkerCrashed => ContractRunStatusReason.WorkerCrashed,
-            _ => throw new ArgumentOutOfRangeException(nameof(reason)),
         };
 
     private static ContractRunTrigger ToContract(this ModelRunTrigger trigger) =>

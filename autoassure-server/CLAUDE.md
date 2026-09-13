@@ -23,7 +23,8 @@ Run verifications and fix errors:
 1. `dotnet build A2.Server.slnx`
 2. `dotnet format A2.Server.slnx --verify-no-changes`
 3. `dotnet jb inspectcode A2.Server.slnx -o=inspect.sarif.json --no-build --severity=WARNING`
-4. Tests: ask first
+4. Unit tests (A2.Server.UnitTests)
+5. Integration Tests (A2.Server.Tests)
 
 (no need to format — `dotnet csharpier format .` runs automatically as a Claude Code hook)
 

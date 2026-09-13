@@ -198,8 +198,7 @@ public class RunsController(
         return Ok(startedRun.ToResponse(maskSensitiveValues: false));
     }
 
-    /// <response code="400">TerminalStatus is Pending or Running, or StatusReason is set while
-    /// TerminalStatus is not Abandoned.</response>
+    /// <response code="400">TerminalStatus is Pending or Running.</response>
     /// <response code="404">No Run with the given runId exists in this Application, in the caller's
     /// Organization.</response>
     /// <response code="409">The Run's Status is not Running.</response>
@@ -221,16 +220,6 @@ public class RunsController(
             );
         }
 
-        if (
-            request.StatusReason is not null
-            && request.TerminalStatus != ContractRunStatus.Abandoned
-        )
-        {
-            return BadRequest(
-                new ErrorResponse("StatusReason can only be set when TerminalStatus is Abandoned.")
-            );
-        }
-
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
         if (await runRepository.GetByIdAsync(organizationId, applicationId, runId) is null)
         {
@@ -242,7 +231,6 @@ public class RunsController(
             applicationId,
             runId,
             request.TerminalStatus.ToModel(),
-            request.StatusReason?.ToModel(),
             clock.UtcNow
         );
         return ended

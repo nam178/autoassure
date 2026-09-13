@@ -2097,7 +2097,7 @@
             "description": "No Content"
           },
           "400": {
-            "description": "TerminalStatus is Pending or Running, or StatusReason is set while\n    TerminalStatus is not Abandoned. Returns 400 when the request fails a validation constraint.",
+            "description": "TerminalStatus is Pending or Running. Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3351,19 +3351,9 @@
         "properties": {
           "terminalStatus": {
             "$ref": "#/components/schemas/RunStatus"
-          },
-          "statusReason": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/RunStatusReason"
-              }
-            ]
           }
         },
-        "description": "Request body to end a Running Run. TerminalStatus must be Completed, Cancelled or Abandoned --\n    Pending and Running are rejected, since those are states the server itself moves a Run through, never\n    an outcome a caller declares. StatusReason may only be given alongside Abandoned; Completed and\n    Cancelled are self-explanatory and must leave it null."
+        "description": "Request body to end a Running Run. TerminalStatus must be Completed, Cancelled or Abandoned --\n    Pending and Running are rejected, since those are states the server itself moves a Run through, never\n    an outcome a caller declares."
       },
       "EnvironmentClassification": {
         "type": "integer",
@@ -3801,17 +3791,6 @@
           "status": {
             "$ref": "#/components/schemas/RunStatus"
           },
-          "statusReason": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "description": "Only set when Status is Abandoned.",
-                "$ref": "#/components/schemas/RunStatusReason"
-              }
-            ]
-          },
           "totalActivityCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -3942,9 +3921,6 @@
         "type": "integer",
         "description": "A Run's execution state, as returned to the client. Carries no pass/fail judgment: a Run\n     whose every Activity failed is still Completed, and the activity counts say how it went.\n\n     Only Completed, Cancelled and Abandoned are legal terminal values to send on End Run -- Pending and\n     Running name states the server itself moves a Run through and are rejected there.\n\n     Running does not by itself mean the owning worker is still alive -- it may have crashed or been\n     killed without anything having noticed yet. Treat Running as \"not yet terminal,\" and check\n     LastHeartbeatAt (on RunResponse/RunSummaryResponse) to tell whether it is actually making\n     progress."
       },
-      "RunStatusReason": {
-        "type": "integer"
-      },
       "RunStatusUpdateKind": {
         "type": "integer",
         "description": "What a Run status update row records, as returned to the client. AppendActivityResult is\n    the only kind that exists today -- see the server's design notes for what earns a new one."
@@ -4008,17 +3984,6 @@
           },
           "status": {
             "$ref": "#/components/schemas/RunStatus"
-          },
-          "statusReason": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "description": "Only set when Status is Abandoned.",
-                "$ref": "#/components/schemas/RunStatusReason"
-              }
-            ]
           },
           "totalActivityCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",

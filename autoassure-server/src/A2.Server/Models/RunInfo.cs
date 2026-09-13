@@ -9,9 +9,6 @@ public record RunInfo
     /// <see cref="Run.Status"/>.</summary>
     public required RunStatus Status { get; init; }
 
-    /// <summary>Only set when Status is Abandoned -- see <see cref="Run.StatusReason"/>.</summary>
-    public RunStatusReason? StatusReason { get; init; }
-
     public int TotalActivityCount { get; init; }
     public int PassedActivityCount { get; init; }
     public int FailedActivityCount { get; init; }

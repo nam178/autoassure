@@ -258,9 +258,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         Guid applicationId,
         Guid runId,
         RunStatus terminalStatus,
-        RunStatusReason? statusReason,
-        DateTimeOffset completedAt,
-        DateTimeOffset? heartbeatCutoff = null
+        DateTimeOffset completedAt
     )
     {
         if (
@@ -276,18 +274,6 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             );
         }
 
-        if (statusReason is not null && terminalStatus != RunStatus.Abandoned)
-        {
-            throw new ArgumentException(
-                "StatusReason can only be written alongside Abandoned -- Completed and Cancelled are "
-                    + "self-explanatory (see Run.StatusReason's doc).",
-                nameof(statusReason)
-            );
-        }
-
-        // A caller ending a Run whose heartbeat it already read as stale adds LastHeartbeatAt < cutoff on
-        // top of the Status = Running condition every caller shares, so a worker that beat again after
-        // that read keeps its Run.
         var conditionExpression = "#status = :running";
         var attributeValues = new Dictionary<string, AttributeValue>
         {
@@ -295,19 +281,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             [":completedAt"] = new(completedAt.ToString("O")),
             [":running"] = new(RunStatus.Running.ToString()),
         };
-        if (heartbeatCutoff is { } cutoff)
-        {
-            conditionExpression += " AND LastHeartbeatAt < :cutoff";
-            attributeValues[":cutoff"] = new(cutoff.ToString("O"));
-        }
 
         var updateExpression = "SET #status = :terminal, CompletedAt = :completedAt";
-        if (statusReason is { } reason)
-        {
-            updateExpression =
-                "SET #status = :terminal, StatusReason = :reason, CompletedAt = :completedAt";
-            attributeValues[":reason"] = new(reason.ToString());
-        }
 
         // Two items, one transaction: the header item carries every condition above, and deleting the
         // RunningRuns row rides along with no condition of its own -- if the header's condition fails,

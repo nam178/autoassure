@@ -608,7 +608,6 @@ resource "aws_dynamodb_table" "runs" {
       "Id",
       "Trigger",
       "Status",
-      "StatusReason",
       "TotalActivityCount",
       "PassedActivityCount",
       "FailedActivityCount",

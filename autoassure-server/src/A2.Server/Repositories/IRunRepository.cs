@@ -35,19 +35,14 @@ public interface IRunRepository
 
     /// <exception cref="ArgumentException">
     /// <paramref name="terminalStatus"/> is Pending or Running -- neither is a state this operation can
-    /// end a Run in -- or <paramref name="statusReason"/> is supplied together with a
-    /// <paramref name="terminalStatus"/> other than Abandoned, which <see cref="Run.StatusReason"/>'s own
-    /// doc says never carries one. Callers avoid both by only ever passing Completed, Cancelled or
-    /// Abandoned, and a reason only alongside Abandoned.
+    /// end a Run in. Callers avoid this by only ever passing Completed, Cancelled or Abandoned.
     /// </exception>
     Task<bool> TryMarkAsEndedAsync(
         Guid organizationId,
         Guid applicationId,
         Guid runId,
         RunStatus terminalStatus,
-        RunStatusReason? statusReason,
-        DateTimeOffset completedAt,
-        DateTimeOffset? heartbeatCutoff = null
+        DateTimeOffset completedAt
     );
 
     /// <summary>Update one or more properties of a Run</summary>

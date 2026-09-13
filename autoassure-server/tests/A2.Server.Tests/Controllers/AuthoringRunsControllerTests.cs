@@ -243,7 +243,6 @@ public sealed class AuthoringRunsControllerTests
                                 "Id",
                                 "Trigger",
                                 "Status",
-                                "StatusReason",
                                 "TotalActivityCount",
                                 "PassedActivityCount",
                                 "FailedActivityCount",

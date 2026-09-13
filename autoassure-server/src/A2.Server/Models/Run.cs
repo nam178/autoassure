@@ -13,7 +13,6 @@ public record Run
     /// or been killed without anything having noticed yet. Treat Running as "not yet terminal," and
     /// check <see cref="LastHeartbeatAt"/> to tell whether it is actually making progress.</summary>
     public required RunStatus Status { get; init; }
-    public RunStatusReason? StatusReason { get; init; }
     public int TotalActivityCount { get; init; }
     public int PassedActivityCount { get; init; }
     public int FailedActivityCount { get; init; }
@@ -47,11 +46,4 @@ public enum RunStatus
     Completed,
     Cancelled,
     Abandoned,
-}
-
-public enum RunStatusReason
-{
-    HeartbeatLost,
-    DeadlineExceeded,
-    WorkerCrashed,
 }

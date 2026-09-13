@@ -57,7 +57,6 @@ public sealed class DynamoDbMapperRunTests
             ApplicationId = Guid.NewGuid(),
             Trigger = RunTrigger.Manual,
             Status = RunStatus.Running,
-            StatusReason = RunStatusReason.HeartbeatLost,
             TotalActivityCount = 10,
             PassedActivityCount = 4,
             FailedActivityCount = 3,
@@ -140,7 +139,6 @@ public sealed class DynamoDbMapperRunTests
         Assert.Equal(run.ApplicationId, roundTripped.ApplicationId);
         Assert.Equal(run.Trigger, roundTripped.Trigger);
         Assert.Equal(run.Status, roundTripped.Status);
-        Assert.Equal(run.StatusReason, roundTripped.StatusReason);
         Assert.Equal(run.TotalActivityCount, roundTripped.TotalActivityCount);
         Assert.Equal(run.PassedActivityCount, roundTripped.PassedActivityCount);
         Assert.Equal(run.FailedActivityCount, roundTripped.FailedActivityCount);
@@ -167,7 +165,6 @@ public sealed class DynamoDbMapperRunTests
             ApplicationId = Guid.NewGuid(),
             Trigger = RunTrigger.Scheduled,
             Status = RunStatus.Pending,
-            StatusReason = null,
             Environment = SampleEnvironment(),
             Scenarios = [SampleScenarioSnapshot(Guid.NewGuid())],
             TriggeredByUserId = null,
@@ -181,14 +178,12 @@ public sealed class DynamoDbMapperRunTests
         var row = run.ToDynamoDbRow();
 
         // verify: absent from the row, not present-with-a-null-marker.
-        Assert.False(row.ContainsKey("StatusReason"));
         Assert.False(row.ContainsKey("TriggeredByUserId"));
         Assert.False(row.ContainsKey("StartedAt"));
         Assert.False(row.ContainsKey("CompletedAt"));
         Assert.False(row.ContainsKey("LastHeartbeatAt"));
 
         var roundTripped = row.ToRun(run.Environment, run.Scenarios);
-        Assert.Null(roundTripped.StatusReason);
         Assert.Null(roundTripped.TriggeredByUserId);
         Assert.Null(roundTripped.StartedAt);
         Assert.Null(roundTripped.CompletedAt);

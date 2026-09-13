@@ -226,8 +226,7 @@ export interface CreateScenarioRequest {
 /**
  * Request body to end a Running Run. TerminalStatus must be Completed, Cancelled or Abandoned --
  *     Pending and Running are rejected, since those are states the server itself moves a Run through, never
- *     an outcome a caller declares. StatusReason may only be given alongside Abandoned; Completed and
- *     Cancelled are self-explanatory and must leave it null.
+ *     an outcome a caller declares.
  */
 export interface EndRunRequest {
   /**
@@ -243,7 +242,6 @@ export interface EndRunRequest {
    *      progress.
    */
   terminalStatus: RunStatus;
-  statusReason?: null | RunStatusReason;
 }
 
 /** Whether an Environment is a live Production system or a non-production one (staging, dev, ...). */
@@ -484,8 +482,6 @@ export interface RunResponse {
    *      progress.
    */
   status: RunStatus;
-  /** Only set when Status is Abandoned. */
-  statusReason?: null | RunStatusReason;
   /**
    * @format int32
    * @pattern ^-?(?:0|[1-9]\d*)$
@@ -573,8 +569,6 @@ export interface RunScenarioSnapshotResponse {
  */
 export type RunStatus = number;
 
-export type RunStatusReason = number;
-
 /**
  * What a Run status update row records, as returned to the client. AppendActivityResult is
  *     the only kind that exists today -- see the server's design notes for what earns a new one.
@@ -632,8 +626,6 @@ export interface RunSummaryResponse {
    *      progress.
    */
   status: RunStatus;
-  /** Only set when Status is Abandoned. */
-  statusReason?: null | RunStatusReason;
   /**
    * @format int32
    * @pattern ^-?(?:0|[1-9]\d*)$
@@ -1483,7 +1475,7 @@ export class Api<SecurityDataType extends unknown> {
      * @name EndRun
      * @request POST:/applications/{applicationId}/runs/{runId}/end
      * @response `204` `void` No Content
-     * @response `400` `ErrorResponse` TerminalStatus is Pending or Running, or StatusReason is set while TerminalStatus is not Abandoned. Returns 400 when the request fails a validation constraint.
+     * @response `400` `ErrorResponse` TerminalStatus is Pending or Running. Returns 400 when the request fails a validation constraint.
      * @response `404` `ProblemDetails` No Run with the given runId exists in this Application, in the caller's Organization.
      * @response `409` `ErrorResponse` The Run's Status is not Running.
      */

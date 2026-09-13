@@ -242,7 +242,6 @@ public sealed class RunStatusUpdatesControllerTests
                                 "Id",
                                 "Trigger",
                                 "Status",
-                                "StatusReason",
                                 "TotalActivityCount",
                                 "PassedActivityCount",
                                 "FailedActivityCount",
@@ -914,7 +913,7 @@ public sealed class RunStatusUpdatesControllerTests
 
         var endResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs/{run.Id}/end",
-            new EndRunRequest { TerminalStatus = RunStatus.Completed, StatusReason = null }
+            new EndRunRequest { TerminalStatus = RunStatus.Completed }
         );
         Assert.Equal(HttpStatusCode.NoContent, endResponse.StatusCode);
 
