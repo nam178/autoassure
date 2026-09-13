@@ -157,10 +157,9 @@ public class RunsController(
         return run is null ? NotFound() : Ok(run.ToResponse());
     }
 
-    /// <summary>Claims a Pending Run for execution and returns it, unmasked, to the winning caller only
-    /// -- the one time in this API's life a sensitive Environment variable's real value is ever returned.
-    /// Every other response (Create Run, Get Run) always masks sensitive values regardless of what
-    /// storage currently holds; see <see cref="ContractMapper.ToResponse(Run, bool)"/>.</summary>
+    /// <summary>Starts a Run and returns it with Environment variable values unmasked -- the last
+    /// chance to see them unmasked. After the Run starts, every response masks them, for
+    /// security.</summary>
     /// <response code="404">No Run with the given runId exists in this Application, in the caller's
     /// Organization.</response>
     /// <response code="409">The Run's Status is not Pending.</response>
