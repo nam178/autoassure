@@ -6,17 +6,20 @@ namespace A2.Server.Repositories;
 
 public static partial class DynamoDbMapper
 {
-    public static string RunHeaderRowKey(Guid runId) => runId.ToString();
+    // 1000/2000/3000/4000 fix the sort order of a Run's row kinds explicitly, rather than leaving it to
+    // however their names happen to compare alphabetically. The gaps of 1000 leave room to insert a new
+    // row kind later without renumbering the ones above.
+    public static string RunHeaderRowKey(Guid runId) => $"{runId}#1000";
 
-    public static string RunEnvironmentRowKey(Guid runId) => $"{runId}#environment";
+    public static string RunEnvironmentRowKey(Guid runId) => $"{runId}#2000";
 
     public static string RunScenarioRowKey(Guid runId, Guid scenarioId) =>
-        $"{runId}#scenario#{scenarioId}";
+        $"{runId}#3000#{scenarioId}";
 
     public static string RunStatusUpdateRowKey(Guid runId, long seq) =>
-        $"{runId}#update#{seq.ToString("D12", CultureInfo.InvariantCulture)}";
+        $"{runId}#4000#{seq.ToString("D12", CultureInfo.InvariantCulture)}";
 
-    public static string RunStatusUpdateRowKeyPrefix(Guid runId) => $"{runId}#update#";
+    public static string RunStatusUpdateRowKeyPrefix(Guid runId) => $"{runId}#4000#";
 
     public static Dictionary<string, AttributeValue> ToDynamoDbRow(this Run run)
     {

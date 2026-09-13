@@ -225,7 +225,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void HeaderRow_WhenMapped_UsesTheRunIdAloneAsItsRowKey()
+    public void HeaderRow_WhenMapped_UsesTheRunIdWithA1000SuffixAsItsRowKey()
     {
         // setup
         var run = SampleRun();
@@ -234,7 +234,7 @@ public sealed class DynamoDbMapperRunTests
         var row = run.ToDynamoDbRow();
 
         // verify
-        Assert.Equal(run.Id.ToString(), row["RowKey"].S);
+        Assert.Equal($"{run.Id}#1000", row["RowKey"].S);
         Assert.Equal(DynamoDbMapper.RunHeaderRowKey(run.Id), row["RowKey"].S);
     }
 
@@ -298,7 +298,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void EnvironmentRow_WhenMapped_UsesTheRunIdAndEnvironmentSuffixAsItsRowKey()
+    public void EnvironmentRow_WhenMapped_UsesTheRunIdWithA2000SuffixAsItsRowKey()
     {
         // setup
         var runId = Guid.NewGuid();
@@ -308,7 +308,7 @@ public sealed class DynamoDbMapperRunTests
         var row = snapshot.ToDynamoDbRow(runId, Guid.NewGuid(), Guid.NewGuid());
 
         // verify
-        Assert.Equal($"{runId}#environment", row["RowKey"].S);
+        Assert.Equal($"{runId}#2000", row["RowKey"].S);
         Assert.Equal(DynamoDbMapper.RunEnvironmentRowKey(runId), row["RowKey"].S);
     }
 
@@ -331,7 +331,8 @@ public sealed class DynamoDbMapperRunTests
     {
         // setup: Get Run reads the header, the Environment row and every Scenario row with one BETWEEN
         // query bounded by the header key and the status-update prefix. That only works while the
-        // Environment key sorts inside those bounds -- DynamoDB compares range keys as plain strings.
+        // Environment key sorts inside those bounds -- guaranteed here by the 1000/2000/4000 sort-key
+        // prefixes, not by string comparison happening to agree with them.
         var runId = Guid.NewGuid();
         var headerKey = DynamoDbMapper.RunHeaderRowKey(runId);
         var environmentKey = DynamoDbMapper.RunEnvironmentRowKey(runId);
@@ -366,7 +367,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void ScenarioRow_WhenMapped_UsesTheRunAndScenarioIdAsItsRowKey()
+    public void ScenarioRow_WhenMapped_UsesTheRunAndScenarioIdWithA3000SuffixAsItsRowKey()
     {
         // setup
         var runId = Guid.NewGuid();
@@ -377,7 +378,7 @@ public sealed class DynamoDbMapperRunTests
         var row = snapshot.ToDynamoDbRow(runId, Guid.NewGuid(), Guid.NewGuid());
 
         // verify
-        Assert.Equal($"{runId}#scenario#{scenarioId}", row["RowKey"].S);
+        Assert.Equal($"{runId}#3000#{scenarioId}", row["RowKey"].S);
         Assert.Equal(DynamoDbMapper.RunScenarioRowKey(runId, scenarioId), row["RowKey"].S);
     }
 
@@ -471,7 +472,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void StatusUpdateRow_WhenMapped_UsesTheRunIdAndPaddedSeqAsItsRowKey()
+    public void StatusUpdateRow_WhenMapped_UsesTheRunIdAndPaddedSeqWithA4000SuffixAsItsRowKey()
     {
         // setup
         var runId = Guid.NewGuid();
@@ -487,7 +488,7 @@ public sealed class DynamoDbMapperRunTests
         var row = update.ToDynamoDbRow(runId, Guid.NewGuid(), Guid.NewGuid());
 
         // verify
-        Assert.Equal($"{runId}#update#000000000009", row["RowKey"].S);
+        Assert.Equal($"{runId}#4000#000000000009", row["RowKey"].S);
         Assert.Equal(DynamoDbMapper.RunStatusUpdateRowKey(runId, 9), row["RowKey"].S);
     }
 
@@ -497,7 +498,7 @@ public sealed class DynamoDbMapperRunTests
     public void RunStatusUpdateRowKey_WhenSequencesAreSortedAsStrings_SortsInNumericOrder()
     {
         // setup: 1, 9, 10 and 100 built into row keys for the same run. An unpadded scheme would sort
-        // "#update#10" before "#update#9" as plain strings, silently reordering a poll cursor's results
+        // "#4000#10" before "#4000#9" as plain strings, silently reordering a poll cursor's results
         // the moment a run passes nine updates.
         var runId = Guid.NewGuid();
         long[] sequencesInCreationOrder = [1, 9, 10, 100];
@@ -522,6 +523,6 @@ public sealed class DynamoDbMapperRunTests
         var key = DynamoDbMapper.RunStatusUpdateRowKey(runId, 42);
 
         // verify
-        Assert.Equal($"{runId}#update#000000000042", key);
+        Assert.Equal($"{runId}#4000#000000000042", key);
     }
 }

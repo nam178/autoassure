@@ -1666,7 +1666,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     public async Task ListStatusUpdatesAsync_WhenSequencesCrossTen_ReturnsExactlyTenElevenTwelve()
     {
         // setup -- append Seq 1 through 12, crossing the point where zero-padding starts to matter:
-        // an unpadded key would sort "#update#10" before "#update#9", which would corrupt this exact
+        // an unpadded key would sort "#4000#10" before "#4000#9", which would corrupt this exact
         // query the moment the log passes nine entries.
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();

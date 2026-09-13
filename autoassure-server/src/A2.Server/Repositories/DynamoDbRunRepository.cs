@@ -20,7 +20,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         {
             // Notes:
             // No need conditional check for  environments, and scenario here because a run can exist despite that
-            // environments and scenario are deleted. That's the whole point of taking their snapshots. 
+            // environments and scenario are deleted. That's the whole point of taking their snapshots.
             ApplicationExistsCheck(run.OrganizationId, run.ApplicationId),
             new()
             {
@@ -94,10 +94,9 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     [":partitionKey"] = new(
                         DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
                     ),
-                    // TODO: are we assume that the run header, environments and  scenarios row appear
-                    // before the status update row.
-                    // It's a big assumptions.
-                    // How can we GUARANTEE that?
+                    // Guaranteed, not assumed: RunHeaderRowKey/RunEnvironmentRowKey/RunScenarioRowKey
+                    // carry the 1000/2000/3000 sort-key prefixes, all below RunStatusUpdateRowKey's
+                    // 4000 -- see those methods' doc.
                     [":low"] = new(headerRowKey),
                     [":high"] = new(DynamoDbMapper.RunStatusUpdateRowKeyPrefix(runId)),
                 },
@@ -147,12 +146,6 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         Guid applicationId
     )
     {
-        // The sparse RunHeaderIndex holds exactly one entry per Run -- only header rows carry
-        // HeaderId -- so this Query can never read a Scenario snapshot or status update row, unlike a
-        // FilterExpression over the base table's partition, which fix_run_design.md forbids here
-        // because it would read and charge for every row the split exists to stop paying for.
-        // Excluding Authoring runs with a FilterExpression on Trigger alone is still cheap: it filters
-        // header-only projections, not full rows.
         var rows = await QueryAllPagesAsync(
             new QueryRequest
             {
@@ -246,8 +239,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
-                  && reasons[0].Code == "ConditionalCheckFailed"
-                 )
+                && reasons[0].Code == "ConditionalCheckFailed"
+            )
         {
             return null;
         }
@@ -271,7 +264,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         {
             throw new ArgumentException(
                 $"{terminalStatus} is not a terminal state End Run can write -- only Completed, "
-                + "Cancelled or Abandoned.",
+                    + "Cancelled or Abandoned.",
                 nameof(terminalStatus)
             );
         }
@@ -280,7 +273,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         {
             throw new ArgumentException(
                 "StatusReason can only be written alongside Abandoned -- Completed and Cancelled are "
-                + "self-explanatory (see Run.StatusReason's doc).",
+                    + "self-explanatory (see Run.StatusReason's doc).",
                 nameof(statusReason)
             );
         }
@@ -350,8 +343,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
-                  && reasons[0].Code == "ConditionalCheckFailed"
-                 )
+                && reasons[0].Code == "ConditionalCheckFailed"
+            )
         {
             return false;
         }
@@ -528,8 +521,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons?.Any(reason => reason.Code == "ConditionalCheckFailed")
-                  == true
-                 )
+                == true
+            )
         {
             return false;
         }

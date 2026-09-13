@@ -166,8 +166,7 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
                 && reasons[0].Code == "ConditionalCheckFailed"
-            )
-        { }
+            ) { }
     }
 
     // BUG: this doesn't decrement the Scenario's ActivityCount. Harmless today since the only
