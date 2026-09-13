@@ -149,7 +149,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             ),
         };
         var triggerPlaceholders = triggers
-            .Select((trigger, index) =>
+            .Select(
+                (trigger, index) =>
                 {
                     var placeholder = $":trigger{index}";
                     expressionAttributeValues[placeholder] = new AttributeValue(trigger.ToString());
@@ -245,8 +246,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
-                  && reasons[0].Code == "ConditionalCheckFailed"
-                 )
+                && reasons[0].Code == "ConditionalCheckFailed"
+            )
         {
             return null;
         }
@@ -268,7 +269,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         {
             throw new ArgumentException(
                 $"{terminalStatus} is not a terminal state End Run can write -- only Completed, "
-                + "Cancelled or Abandoned.",
+                    + "Cancelled or Abandoned.",
                 nameof(terminalStatus)
             );
         }
@@ -324,8 +325,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
-                  && reasons[0].Code == "ConditionalCheckFailed"
-                 )
+                && reasons[0].Code == "ConditionalCheckFailed"
+            )
         {
             return false;
         }
@@ -495,8 +496,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons?.Any(reason => reason.Code == "ConditionalCheckFailed")
-                  == true
-                 )
+                == true
+            )
         {
             return false;
         }
