@@ -21,20 +21,20 @@ public interface IActivityRepository
         Guid organizationId,
         Guid applicationId,
         Guid scenarioId,
-        Guid id,
+        Guid activityId,
         ActivityUpdatableFields fields
     );
 
     /// <summary>Deletes the Activity and atomically decrements its Scenario's Activity count. A
     /// no-op if the Activity no longer exists.</summary>
-    Task DeleteAsync(Guid organizationId, Guid applicationId, Guid scenarioId, Guid id);
+    Task DeleteAsync(Guid organizationId, Guid applicationId, Guid scenarioId, Guid activityId);
 
     /// <summary>Deletes every Activity belonging to the given Scenario. Used when the Scenario
     /// itself is deleted, so no orphaned Activity rows remain.</summary>
     Task DeleteAllByScenarioAsync(Guid organizationId, Guid scenarioId);
 
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
-    Task<Activity?> GetByIdAsync(Guid organizationId, Guid id);
+    Task<Activity?> GetByIdAsync(Guid organizationId, Guid activityId);
 
     /// <summary>All Activities in this Scenario, ordered by <see cref="Activity.Order"/>.</summary>
     Task<IReadOnlyList<Activity>> ListByScenarioAsync(Guid organizationId, Guid scenarioId);

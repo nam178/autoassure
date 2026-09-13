@@ -60,7 +60,7 @@ public class DynamoDbEnvironmentRepository(
     public async Task<bool> TryUpdateAsync(
         Guid organizationId,
         Guid applicationId,
-        Guid id,
+        Guid environmentId,
         EnvironmentUpdatableFields fields
     )
     {
@@ -78,7 +78,7 @@ public class DynamoDbEnvironmentRepository(
                                 applicationId
                             )
                         ),
-                        ["Id"] = new(id.ToString()),
+                        ["Id"] = new(environmentId.ToString()),
                     },
                     UpdateExpression =
                         "SET #name = :name, Classification = :classification, "
@@ -105,7 +105,7 @@ public class DynamoDbEnvironmentRepository(
         }
     }
 
-    public async Task<Environment?> GetByIdAsync(Guid organizationId, Guid id)
+    public async Task<Environment?> GetByIdAsync(Guid organizationId, Guid environmentId)
     {
         var response = await client.QueryAsync(
             new QueryRequest
@@ -116,7 +116,7 @@ public class DynamoDbEnvironmentRepository(
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
                     [":organizationId"] = new(organizationId.ToString()),
-                    [":id"] = new(id.ToString()),
+                    [":id"] = new(environmentId.ToString()),
                 },
                 Limit = 1,
             }

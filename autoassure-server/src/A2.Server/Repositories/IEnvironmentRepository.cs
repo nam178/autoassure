@@ -13,12 +13,12 @@ public interface IEnvironmentRepository
     Task<bool> TryUpdateAsync(
         Guid organizationId,
         Guid applicationId,
-        Guid id,
+        Guid environmentId,
         EnvironmentUpdatableFields fields
     );
 
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
-    Task<Environment?> GetByIdAsync(Guid organizationId, Guid id);
+    Task<Environment?> GetByIdAsync(Guid organizationId, Guid environmentId);
 
     /// <summary>All Environments belonging to this Application. Ordering: newest first.</summary>
     Task<IReadOnlyList<Environment>> ListByApplicationAsync(

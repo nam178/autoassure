@@ -59,14 +59,15 @@ public class ApplicationsController(
         return Ok(applications.Select(a => a.ToResponse()).ToList());
     }
 
-    /// <response code="404">No Application with the given id exists in the caller's Organization.</response>
-    [HttpGet("{id:guid}", Name = "GetApplicationById")]
+    /// <response code="404">No Application with the given applicationId exists in the caller's
+    /// Organization.</response>
+    [HttpGet("{applicationId:guid}", Name = "GetApplicationById")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ApplicationResponse>> GetById(Guid id)
+    public async Task<ActionResult<ApplicationResponse>> GetById(Guid applicationId)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var application = await applicationRepository.GetByIdAsync(organizationId, id);
+        var application = await applicationRepository.GetByIdAsync(organizationId, applicationId);
 
         return application is null ? NotFound() : Ok(application.ToResponse());
     }

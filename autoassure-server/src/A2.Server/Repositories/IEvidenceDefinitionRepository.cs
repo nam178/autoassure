@@ -13,14 +13,14 @@ public interface IEvidenceDefinitionRepository
     Task<bool> TryUpdateAsync(
         Guid organizationId,
         Guid applicationId,
-        Guid id,
+        Guid evidenceDefinitionId,
         EvidenceDefinitionUpdatableFields fields
     );
 
-    Task DeleteAsync(Guid organizationId, Guid id);
+    Task DeleteAsync(Guid organizationId, Guid evidenceDefinitionId);
 
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
-    Task<EvidenceDefinition?> GetByIdAsync(Guid organizationId, Guid id);
+    Task<EvidenceDefinition?> GetByIdAsync(Guid organizationId, Guid evidenceDefinitionId);
 
     /// <summary>All EvidenceDefinitions in this Application's library. Ordering: newest first.</summary>
     Task<IReadOnlyList<EvidenceDefinition>> ListByApplicationAsync(

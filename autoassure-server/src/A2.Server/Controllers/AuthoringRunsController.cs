@@ -26,12 +26,16 @@ public class AuthoringRunsController(
 {
     /// <response code="400">EnvironmentId does not reference an Environment belonging to the Scenario's
     /// Application.</response>
-    /// <response code="404">No Scenario with the given id exists in the caller's Organization.</response>
-    [HttpPost("scenarios/{id:guid}/runs", Name = "CreateAuthoringRun")]
+    /// <response code="404">No Scenario with the given scenarioId exists in the caller's
+    /// Organization.</response>
+    [HttpPost("scenarios/{scenarioId:guid}/runs", Name = "CreateAuthoringRun")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<RunResponse>> Create(Guid id, CreateAuthoringRunRequest request)
+    public async Task<ActionResult<RunResponse>> Create(
+        Guid scenarioId,
+        CreateAuthoringRunRequest request
+    )
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
 
@@ -40,7 +44,7 @@ public class AuthoringRunsController(
         // validating that below. A structurally invalid body (missing field, wrong type) fails ASP.NET's
         // automatic model validation before this action ever runs, and gets 400 like any other endpoint
         // in this codebase.
-        var scenario = await scenarioRepository.GetByIdAsync(organizationId, id);
+        var scenario = await scenarioRepository.GetByIdAsync(organizationId, scenarioId);
         if (scenario is null)
         {
             return NotFound();

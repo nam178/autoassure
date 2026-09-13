@@ -9,7 +9,7 @@ public interface IApplicationRepository
     Task<bool> TrySaveAsync(Application application);
 
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
-    Task<Application?> GetByIdAsync(Guid organizationId, Guid id);
+    Task<Application?> GetByIdAsync(Guid organizationId, Guid applicationId);
 
     /// <summary>All Applications owned by this Organization. Ordering: newest first.</summary>
     Task<IReadOnlyList<Application>> ListByOrganizationAsync(Guid organizationId);

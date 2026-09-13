@@ -62,7 +62,7 @@ public class DynamoDbPreconditionRepository(
     public async Task<bool> TryUpdateAsync(
         Guid organizationId,
         Guid applicationId,
-        Guid id,
+        Guid preconditionId,
         PreconditionUpdatableFields fields
     )
     {
@@ -80,7 +80,7 @@ public class DynamoDbPreconditionRepository(
                                 applicationId
                             )
                         ),
-                        ["Id"] = new(id.ToString()),
+                        ["Id"] = new(preconditionId.ToString()),
                     },
                     UpdateExpression =
                         "SET #name = :name, ValueSource = :valueSource, ExampleValue = :exampleValue, "
@@ -108,11 +108,11 @@ public class DynamoDbPreconditionRepository(
         }
     }
 
-    public async Task DeleteAsync(Guid organizationId, Guid id)
+    public async Task DeleteAsync(Guid organizationId, Guid preconditionId)
     {
         // The main table's partition key is OrganizationId_ApplicationId, but callers only have the
         // Precondition's Id -- resolve its ApplicationId via the IdIndex GSI first, same as GetByIdAsync.
-        var existing = await GetByIdAsync(organizationId, id);
+        var existing = await GetByIdAsync(organizationId, preconditionId);
         if (existing is null)
         {
             return;
@@ -130,13 +130,13 @@ public class DynamoDbPreconditionRepository(
                             existing.ApplicationId
                         )
                     ),
-                    ["Id"] = new(id.ToString()),
+                    ["Id"] = new(preconditionId.ToString()),
                 },
             }
         );
     }
 
-    public async Task<Precondition?> GetByIdAsync(Guid organizationId, Guid id)
+    public async Task<Precondition?> GetByIdAsync(Guid organizationId, Guid preconditionId)
     {
         var response = await client.QueryAsync(
             new QueryRequest
@@ -147,7 +147,7 @@ public class DynamoDbPreconditionRepository(
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
                     [":organizationId"] = new(organizationId.ToString()),
-                    [":id"] = new(id.ToString()),
+                    [":id"] = new(preconditionId.ToString()),
                 },
                 Limit = 1,
             }

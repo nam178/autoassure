@@ -183,9 +183,9 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
     public async Task<RunStartResult?> TryMarkAsStartedAsync(
         Guid organizationId,
         Guid applicationId,
-        Guid id,
+        Guid runId,
         DateTimeOffset startedAt,
-        RunEnvironmentSnapshot maskedEnvironment
+        RunEnvironmentSnapshot environment
     )
     {
         var transactItems = new List<TransactWriteItem>
@@ -195,7 +195,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 Update = new Update
                 {
                     TableName = RunTableName,
-                    Key = HeaderKey(organizationId, applicationId, id),
+                    Key = HeaderKey(organizationId, applicationId, runId),
                     UpdateExpression =
                         "SET #status = :running, StartedAt = :startedAt, LastHeartbeatAt = :startedAt",
                     ConditionExpression = "#status = :pending",
@@ -216,11 +216,11 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 Update = new Update
                 {
                     TableName = RunTableName,
-                    Key = EnvironmentRowKey(organizationId, applicationId, id),
+                    Key = EnvironmentRowKey(organizationId, applicationId, runId),
                     UpdateExpression = "SET Variables = :variables",
                     ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                     {
-                        [":variables"] = maskedEnvironment.ToVariablesAttributeValue(),
+                        [":variables"] = environment.ToVariablesAttributeValue(),
                     },
                 },
             },
@@ -229,7 +229,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 Put = new Put
                 {
                     TableName = RunningRunTableName,
-                    Item = new RunningRun { Id = id, StartedAt = startedAt }.ToDynamoDbRow(
+                    Item = new RunningRun { Id = runId, StartedAt = startedAt }.ToDynamoDbRow(
                         organizationId,
                         applicationId
                     ),
@@ -256,7 +256,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
     public async Task<bool> TryMarkAsEndedAsync(
         Guid organizationId,
         Guid applicationId,
-        Guid id,
+        Guid runId,
         RunStatus terminalStatus,
         RunStatusReason? statusReason,
         DateTimeOffset completedAt,
@@ -321,7 +321,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 Update = new Update
                 {
                     TableName = RunTableName,
-                    Key = HeaderKey(organizationId, applicationId, id),
+                    Key = HeaderKey(organizationId, applicationId, runId),
                     UpdateExpression = updateExpression,
                     ConditionExpression = conditionExpression,
                     ExpressionAttributeNames = new Dictionary<string, string>
@@ -336,7 +336,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 Delete = new Delete
                 {
                     TableName = RunningRunTableName,
-                    Key = RunningRunKey(organizationId, applicationId, id),
+                    Key = RunningRunKey(organizationId, applicationId, runId),
                 },
             },
         };
@@ -360,7 +360,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
     public async Task<bool> TryUpdateAsync(
         Guid organizationId,
         Guid applicationId,
-        Guid id,
+        Guid runId,
         RunUpdatableFields fields
     )
     {
@@ -426,7 +426,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 new UpdateItemRequest
                 {
                     TableName = RunTableName,
-                    Key = HeaderKey(organizationId, applicationId, id),
+                    Key = HeaderKey(organizationId, applicationId, runId),
                     UpdateExpression = "SET " + string.Join(", ", setClauses),
                     // When the Run was cancelled or already swept, Then Status is no longer Running and
                     // this condition fails -- a heartbeating worker finds out on its very next beat with
@@ -476,7 +476,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
     public async Task<bool> TryAppendStatusUpdateAsync(
         Guid organizationId,
         Guid applicationId,
-        Guid id,
+        Guid runId,
         RunStatusUpdate update
     )
     {
@@ -487,7 +487,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 Put = new Put
                 {
                     TableName = RunTableName,
-                    Item = update.ToDynamoDbRow(id, organizationId, applicationId),
+                    Item = update.ToDynamoDbRow(runId, organizationId, applicationId),
                     // A retried append (dispatch is at-least-once) targets the same Seq and therefore
                     // the same RowKey, so this is what turns the retry into a no-op instead of a
                     // second row for the same update.
@@ -499,7 +499,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 Update = new Update
                 {
                     TableName = RunTableName,
-                    Key = HeaderKey(organizationId, applicationId, id),
+                    Key = HeaderKey(organizationId, applicationId, runId),
                     UpdateExpression = "SET LastSeq = :seq",
                     // When LastSeq has already reached or passed this Seq, Then this append is a stale
                     // retry and this condition fails alongside the Put above. When Status is not
@@ -538,7 +538,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
     public async Task<IReadOnlyList<RunStatusUpdate>> ListStatusUpdatesAsync(
         Guid organizationId,
         Guid applicationId,
-        Guid id,
+        Guid runId,
         long afterSeq,
         int limit
     )
@@ -584,8 +584,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     [":partitionKey"] = new(
                         DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
                     ),
-                    [":low"] = new(DynamoDbMapper.RunStatusUpdateRowKey(id, afterSeq + 1)),
-                    [":high"] = new(DynamoDbMapper.RunStatusUpdateRowKey(id, long.MaxValue)),
+                    [":low"] = new(DynamoDbMapper.RunStatusUpdateRowKey(runId, afterSeq + 1)),
+                    [":high"] = new(DynamoDbMapper.RunStatusUpdateRowKey(runId, long.MaxValue)),
                 },
                 ConsistentRead = true,
                 ScanIndexForward = true,
@@ -605,14 +605,14 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
     private static Dictionary<string, AttributeValue> HeaderKey(
         Guid organizationId,
         Guid applicationId,
-        Guid id
+        Guid runId
     ) =>
         new()
         {
             ["OrganizationId_ApplicationId"] = new(
                 DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
             ),
-            ["RowKey"] = new(DynamoDbMapper.RunHeaderRowKey(id)),
+            ["RowKey"] = new(DynamoDbMapper.RunHeaderRowKey(runId)),
         };
 
     // Builds a Run's Environment snapshot row's primary key -- the Key TryMarkAsStartedAsync's masked
@@ -621,14 +621,14 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
     private static Dictionary<string, AttributeValue> EnvironmentRowKey(
         Guid organizationId,
         Guid applicationId,
-        Guid id
+        Guid runId
     ) =>
         new()
         {
             ["OrganizationId_ApplicationId"] = new(
                 DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
             ),
-            ["RowKey"] = new(DynamoDbMapper.RunEnvironmentRowKey(id)),
+            ["RowKey"] = new(DynamoDbMapper.RunEnvironmentRowKey(runId)),
         };
 
     // Builds a RunningRuns row's primary key -- the Key TryMarkAsEndedAsync's Delete targets. Mirrors
@@ -637,14 +637,14 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
     private static Dictionary<string, AttributeValue> RunningRunKey(
         Guid organizationId,
         Guid applicationId,
-        Guid id
+        Guid runId
     ) =>
         new()
         {
             ["OrganizationId_ApplicationId"] = new(
                 DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
             ),
-            ["RunId"] = new(id.ToString()),
+            ["RunId"] = new(runId.ToString()),
         };
 
     private TransactWriteItem ApplicationExistsCheck(Guid organizationId, Guid applicationId) =>

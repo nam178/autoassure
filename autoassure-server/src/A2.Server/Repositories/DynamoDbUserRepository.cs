@@ -80,7 +80,7 @@ public class DynamoDbUserRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpt
         }
     }
 
-    public async Task<bool> TryUpdateAsync(Guid id, UserUpdatableFields fields)
+    public async Task<bool> TryUpdateAsync(Guid userId, UserUpdatableFields fields)
     {
         try
         {
@@ -88,7 +88,10 @@ public class DynamoDbUserRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpt
                 new UpdateItemRequest
                 {
                     TableName = TableName,
-                    Key = new Dictionary<string, AttributeValue> { ["Id"] = new(id.ToString()) },
+                    Key = new Dictionary<string, AttributeValue>
+                    {
+                        ["Id"] = new(userId.ToString()),
+                    },
                     UpdateExpression =
                         "SET FirstName = :firstName, LastName = :lastName, Email = :email, "
                         + "EmailVerified = :emailVerified",

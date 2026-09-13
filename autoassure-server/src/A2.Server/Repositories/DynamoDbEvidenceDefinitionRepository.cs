@@ -60,7 +60,7 @@ public class DynamoDbEvidenceDefinitionRepository(
     public async Task<bool> TryUpdateAsync(
         Guid organizationId,
         Guid applicationId,
-        Guid id,
+        Guid evidenceDefinitionId,
         EvidenceDefinitionUpdatableFields fields
     )
     {
@@ -78,7 +78,7 @@ public class DynamoDbEvidenceDefinitionRepository(
                                 applicationId
                             )
                         ),
-                        ["Id"] = new(id.ToString()),
+                        ["Id"] = new(evidenceDefinitionId.ToString()),
                     },
                     UpdateExpression =
                         "SET #name = :name, Description = :description, ExampleValue = :exampleValue, "
@@ -106,11 +106,11 @@ public class DynamoDbEvidenceDefinitionRepository(
         }
     }
 
-    public async Task DeleteAsync(Guid organizationId, Guid id)
+    public async Task DeleteAsync(Guid organizationId, Guid evidenceDefinitionId)
     {
         // The main table's partition key is OrganizationId_ApplicationId, but callers only have the
         // EvidenceDefinition's Id -- resolve its ApplicationId via the IdIndex GSI first, same as GetByIdAsync.
-        var existing = await GetByIdAsync(organizationId, id);
+        var existing = await GetByIdAsync(organizationId, evidenceDefinitionId);
         if (existing is null)
         {
             return;
@@ -128,13 +128,16 @@ public class DynamoDbEvidenceDefinitionRepository(
                             existing.ApplicationId
                         )
                     ),
-                    ["Id"] = new(id.ToString()),
+                    ["Id"] = new(evidenceDefinitionId.ToString()),
                 },
             }
         );
     }
 
-    public async Task<EvidenceDefinition?> GetByIdAsync(Guid organizationId, Guid id)
+    public async Task<EvidenceDefinition?> GetByIdAsync(
+        Guid organizationId,
+        Guid evidenceDefinitionId
+    )
     {
         var response = await client.QueryAsync(
             new QueryRequest
@@ -145,7 +148,7 @@ public class DynamoDbEvidenceDefinitionRepository(
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
                     [":organizationId"] = new(organizationId.ToString()),
-                    [":id"] = new(id.ToString()),
+                    [":id"] = new(evidenceDefinitionId.ToString()),
                 },
                 Limit = 1,
             }

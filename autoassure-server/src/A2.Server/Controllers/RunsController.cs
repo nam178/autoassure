@@ -125,15 +125,15 @@ public class RunsController(
         return Ok(runs.Select(r => r.ToResponse()).ToList());
     }
 
-    /// <response code="404">No Run with the given id exists in this Application, in the caller's
+    /// <response code="404">No Run with the given runId exists in this Application, in the caller's
     /// Organization.</response>
-    [HttpGet("applications/{appId:guid}/runs/{id:guid}", Name = "GetRunById")]
+    [HttpGet("applications/{appId:guid}/runs/{runId:guid}", Name = "GetRunById")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<RunResponse>> GetById(Guid appId, Guid id)
+    public async Task<ActionResult<RunResponse>> GetById(Guid appId, Guid runId)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var run = await runRepository.GetByIdAsync(organizationId, appId, id);
+        var run = await runRepository.GetByIdAsync(organizationId, appId, runId);
         return run is null ? NotFound() : Ok(run.ToResponse());
     }
 
@@ -141,14 +141,14 @@ public class RunsController(
     /// -- the one time in this API's life a sensitive Environment variable's real value is ever returned.
     /// Every other response (Create Run, Get Run) always masks sensitive values regardless of what
     /// storage currently holds; see <see cref="ContractMapper.ToResponse(Run, bool)"/>.</summary>
-    /// <response code="404">No Run with the given id exists in this Application, in the caller's
+    /// <response code="404">No Run with the given runId exists in this Application, in the caller's
     /// Organization.</response>
     /// <response code="409">The Run's Status is not Pending.</response>
-    [HttpPost("applications/{appId:guid}/runs/{id:guid}/start", Name = "StartRun")]
+    [HttpPost("applications/{appId:guid}/runs/{runId:guid}/start", Name = "StartRun")]
     [ProducesResponseType(typeof(RunResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<RunResponse>> Start(Guid appId, Guid id)
+    public async Task<ActionResult<RunResponse>> Start(Guid appId, Guid runId)
     {
         // TODO:  UpdateHeartbeat, UpdateStats, and End all call the full GetByIdAsync purely as
         //                               an existence check before a narrow, already-conditioned write, on the hottest
@@ -160,7 +160,7 @@ public class RunsController(
         // This read happens before TryMarkAsStartedAsync's write below, so run.Environment still holds the
         // real (unmasked) values -- TryMarkAsStartedAsync has not yet overwritten storage with the masked
         // snapshot computed from it.
-        var run = await runRepository.GetByIdAsync(organizationId, appId, id);
+        var run = await runRepository.GetByIdAsync(organizationId, appId, runId);
         if (run is null)
         {
             return NotFound();
@@ -170,7 +170,7 @@ public class RunsController(
         var started = await runRepository.TryMarkAsStartedAsync(
             organizationId,
             appId,
-            id,
+            runId,
             clock.UtcNow,
             maskedEnvironment
         );
@@ -195,15 +195,15 @@ public class RunsController(
 
     /// <response code="400">TerminalStatus is Pending or Running, or StatusReason is set while
     /// TerminalStatus is not Abandoned.</response>
-    /// <response code="404">No Run with the given id exists in this Application, in the caller's
+    /// <response code="404">No Run with the given runId exists in this Application, in the caller's
     /// Organization.</response>
     /// <response code="409">The Run's Status is not Running.</response>
-    [HttpPost("applications/{appId:guid}/runs/{id:guid}/end", Name = "EndRun")]
+    [HttpPost("applications/{appId:guid}/runs/{runId:guid}/end", Name = "EndRun")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
-    public async Task<ActionResult> End(Guid appId, Guid id, EndRunRequest request)
+    public async Task<ActionResult> End(Guid appId, Guid runId, EndRunRequest request)
     {
         if (
             request.TerminalStatus != ContractRunStatus.Completed
@@ -227,7 +227,7 @@ public class RunsController(
         }
 
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        if (await runRepository.GetByIdAsync(organizationId, appId, id) is null)
+        if (await runRepository.GetByIdAsync(organizationId, appId, runId) is null)
         {
             return NotFound();
         }
@@ -235,7 +235,7 @@ public class RunsController(
         var ended = await runRepository.TryMarkAsEndedAsync(
             organizationId,
             appId,
-            id,
+            runId,
             request.TerminalStatus.ToModel(),
             request.StatusReason?.ToModel(),
             clock.UtcNow
@@ -245,17 +245,17 @@ public class RunsController(
             : Conflict(new ErrorResponse("The Run's Status is not Running."));
     }
 
-    /// <response code="404">No Run with the given id exists in this Application, in the caller's
+    /// <response code="404">No Run with the given runId exists in this Application, in the caller's
     /// Organization.</response>
     /// <response code="409">The Run's Status is not Running.</response>
-    [HttpPost("applications/{appId:guid}/runs/{id:guid}/heartbeat", Name = "UpdateRunHeartbeat")]
+    [HttpPost("applications/{appId:guid}/runs/{runId:guid}/heartbeat", Name = "UpdateRunHeartbeat")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
-    public async Task<ActionResult> Heartbeat(Guid appId, Guid id)
+    public async Task<ActionResult> Heartbeat(Guid appId, Guid runId)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        if (await runRepository.GetByIdAsync(organizationId, appId, id) is null)
+        if (await runRepository.GetByIdAsync(organizationId, appId, runId) is null)
         {
             return NotFound();
         }
@@ -263,23 +263,27 @@ public class RunsController(
         var beat = await runRepository.TryUpdateAsync(
             organizationId,
             appId,
-            id,
+            runId,
             new RunUpdatableFields { HeartbeatAt = clock.UtcNow }
         );
         return beat ? NoContent() : Conflict(new ErrorResponse("The Run's Status is not Running."));
     }
 
-    /// <response code="404">No Run with the given id exists in this Application, in the caller's
+    /// <response code="404">No Run with the given runId exists in this Application, in the caller's
     /// Organization.</response>
     /// <response code="409">The Run's Status is not Running.</response>
-    [HttpPost("applications/{appId:guid}/runs/{id:guid}/stats", Name = "UpdateRunStats")]
+    [HttpPost("applications/{appId:guid}/runs/{runId:guid}/stats", Name = "UpdateRunStats")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
-    public async Task<ActionResult> UpdateStats(Guid appId, Guid id, UpdateRunStatsRequest request)
+    public async Task<ActionResult> UpdateStats(
+        Guid appId,
+        Guid runId,
+        UpdateRunStatsRequest request
+    )
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        if (await runRepository.GetByIdAsync(organizationId, appId, id) is null)
+        if (await runRepository.GetByIdAsync(organizationId, appId, runId) is null)
         {
             return NotFound();
         }
@@ -287,7 +291,7 @@ public class RunsController(
         var updated = await runRepository.TryUpdateAsync(
             organizationId,
             appId,
-            id,
+            runId,
             new RunUpdatableFields
             {
                 TotalActivityCount = request.TotalActivityCount,

@@ -154,7 +154,7 @@
         }
       }
     },
-    "/activities/{id}": {
+    "/activities/{activityId}": {
       "patch": {
         "tags": [
           "Activities"
@@ -162,7 +162,7 @@
         "operationId": "UpdateActivity",
         "parameters": [
           {
-            "name": "id",
+            "name": "activityId",
             "in": "path",
             "required": true,
             "schema": {
@@ -233,7 +233,7 @@
             }
           },
           "404": {
-            "description": "No Activity with the given id exists in the caller's Organization.",
+            "description": "No Activity with the given activityId exists in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -261,7 +261,7 @@
         "operationId": "DeleteActivity",
         "parameters": [
           {
-            "name": "id",
+            "name": "activityId",
             "in": "path",
             "required": true,
             "schema": {
@@ -494,7 +494,7 @@
         }
       }
     },
-    "/applications/{id}": {
+    "/applications/{applicationId}": {
       "get": {
         "tags": [
           "Applications"
@@ -502,7 +502,7 @@
         "operationId": "GetApplicationById",
         "parameters": [
           {
-            "name": "id",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -533,7 +533,7 @@
             }
           },
           "404": {
-            "description": "No Application with the given id exists in the caller's Organization.",
+            "description": "No Application with the given applicationId exists in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -701,7 +701,7 @@
         }
       }
     },
-    "/scenarios/{id}/runs": {
+    "/scenarios/{scenarioId}/runs": {
       "post": {
         "tags": [
           "AuthoringRuns"
@@ -709,7 +709,7 @@
         "operationId": "CreateAuthoringRun",
         "parameters": [
           {
-            "name": "id",
+            "name": "scenarioId",
             "in": "path",
             "required": true,
             "schema": {
@@ -780,7 +780,7 @@
             }
           },
           "404": {
-            "description": "No Scenario with the given id exists in the caller's Organization.",
+            "description": "No Scenario with the given scenarioId exists in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -934,7 +934,7 @@
         }
       }
     },
-    "/environments/{id}": {
+    "/environments/{environmentId}": {
       "get": {
         "tags": [
           "Environments"
@@ -942,7 +942,7 @@
         "operationId": "GetEnvironmentById",
         "parameters": [
           {
-            "name": "id",
+            "name": "environmentId",
             "in": "path",
             "required": true,
             "schema": {
@@ -973,7 +973,7 @@
             }
           },
           "404": {
-            "description": "No Environment with the given id exists in the caller's Organization.",
+            "description": "No Environment with the given environmentId exists in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1001,7 +1001,7 @@
         "operationId": "UpdateEnvironment",
         "parameters": [
           {
-            "name": "id",
+            "name": "environmentId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1052,7 +1052,7 @@
             }
           },
           "404": {
-            "description": "No Environment with the given id exists in the caller's Organization.",
+            "description": "No Environment with the given environmentId exists in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1077,7 +1077,7 @@
         }
       }
     },
-    "/environments/{id}/variables/{key}": {
+    "/environments/{environmentId}/variables/{key}": {
       "put": {
         "tags": [
           "Environments"
@@ -1085,7 +1085,7 @@
         "operationId": "SetEnvironmentVariable",
         "parameters": [
           {
-            "name": "id",
+            "name": "environmentId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1130,7 +1130,7 @@
             "description": "No Content"
           },
           "404": {
-            "description": "No Environment with the given id exists in the caller's Organization, or it\n    no longer exists (deleted after this request started).",
+            "description": "No Environment with the given environmentId exists in the caller's\n    Organization, or it no longer exists (deleted after this request started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1161,7 +1161,7 @@
         "operationId": "DeleteEnvironmentVariable",
         "parameters": [
           {
-            "name": "id",
+            "name": "environmentId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1183,7 +1183,7 @@
             "description": "No Content"
           },
           "404": {
-            "description": "No Environment with the given id exists in the caller's Organization.",
+            "description": "No Environment with the given environmentId exists in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1340,7 +1340,7 @@
         }
       }
     },
-    "/evidence-definitions/{id}": {
+    "/evidence-definitions/{evidenceDefinitionId}": {
       "patch": {
         "tags": [
           "EvidenceDefinitions"
@@ -1348,7 +1348,7 @@
         "operationId": "UpdateEvidenceDefinition",
         "parameters": [
           {
-            "name": "id",
+            "name": "evidenceDefinitionId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1399,7 +1399,7 @@
             }
           },
           "404": {
-            "description": "No EvidenceDefinition with the given id exists in the caller's Organization.",
+            "description": "No EvidenceDefinition with the given evidenceDefinitionId exists in the\n    caller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1430,7 +1430,7 @@
         "operationId": "DeleteEvidenceDefinition",
         "parameters": [
           {
-            "name": "id",
+            "name": "evidenceDefinitionId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1578,7 +1578,7 @@
         }
       }
     },
-    "/preconditions/{id}": {
+    "/preconditions/{preconditionId}": {
       "patch": {
         "tags": [
           "Preconditions"
@@ -1586,7 +1586,7 @@
         "operationId": "UpdatePrecondition",
         "parameters": [
           {
-            "name": "id",
+            "name": "preconditionId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1637,7 +1637,7 @@
             }
           },
           "404": {
-            "description": "No Precondition with the given id exists in the caller's Organization.",
+            "description": "No Precondition with the given preconditionId exists in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1668,7 +1668,7 @@
         "operationId": "DeletePrecondition",
         "parameters": [
           {
-            "name": "id",
+            "name": "preconditionId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1788,6 +1788,7 @@
         "tags": [
           "Runs"
         ],
+        "summary": "Never returns Authoring Runs -- those are scratch runs against a Scenario under\n    construction, not runs of the Application's saved Scenarios.",
         "operationId": "ListRuns",
         "parameters": [
           {
@@ -1833,7 +1834,58 @@
         }
       }
     },
-    "/applications/{appId}/runs/{id}": {
+    "/applications/{appId}/runs/running": {
+      "get": {
+        "tags": [
+          "Runs"
+        ],
+        "summary": "Lists the Runs currently Running for this Application, strongly consistent -- a Run that\n    just started is never briefly missing from this result, unlike Task&lt;ActionResult&lt;IReadOnlyList&lt;RunSummaryResponse&gt;&gt;&gt; RunsController.List(Guid appId).",
+        "operationId": "ListRunningRuns",
+        "parameters": [
+          {
+            "name": "appId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunningRunResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunningRunResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunningRunResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/applications/{appId}/runs/{runId}": {
       "get": {
         "tags": [
           "Runs"
@@ -1850,7 +1902,7 @@
             }
           },
           {
-            "name": "id",
+            "name": "runId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1881,7 +1933,7 @@
             }
           },
           "404": {
-            "description": "No Run with the given id exists in this Application, in the caller's\n    Organization.",
+            "description": "No Run with the given runId exists in this Application, in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1903,12 +1955,12 @@
         }
       }
     },
-    "/applications/{appId}/runs/{id}/start": {
+    "/applications/{appId}/runs/{runId}/start": {
       "post": {
         "tags": [
           "Runs"
         ],
-        "summary": "Claims a Pending Run for execution and returns it, unmasked, to the winning caller only\n    -- the one time in this API's life a sensitive Environment variable's real value is ever returned.\n    Every other response (Create Run, Get Run) always masks sensitive values regardless of what\n    storage currently holds; see RunResponse ContractMapper.ToResponse(RunDetail detail, bool maskSensitiveValues = true).",
+        "summary": "Claims a Pending Run for execution and returns it, unmasked, to the winning caller only\n    -- the one time in this API's life a sensitive Environment variable's real value is ever returned.\n    Every other response (Create Run, Get Run) always masks sensitive values regardless of what\n    storage currently holds; see RunResponse ContractMapper.ToResponse(Run run, bool maskSensitiveValues = true).",
         "operationId": "StartRun",
         "parameters": [
           {
@@ -1921,7 +1973,7 @@
             }
           },
           {
-            "name": "id",
+            "name": "runId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1952,7 +2004,7 @@
             }
           },
           "404": {
-            "description": "No Run with the given id exists in this Application, in the caller's\n    Organization.",
+            "description": "No Run with the given runId exists in this Application, in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1994,7 +2046,7 @@
         }
       }
     },
-    "/applications/{appId}/runs/{id}/end": {
+    "/applications/{appId}/runs/{runId}/end": {
       "post": {
         "tags": [
           "Runs"
@@ -2011,7 +2063,7 @@
             }
           },
           {
-            "name": "id",
+            "name": "runId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2065,7 +2117,7 @@
             }
           },
           "404": {
-            "description": "No Run with the given id exists in this Application, in the caller's\n    Organization.",
+            "description": "No Run with the given runId exists in this Application, in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2107,7 +2159,7 @@
         }
       }
     },
-    "/applications/{appId}/runs/{id}/heartbeat": {
+    "/applications/{appId}/runs/{runId}/heartbeat": {
       "post": {
         "tags": [
           "Runs"
@@ -2124,7 +2176,7 @@
             }
           },
           {
-            "name": "id",
+            "name": "runId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2138,7 +2190,7 @@
             "description": "No Content"
           },
           "404": {
-            "description": "No Run with the given id exists in this Application, in the caller's\n    Organization.",
+            "description": "No Run with the given runId exists in this Application, in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2180,7 +2232,7 @@
         }
       }
     },
-    "/applications/{appId}/runs/{id}/stats": {
+    "/applications/{appId}/runs/{runId}/stats": {
       "post": {
         "tags": [
           "Runs"
@@ -2197,7 +2249,7 @@
             }
           },
           {
-            "name": "id",
+            "name": "runId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2231,7 +2283,7 @@
             "description": "No Content"
           },
           "404": {
-            "description": "No Run with the given id exists in this Application, in the caller's\n    Organization.",
+            "description": "No Run with the given runId exists in this Application, in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2276,7 +2328,7 @@
         }
       }
     },
-    "/applications/{appId}/runs/{id}/status-updates": {
+    "/applications/{appId}/runs/{runId}/status-updates": {
       "post": {
         "tags": [
           "RunStatusUpdates"
@@ -2293,7 +2345,7 @@
             }
           },
           {
-            "name": "id",
+            "name": "runId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2364,7 +2416,7 @@
             }
           },
           "404": {
-            "description": "No Run with the given id exists in this Application, in the caller's\n    Organization.",
+            "description": "No Run with the given runId exists in this Application, in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2421,7 +2473,7 @@
             }
           },
           {
-            "name": "id",
+            "name": "runId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2680,7 +2732,7 @@
         }
       }
     },
-    "/scenarios/{id}": {
+    "/scenarios/{scenarioId}": {
       "get": {
         "tags": [
           "Scenarios"
@@ -2688,7 +2740,7 @@
         "operationId": "GetScenarioById",
         "parameters": [
           {
-            "name": "id",
+            "name": "scenarioId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2719,7 +2771,7 @@
             }
           },
           "404": {
-            "description": "No Scenario with the given id exists in the caller's Organization.",
+            "description": "No Scenario with the given scenarioId exists in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2747,7 +2799,7 @@
         "operationId": "UpdateScenario",
         "parameters": [
           {
-            "name": "id",
+            "name": "scenarioId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2818,7 +2870,7 @@
             }
           },
           "404": {
-            "description": "No Scenario with the given id exists in the caller's Organization.",
+            "description": "No Scenario with the given scenarioId exists in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2866,7 +2918,7 @@
         "operationId": "DeleteScenario",
         "parameters": [
           {
-            "name": "id",
+            "name": "scenarioId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2880,7 +2932,7 @@
             "description": "No Content"
           },
           "404": {
-            "description": "No Scenario with the given id exists in the caller's Organization.",
+            "description": "No Scenario with the given scenarioId exists in the caller's\n    Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3240,7 +3292,7 @@
         "type": "object",
         "properties": {
           "scenarioIds": {
-            "maxItems": 97,
+            "maxItems": 96,
             "minItems": 1,
             "type": "array",
             "items": {
@@ -3677,6 +3729,23 @@
         },
         "description": "An EvidenceDefinition as it was when a Run was created, as returned to the client."
       },
+      "RunningRunResponse": {
+        "required": [
+          "id",
+          "startedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "RunPreconditionSnapshotResponse": {
         "required": [
           "source",
@@ -3819,6 +3888,14 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "lastHeartbeatAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the owning worker last proved it was alive. Null while Status is Pending. A Run\n    stuck on Running with an old LastHeartbeatAt has likely lost its worker -- Status alone does not\n    tell you that.",
+            "format": "date-time"
           }
         },
         "description": "A Run's identity, execution state and what it ran, as returned to the client. Never carries\n    the status update log -- LastSeq and Status are what tell a client whether it is worth polling List\n    Run Status Updates and when to stop. ApplicationId is included even under the nested\n    `/applications/{appId}/runs/{id}` route because the authoring create route\n    (`POST /scenarios/{id}/runs`) is flat and returns this same shape -- without it, a client\n    following an authoring Run would have no way to build its polling URLs."
@@ -3863,7 +3940,7 @@
       },
       "RunStatus": {
         "type": "integer",
-        "description": "A Run's execution state, as returned to the client. Carries no pass/fail judgment: a Run\n     whose every Activity failed is still Completed, and the activity counts say how it went.\n\n     Only Completed, Cancelled and Abandoned are legal terminal values to send on End Run -- Pending and\n     Running name states the server itself moves a Run through and are rejected there."
+        "description": "A Run's execution state, as returned to the client. Carries no pass/fail judgment: a Run\n     whose every Activity failed is still Completed, and the activity counts say how it went.\n\n     Only Completed, Cancelled and Abandoned are legal terminal values to send on End Run -- Pending and\n     Running name states the server itself moves a Run through and are rejected there.\n\n     Running does not by itself mean the owning worker is still alive -- it may have crashed or been\n     killed without anything having noticed yet. Treat Running as \"not yet terminal,\" and check\n     LastHeartbeatAt (on RunResponse/RunSummaryResponse) to tell whether it is actually making\n     progress."
       },
       "RunStatusReason": {
         "type": "integer"
@@ -3991,6 +4068,14 @@
               "null",
               "string"
             ],
+            "format": "date-time"
+          },
+          "lastHeartbeatAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the owning worker last proved it was alive. Null while Status is Pending. A Run\n    stuck on Running with an old LastHeartbeatAt has likely lost its worker -- Status alone does not\n    tell you that.",
             "format": "date-time"
           }
         },

@@ -13,14 +13,14 @@ public interface IPreconditionRepository
     Task<bool> TryUpdateAsync(
         Guid organizationId,
         Guid applicationId,
-        Guid id,
+        Guid preconditionId,
         PreconditionUpdatableFields fields
     );
 
-    Task DeleteAsync(Guid organizationId, Guid id);
+    Task DeleteAsync(Guid organizationId, Guid preconditionId);
 
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
-    Task<Precondition?> GetByIdAsync(Guid organizationId, Guid id);
+    Task<Precondition?> GetByIdAsync(Guid organizationId, Guid preconditionId);
 
     /// <summary>All Preconditions in this Application's library. Ordering: newest first.</summary>
     Task<IReadOnlyList<Precondition>> ListByApplicationAsync(

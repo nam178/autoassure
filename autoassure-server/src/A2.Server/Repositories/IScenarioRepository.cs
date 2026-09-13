@@ -26,7 +26,7 @@ public interface IScenarioRepository
     Task DeleteAsync(Scenario scenario);
 
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
-    Task<Scenario?> GetByIdAsync(Guid organizationId, Guid id);
+    Task<Scenario?> GetByIdAsync(Guid organizationId, Guid scenarioId);
 
     /// <summary>All Scenarios in this Application, no folder/tag filter. Ordering: newest first.</summary>
     Task<IReadOnlyList<Scenario>> ListByApplicationAsync(Guid organizationId, Guid applicationId);

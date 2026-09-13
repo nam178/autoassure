@@ -62,17 +62,18 @@ public class PreconditionsController(
         return Ok(preconditions.Select(p => p.ToResponse()).ToList());
     }
 
-    /// <response code="404">No Precondition with the given id exists in the caller's Organization.</response>
-    [HttpPatch("preconditions/{id:guid}", Name = "UpdatePrecondition")]
+    /// <response code="404">No Precondition with the given preconditionId exists in the caller's
+    /// Organization.</response>
+    [HttpPatch("preconditions/{preconditionId:guid}", Name = "UpdatePrecondition")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PreconditionResponse>> Update(
-        Guid id,
+        Guid preconditionId,
         UpdatePreconditionRequest request
     )
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var existing = await preconditionRepository.GetByIdAsync(organizationId, id);
+        var existing = await preconditionRepository.GetByIdAsync(organizationId, preconditionId);
         if (existing is null)
         {
             return NotFound();
@@ -89,7 +90,7 @@ public class PreconditionsController(
         var updateSucceeded = await preconditionRepository.TryUpdateAsync(
             organizationId,
             existing.ApplicationId,
-            id,
+            preconditionId,
             fields
         );
         if (!updateSucceeded)
@@ -107,12 +108,12 @@ public class PreconditionsController(
         return Ok(updated.ToResponse());
     }
 
-    [HttpDelete("preconditions/{id:guid}", Name = "DeletePrecondition")]
+    [HttpDelete("preconditions/{preconditionId:guid}", Name = "DeletePrecondition")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<ActionResult> Delete(Guid id)
+    public async Task<ActionResult> Delete(Guid preconditionId)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        await preconditionRepository.DeleteAsync(organizationId, id);
+        await preconditionRepository.DeleteAsync(organizationId, preconditionId);
         return NoContent();
     }
 }

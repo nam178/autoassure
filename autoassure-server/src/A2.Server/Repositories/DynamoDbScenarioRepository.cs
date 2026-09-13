@@ -134,7 +134,7 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
             }
         );
 
-    public async Task<Scenario?> GetByIdAsync(Guid organizationId, Guid id)
+    public async Task<Scenario?> GetByIdAsync(Guid organizationId, Guid scenarioId)
     {
         var response = await client.QueryAsync(
             new QueryRequest
@@ -145,7 +145,7 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
                     [":organizationId"] = new(organizationId.ToString()),
-                    [":id"] = new(id.ToString()),
+                    [":id"] = new(scenarioId.ToString()),
                 },
                 Limit = 1,
             }

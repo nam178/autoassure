@@ -87,13 +87,13 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
         Guid organizationId,
         Guid applicationId,
         Guid scenarioId,
-        Guid id,
+        Guid activityId,
         ActivityUpdatableFields fields
     )
     {
         var transactItems = new List<TransactWriteItem>
         {
-            UpdateActivity(organizationId, scenarioId, id, fields),
+            UpdateActivity(organizationId, scenarioId, activityId, fields),
         };
         transactItems.AddRange(
             PreconditionAndEvidenceExistsCheck(
@@ -132,7 +132,12 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
         }
     }
 
-    public async Task DeleteAsync(Guid organizationId, Guid applicationId, Guid scenarioId, Guid id)
+    public async Task DeleteAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid scenarioId,
+        Guid activityId
+    )
     {
         var transactItems = new List<TransactWriteItem>
         {
@@ -146,7 +151,7 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                         ["OrganizationId_ScenarioId"] = new(
                             DynamoDbMapper.ScenarioScopedPartitionKey(organizationId, scenarioId)
                         ),
-                        ["Id"] = new(id.ToString()),
+                        ["Id"] = new(activityId.ToString()),
                     },
                     ConditionExpression = "attribute_exists(Id)",
                 },
@@ -214,7 +219,7 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
         }
     }
 
-    public async Task<Activity?> GetByIdAsync(Guid organizationId, Guid id)
+    public async Task<Activity?> GetByIdAsync(Guid organizationId, Guid activityId)
     {
         var response = await client.QueryAsync(
             new QueryRequest
@@ -225,7 +230,7 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
                     [":organizationId"] = new(organizationId.ToString()),
-                    [":id"] = new(id.ToString()),
+                    [":id"] = new(activityId.ToString()),
                 },
                 Limit = 1,
             }
@@ -411,7 +416,7 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
     private TransactWriteItem UpdateActivity(
         Guid organizationId,
         Guid scenarioId,
-        Guid id,
+        Guid activityId,
         ActivityUpdatableFields fields
     ) =>
         new()
@@ -424,7 +429,7 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                     ["OrganizationId_ScenarioId"] = new(
                         DynamoDbMapper.ScenarioScopedPartitionKey(organizationId, scenarioId)
                     ),
-                    ["Id"] = new(id.ToString()),
+                    ["Id"] = new(activityId.ToString()),
                 },
                 UpdateExpression =
                     "SET Description = :description, PreconditionIds = :preconditionIds, "

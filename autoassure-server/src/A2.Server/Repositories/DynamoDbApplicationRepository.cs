@@ -54,7 +54,7 @@ public class DynamoDbApplicationRepository(
         }
     }
 
-    public async Task<Application?> GetByIdAsync(Guid organizationId, Guid id)
+    public async Task<Application?> GetByIdAsync(Guid organizationId, Guid applicationId)
     {
         var response = await client.GetItemAsync(
             new GetItemRequest
@@ -63,7 +63,7 @@ public class DynamoDbApplicationRepository(
                 Key = new Dictionary<string, AttributeValue>
                 {
                     ["OrganizationId"] = new(organizationId.ToString()),
-                    ["Id"] = new(id.ToString()),
+                    ["Id"] = new(applicationId.ToString()),
                 },
                 ConsistentRead = true,
             }

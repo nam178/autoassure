@@ -99,30 +99,35 @@ public class ScenariosController(
         return Ok(scenarios.Select(s => s.ToResponse()).ToList());
     }
 
-    /// <response code="404">No Scenario with the given id exists in the caller's Organization.</response>
-    [HttpGet("scenarios/{id:guid}", Name = "GetScenarioById")]
+    /// <response code="404">No Scenario with the given scenarioId exists in the caller's
+    /// Organization.</response>
+    [HttpGet("scenarios/{scenarioId:guid}", Name = "GetScenarioById")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ScenarioResponse>> GetById(Guid id)
+    public async Task<ActionResult<ScenarioResponse>> GetById(Guid scenarioId)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var scenario = await scenarioRepository.GetByIdAsync(organizationId, id);
+        var scenario = await scenarioRepository.GetByIdAsync(organizationId, scenarioId);
         return scenario is null ? NotFound() : Ok(scenario.ToResponse());
     }
 
     /// <response code="400">A tag in Tags is longer than 50 characters.</response>
-    /// <response code="404">No Scenario with the given id exists in the caller's Organization.</response>
+    /// <response code="404">No Scenario with the given scenarioId exists in the caller's
+    /// Organization.</response>
     /// <response code="409">The Scenario's Application no longer exists (deleted after this request
     /// started).</response>
-    [HttpPatch("scenarios/{id:guid}", Name = "UpdateScenario")]
+    [HttpPatch("scenarios/{scenarioId:guid}", Name = "UpdateScenario")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<ScenarioResponse>> Update(Guid id, UpdateScenarioRequest request)
+    public async Task<ActionResult<ScenarioResponse>> Update(
+        Guid scenarioId,
+        UpdateScenarioRequest request
+    )
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var previous = await scenarioRepository.GetByIdAsync(organizationId, id);
+        var previous = await scenarioRepository.GetByIdAsync(organizationId, scenarioId);
         if (previous is null)
         {
             return NotFound();
@@ -160,14 +165,15 @@ public class ScenariosController(
         };
     }
 
-    /// <response code="404">No Scenario with the given id exists in the caller's Organization.</response>
-    [HttpDelete("scenarios/{id:guid}", Name = "DeleteScenario")]
+    /// <response code="404">No Scenario with the given scenarioId exists in the caller's
+    /// Organization.</response>
+    [HttpDelete("scenarios/{scenarioId:guid}", Name = "DeleteScenario")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> Delete(Guid id)
+    public async Task<ActionResult> Delete(Guid scenarioId)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var scenario = await scenarioRepository.GetByIdAsync(organizationId, id);
+        var scenario = await scenarioRepository.GetByIdAsync(organizationId, scenarioId);
         if (scenario is null)
         {
             return NotFound();
@@ -175,7 +181,7 @@ public class ScenariosController(
 
         // When a Scenario is deleted, then its Activities must be removed first -- otherwise deleted
         // Scenarios would leave orphaned Activity rows behind.
-        await activityRepository.DeleteAllByScenarioAsync(organizationId, id);
+        await activityRepository.DeleteAllByScenarioAsync(organizationId, scenarioId);
         await scenarioRepository.DeleteAsync(scenario);
         return NoContent();
     }

@@ -100,15 +100,19 @@ public class ActivitiesController(
 
     /// <response code="400">PreconditionIds/EvidenceIds do not reference existing library rows in
     /// the Scenario's Application.</response>
-    /// <response code="404">No Activity with the given id exists in the caller's Organization.</response>
-    [HttpPatch("activities/{id:guid}", Name = "UpdateActivity")]
+    /// <response code="404">No Activity with the given activityId exists in the caller's
+    /// Organization.</response>
+    [HttpPatch("activities/{activityId:guid}", Name = "UpdateActivity")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ActivityResponse>> Update(Guid id, UpdateActivityRequest request)
+    public async Task<ActionResult<ActivityResponse>> Update(
+        Guid activityId,
+        UpdateActivityRequest request
+    )
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var existing = await activityRepository.GetByIdAsync(organizationId, id);
+        var existing = await activityRepository.GetByIdAsync(organizationId, activityId);
         if (existing is null)
         {
             return NotFound();
@@ -129,7 +133,7 @@ public class ActivitiesController(
             organizationId,
             existing.ApplicationId,
             existing.ScenarioId,
-            id,
+            activityId,
             fields
         );
         ActionResult<ActivityResponse>? failure = result switch
@@ -161,12 +165,12 @@ public class ActivitiesController(
         return Ok(updated.ToResponse());
     }
 
-    [HttpDelete("activities/{id:guid}", Name = "DeleteActivity")]
+    [HttpDelete("activities/{activityId:guid}", Name = "DeleteActivity")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<ActionResult> Delete(Guid id)
+    public async Task<ActionResult> Delete(Guid activityId)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var existing = await activityRepository.GetByIdAsync(organizationId, id);
+        var existing = await activityRepository.GetByIdAsync(organizationId, activityId);
         if (existing is null)
         {
             return NoContent();
@@ -176,7 +180,7 @@ public class ActivitiesController(
             organizationId,
             existing.ApplicationId,
             existing.ScenarioId,
-            id
+            activityId
         );
         return NoContent();
     }

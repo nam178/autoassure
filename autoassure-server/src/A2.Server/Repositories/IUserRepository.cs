@@ -14,7 +14,7 @@ public interface IUserRepository
 
     /// <summary>Updates only FirstName, LastName, Email, and EmailVerified on an existing user.
     /// Returns false if the user no longer exists.</summary>
-    Task<bool> TryUpdateAsync(Guid id, UserUpdatableFields fields);
+    Task<bool> TryUpdateAsync(Guid userId, UserUpdatableFields fields);
 
     /// <summary>Creates the given personal Organization and its owner membership for this user
     /// together, unless this user's personal Organization was just created concurrently (e.g. two

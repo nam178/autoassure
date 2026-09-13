@@ -62,17 +62,24 @@ public class EvidenceDefinitionsController(
         return Ok(evidenceDefinitions.Select(e => e.ToResponse()).ToList());
     }
 
-    /// <response code="404">No EvidenceDefinition with the given id exists in the caller's Organization.</response>
-    [HttpPatch("evidence-definitions/{id:guid}", Name = "UpdateEvidenceDefinition")]
+    /// <response code="404">No EvidenceDefinition with the given evidenceDefinitionId exists in the
+    /// caller's Organization.</response>
+    [HttpPatch(
+        "evidence-definitions/{evidenceDefinitionId:guid}",
+        Name = "UpdateEvidenceDefinition"
+    )]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EvidenceDefinitionResponse>> Update(
-        Guid id,
+        Guid evidenceDefinitionId,
         UpdateEvidenceDefinitionRequest request
     )
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var existing = await evidenceDefinitionRepository.GetByIdAsync(organizationId, id);
+        var existing = await evidenceDefinitionRepository.GetByIdAsync(
+            organizationId,
+            evidenceDefinitionId
+        );
         if (existing is null)
         {
             return NotFound();
@@ -89,7 +96,7 @@ public class EvidenceDefinitionsController(
         var updateSucceeded = await evidenceDefinitionRepository.TryUpdateAsync(
             organizationId,
             existing.ApplicationId,
-            id,
+            evidenceDefinitionId,
             fields
         );
         if (!updateSucceeded)
@@ -107,12 +114,15 @@ public class EvidenceDefinitionsController(
         return Ok(updated.ToResponse());
     }
 
-    [HttpDelete("evidence-definitions/{id:guid}", Name = "DeleteEvidenceDefinition")]
+    [HttpDelete(
+        "evidence-definitions/{evidenceDefinitionId:guid}",
+        Name = "DeleteEvidenceDefinition"
+    )]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<ActionResult> Delete(Guid id)
+    public async Task<ActionResult> Delete(Guid evidenceDefinitionId)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        await evidenceDefinitionRepository.DeleteAsync(organizationId, id);
+        await evidenceDefinitionRepository.DeleteAsync(organizationId, evidenceDefinitionId);
         return NoContent();
     }
 }

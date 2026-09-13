@@ -13,13 +13,16 @@ public class DynamoDbOrganizationRepository(
 {
     private string TableName => options.Value.OrganizationTableName;
 
-    public async Task<Organization?> GetByIdAsync(Guid id)
+    public async Task<Organization?> GetByIdAsync(Guid organizationId)
     {
         var response = await client.GetItemAsync(
             new GetItemRequest
             {
                 TableName = TableName,
-                Key = new Dictionary<string, AttributeValue> { ["Id"] = new(id.ToString()) },
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    ["Id"] = new(organizationId.ToString()),
+                },
                 ConsistentRead = true,
             }
         );

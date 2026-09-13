@@ -6,5 +6,5 @@ namespace A2.Server.Repositories;
 public interface IOrganizationRepository
 {
     /// <summary>Looks up an Organization by Id, or null if none exists.</summary>
-    Task<Organization?> GetByIdAsync(Guid id);
+    Task<Organization?> GetByIdAsync(Guid organizationId);
 }
