@@ -128,16 +128,6 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             .Select(row => row.ToRunScenarioSnapshot())
             .ToList();
 
-        // CreateRunRequest.ScenarioIds requires at least one entry, and every Scenario snapshot is
-        // written in the same transaction as the header -- so a header with zero surviving Scenario
-        // rows means the stored data is corrupted, not merely absent.
-        if (scenarios.Count == 0)
-        {
-            throw new CorruptedDynamoDbRowException(
-                $"Run '{runId}' has a header row but no Scenario rows."
-            );
-        }
-
         return headerRow.ToRun(environmentRow.ToRunEnvironmentSnapshot(), scenarios);
     }
 

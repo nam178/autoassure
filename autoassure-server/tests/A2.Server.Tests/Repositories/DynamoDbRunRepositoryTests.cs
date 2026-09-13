@@ -433,11 +433,10 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task GetByIdAsync_WhenEveryScenarioRowIsGone_ThrowsCorruptedDynamoDbRowException()
+    public async Task GetByIdAsync_WhenEveryScenarioRowIsGone_ReturnsRunWithNoScenarios()
     {
-        // setup -- every Scenario row is written in the same transaction as the header, and
-        // CreateRunRequest.ScenarioIds requires at least one, so a header with none surviving can only
-        // mean corrupted stored data.
+        // setup -- a Run having at least one Scenario is a business rule enforced (or not) when the
+        // Run is created, not a storage-format guarantee, so the repository doesn't re-validate it here.
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
@@ -470,9 +469,9 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         }
 
         // verify
-        await Assert.ThrowsAsync<CorruptedDynamoDbRowException>(() =>
-            _repository.GetByIdAsync(organizationId, applicationId, run.Id)
-        );
+        var result = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
+        Assert.NotNull(result);
+        Assert.Empty(result.Scenarios);
     }
 
     [Fact]
