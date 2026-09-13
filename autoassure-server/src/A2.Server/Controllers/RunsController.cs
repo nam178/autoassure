@@ -75,7 +75,7 @@ public class RunsController(
                 return BadRequest(
                     new ErrorResponse(
                         "ScenarioIds contains an id that does not reference a Scenario belonging to "
-                            + "this Application."
+                        + "this Application."
                     )
                 );
             }
@@ -137,8 +137,6 @@ public class RunsController(
         return Ok(runs.Select(r => r.ToResponse()).ToList());
     }
 
-    /// <summary>Lists the Runs currently Running for this Application, strongly consistent -- a Run that
-    /// just started is never briefly missing from this result, unlike <see cref="List"/>.</summary>
     [HttpGet("applications/{applicationId:guid}/runs/running", Name = "ListRunningRuns")]
     public async Task<ActionResult<IReadOnlyList<RunningRunResponse>>> ListRunning(
         Guid applicationId
@@ -161,10 +159,10 @@ public class RunsController(
         return run is null ? NotFound() : Ok(run.ToResponse());
     }
 
-    /// <summary>Claims a Pending Run for execution and returns it, unmasked, to the winning caller only
-    /// -- the one time in this API's life a sensitive Environment variable's real value is ever returned.
-    /// Every other response (Create Run, Get Run) always masks sensitive values regardless of what
-    /// storage currently holds; see <see cref="ContractMapper.ToResponse(Run, bool)"/>.</summary>
+    /// <summary>
+    /// Starts a run. This returns the run's environment variable values, including raw secrets.
+    /// After that, all secrets will be masked for storage.
+    /// </summary>
     /// <response code="404">No Run with the given runId exists in this Application, in the caller's
     /// Organization.</response>
     /// <response code="409">The Run's Status is not Pending.</response>
@@ -174,16 +172,8 @@ public class RunsController(
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<RunResponse>> Start(Guid applicationId, Guid runId)
     {
-        // TODO:  UpdateHeartbeat, UpdateStats, and End all call the full GetByIdAsync purely as
-        //                               an existence check before a narrow, already-conditioned write, on the hottest
-        //                               write path.
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
 
-        // A Run's own existence is checked with a Get first, since TryMarkAsStartedAsync's condition alone
-        // cannot tell "does not exist" apart from "exists but is not Pending" -- both fail the same way.
-        // This read happens before TryMarkAsStartedAsync's write below, so run.Environment still holds the
-        // real (unmasked) values -- TryMarkAsStartedAsync has not yet overwritten storage with the masked
-        // snapshot computed from it.
         var run = await runRepository.GetByIdAsync(organizationId, applicationId, runId);
         if (run is null)
         {
@@ -203,11 +193,6 @@ public class RunsController(
             return Conflict(new ErrorResponse("The Run's Status is not Pending."));
         }
 
-        // When the claim wins, Then this applies exactly the values TryMarkAsStartedAsync reports it wrote, so
-        // the response reflects what was actually persisted instead of a second, independent derivation
-        // that could drift from the repository's own. Environment is deliberately left as the original
-        // unmasked snapshot, not the masked one just written to storage, since this response is the
-        // winning caller's one chance to get the real values back.
         var startedRun = run with
         {
             Status = ModelRunStatus.Running,

@@ -28,6 +28,16 @@ public interface IScenarioRepository
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
     Task<Scenario?> GetByIdAsync(Guid organizationId, Guid scenarioId);
 
+    /// <summary>Batched point lookup by Id, scoped to the Organization and Application. Returns only
+    /// the Scenarios that actually exist and belong to this Application -- callers MUST check the
+    /// returned list's ids against <paramref name="scenarioIds"/> to detect missing or foreign ids.
+    /// Order of the returned list does not follow <paramref name="scenarioIds"/>.</summary>
+    Task<IReadOnlyList<Scenario>> GetByIdsAsync(
+        Guid organizationId,
+        Guid applicationId,
+        IReadOnlyList<Guid> scenarioIds
+    );
+
     /// <summary>All Scenarios in this Application, no folder/tag filter. Ordering: newest first.</summary>
     Task<IReadOnlyList<Scenario>> ListByApplicationAsync(Guid organizationId, Guid applicationId);
 

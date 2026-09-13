@@ -11,6 +11,9 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
 {
     private const string IdIndexName = "IdIndex";
 
+    // BatchGetItem allows at most 100 keys per call, so a request over that limit must be chunked.
+    private const int BatchGetChunkSize = 100;
+
     // Partition key attribute names of the two mapping tables. They hold
     // "{OrganizationId}_{ApplicationId}_{Folder}" and "{OrganizationId}_{ApplicationId}_{Tag}".
     private const string FolderPartitionKeyName = "OrganizationId_ApplicationId_Folder";
@@ -152,6 +155,61 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
         );
 
         return response.Items.Count > 0 ? response.Items[0].ToScenario() : null;
+    }
+
+    public async Task<IReadOnlyList<Scenario>> GetByIdsAsync(
+        Guid organizationId,
+        Guid applicationId,
+        IReadOnlyList<Guid> scenarioIds
+    )
+    {
+        // An empty BatchGetItem request is invalid, so short-circuit instead of calling DynamoDB.
+        if (scenarioIds.Count == 0)
+        {
+            return [];
+        }
+
+        var partitionKey = DynamoDbMapper.ApplicationScopedPartitionKey(
+            organizationId,
+            applicationId
+        );
+        var scenarios = new List<Scenario>(scenarioIds.Count);
+
+        foreach (var chunk in scenarioIds.Chunk(BatchGetChunkSize))
+        {
+            var requestItems = new Dictionary<string, KeysAndAttributes>
+            {
+                [ScenarioTableName] = new()
+                {
+                    Keys = chunk
+                        .Select(scenarioId => new Dictionary<string, AttributeValue>
+                        {
+                            ["OrganizationId_ApplicationId"] = new(partitionKey),
+                            ["Id"] = new(scenarioId.ToString()),
+                        })
+                        .ToList(),
+                    ConsistentRead = true,
+                },
+            };
+
+            // When BatchGetItemAsync is throttled, Then it returns the un-fetched keys in
+            // UnprocessedKeys instead of throwing -- retry those until none remain, otherwise some
+            // requested Scenarios would be silently missing from the result.
+            while (requestItems.Count > 0)
+            {
+                var response = await client.BatchGetItemAsync(
+                    new BatchGetItemRequest { RequestItems = requestItems }
+                );
+                if (response.Responses.TryGetValue(ScenarioTableName, out var items))
+                {
+                    scenarios.AddRange(items.Select(item => item.ToScenario()));
+                }
+
+                requestItems = response.UnprocessedKeys;
+            }
+        }
+
+        return scenarios;
     }
 
     public async Task<IReadOnlyList<Scenario>> ListByApplicationAsync(
