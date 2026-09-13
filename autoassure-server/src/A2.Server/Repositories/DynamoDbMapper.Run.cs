@@ -82,16 +82,6 @@ public static partial class DynamoDbMapper
             row["LastHeartbeatAt"] = new(lastHeartbeatAt.ToString("O"));
         }
 
-        if (run.ExpiresAt is { } expiresAt)
-        {
-            // DynamoDB's TTL sweep requires this attribute as epoch seconds -- the only place that
-            // encoding exists is this mapper; Run.ExpiresAt itself is a plain DateTimeOffset.
-            row["ExpiresAt"] = new AttributeValue
-            {
-                N = expiresAt.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
-            };
-        }
-
         return row;
     }
 
@@ -145,21 +135,16 @@ public static partial class DynamoDbMapper
             LastHeartbeatAt = row.TryGetValue("LastHeartbeatAt", out var lastHeartbeatAt)
                 ? DateTimeOffset.Parse(lastHeartbeatAt.S, CultureInfo.InvariantCulture)
                 : null,
-            ExpiresAt = row.TryGetValue("ExpiresAt", out var expiresAt)
-                ? DateTimeOffset.FromUnixTimeSeconds(
-                    long.Parse(expiresAt.N, CultureInfo.InvariantCulture)
-                )
-                : null,
         };
 
     // ----- Header summary (RunHeaderIndex projection) -----
 
     /// <summary>Builds a <see cref="RunInfo"/> from a <c>RunHeaderIndex</c> query result. Reads only
     /// the attributes that index projects (see the GSI's <c>non_key_attributes</c> in dynamodb.tf) --
-    /// unlike <see cref="ToRun"/>, this never touches OrganizationId, ApplicationId, LastSeq,
-    /// TriggeredByUserId or ExpiresAt, none of which the index carries. The Environment snapshot is not
-    /// a header-row attribute at all -- it lives on its own row -- so it was never something this index
-    /// could have projected either.</summary>
+    /// unlike <see cref="ToRun"/>, this never touches OrganizationId, ApplicationId, LastSeq or
+    /// TriggeredByUserId, none of which the index carries. The Environment snapshot is not a header-row
+    /// attribute at all -- it lives on its own row -- so it was never something this index could have
+    /// projected either.</summary>
     public static RunInfo ToRunInfo(this Dictionary<string, AttributeValue> row) =>
         new()
         {
@@ -222,11 +207,9 @@ public static partial class DynamoDbMapper
         this RunEnvironmentSnapshot snapshot,
         Guid runId,
         Guid organizationId,
-        Guid applicationId,
-        DateTimeOffset? expiresAt
-    )
-    {
-        var row = new Dictionary<string, AttributeValue>
+        Guid applicationId
+    ) =>
+        new()
         {
             ["OrganizationId_ApplicationId"] = new(
                 ApplicationScopedPartitionKey(organizationId, applicationId)
@@ -240,17 +223,6 @@ public static partial class DynamoDbMapper
             ["Classification"] = new(snapshot.Classification.ToString()),
             ["Variables"] = snapshot.ToVariablesAttributeValue(),
         };
-
-        if (expiresAt is { } value)
-        {
-            row["ExpiresAt"] = new AttributeValue
-            {
-                N = value.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
-            };
-        }
-
-        return row;
-    }
 
     public static RunEnvironmentSnapshot ToRunEnvironmentSnapshot(
         this Dictionary<string, AttributeValue> row
@@ -269,11 +241,9 @@ public static partial class DynamoDbMapper
         this RunScenarioSnapshot snapshot,
         Guid runId,
         Guid organizationId,
-        Guid applicationId,
-        DateTimeOffset? expiresAt
-    )
-    {
-        var row = new Dictionary<string, AttributeValue>
+        Guid applicationId
+    ) =>
+        new()
         {
             ["OrganizationId_ApplicationId"] = new(
                 ApplicationScopedPartitionKey(organizationId, applicationId)
@@ -294,17 +264,6 @@ public static partial class DynamoDbMapper
             },
         };
 
-        if (expiresAt is { } value)
-        {
-            row["ExpiresAt"] = new AttributeValue
-            {
-                N = value.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
-            };
-        }
-
-        return row;
-    }
-
     public static RunScenarioSnapshot ToRunScenarioSnapshot(
         this Dictionary<string, AttributeValue> row
     ) =>
@@ -324,8 +283,7 @@ public static partial class DynamoDbMapper
         this RunStatusUpdate update,
         Guid runId,
         Guid organizationId,
-        Guid applicationId,
-        DateTimeOffset? expiresAt
+        Guid applicationId
     )
     {
         var row = new Dictionary<string, AttributeValue>
@@ -345,14 +303,6 @@ public static partial class DynamoDbMapper
         if (update.ActivityResult is { } activityResult)
         {
             row["ActivityResult"] = activityResult.ToAttributeValue();
-        }
-
-        if (expiresAt is { } value)
-        {
-            row["ExpiresAt"] = new AttributeValue
-            {
-                N = value.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture),
-            };
         }
 
         return row;

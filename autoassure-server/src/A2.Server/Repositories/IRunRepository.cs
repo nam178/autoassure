@@ -1,4 +1,3 @@
-using A2.Server.Common;
 using A2.Server.Models;
 
 namespace A2.Server.Repositories;
@@ -6,9 +5,6 @@ namespace A2.Server.Repositories;
 public interface IRunRepository
 {
     /// <summary>Creates a Run.</summary>
-    /// <exception cref="ArgumentException">
-    /// <paramref name="run"/> holds more than <see cref="Quota.MaxScenariosPerRun"/> Scenarios.
-    /// </exception>
     Task<RunCreateResult> TryCreateAsync(Run run);
 
     Task<Run?> GetByIdAsync(Guid organizationId, Guid applicationId, Guid runId);
@@ -71,20 +67,13 @@ public interface IRunRepository
     /// nothing else contends for the next number. Sequence numbers are 1-based, which is what lets
     /// <see cref="ListStatusUpdatesAsync"/>'s <c>afterSeq = 0</c> mean "from the start".
     ///
-    /// <paramref name="expiresAt"/> must be the Run's own <c>ExpiresAt</c>, as
-    /// <see cref="GetByIdAsync"/> already returned it, so the entry expires with the rest of the Run (see
-    /// fix_run_design.md section 6). The caller supplies it because the owning worker already holds the
-    /// Run for its lifetime, and re-reading it on every append would add a read to the hottest write path
-    /// here for a value the caller already has.
-    ///
     /// Returns false, and writes nothing, when this Seq was already appended, the Run's <c>LastSeq</c>
     /// has already moved past it, or its <c>Status</c> is not Running.</summary>
     Task<bool> TryAppendStatusUpdateAsync(
         Guid organizationId,
         Guid applicationId,
         Guid id,
-        RunStatusUpdate update,
-        DateTimeOffset? expiresAt
+        RunStatusUpdate update
     );
 
     /// <summary>Returns one page of the Run's status update log, strictly after

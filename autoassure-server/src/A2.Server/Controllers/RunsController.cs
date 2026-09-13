@@ -342,11 +342,6 @@ public class RunsController(
         {
             RunCreateResult.Success => new OkObjectResult(run.ToResponse()),
             RunCreateResult.ApplicationNotFound => new NotFoundResult(),
-            RunCreateResult.EnvironmentNotFound => new BadRequestObjectResult(
-                new ErrorResponse(
-                    "EnvironmentId does not reference an Environment belonging to this Application."
-                )
-            ),
             // Run.Id is a freshly generated UUIDv7, so this can only mean an id collision -- not
             // something a retry or a different request body can fix, but still a real enum value this
             // switch must handle rather than assume away.

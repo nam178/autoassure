@@ -9,12 +9,11 @@ namespace A2.Server.Tests.Repositories;
 
 /// <summary>Integration tests for <see cref="DynamoDbRunRepository"/> against DynamoDB Local, covering
 /// Create Run, Get Run, List Runs, List Running Runs, Start Run, End Run, Update Run Stats, Update Run
-/// Heart Beat, and Append/List Run Status Update: the transactional create, its Application/Environment
-/// existence checks, the TTL retention numbers, the LastEvaluatedKey pagination loop, Get Run's
-/// exclusion of status update rows, List Runs' sparse RunHeaderIndex query, List Running Runs'
-/// strongly consistent read against the separate RunningRuns table, the state machine's conditioned
-/// writes, the append transaction's two conditions, and the status update log's cursor query across the
-/// zero-padding boundary at ten.</summary>
+/// Heart Beat, and Append/List Run Status Update: the transactional create, its Application existence
+/// check, the LastEvaluatedKey pagination loop, Get Run's exclusion of status update rows,
+/// List Runs' sparse RunHeaderIndex query, List Running Runs' strongly consistent read against the
+/// separate RunningRuns table, the state machine's conditioned writes, the append transaction's two
+/// conditions, and the status update log's cursor query across the zero-padding boundary at ten.</summary>
 [Collection("DynamoDbLocal")]
 public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLocalFixture)
     : IAsyncLifetime
@@ -273,7 +272,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         };
 
     // Reads a Run's raw rows straight from the table, bypassing the repository, so a test can inspect
-    // attributes (like ExpiresAt) that the repository's own read side does not surface on every row.
+    // attributes that the repository's own read side does not surface on every row.
     private async Task<List<Dictionary<string, AttributeValue>>> QueryRawRowsAsync(
         Guid organizationId,
         Guid applicationId
@@ -370,53 +369,6 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task TryCreateAsync_WhenEnvironmentDoesNotExist_ReturnsEnvironmentNotFoundAndWritesNothing()
-    {
-        // setup
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        await PutApplicationAsync(organizationId, applicationId);
-        var run = CreateRun(organizationId, applicationId, environmentId);
-        var scenarios = new[] { CreateScenarioSnapshot() };
-
-        // test
-        var result = await _repository.TryCreateAsync(run with { Scenarios = scenarios });
-        var stored = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
-
-        // verify
-        Assert.Equal(RunCreateResult.EnvironmentNotFound, result);
-        Assert.Null(stored);
-    }
-
-    [Fact]
-    public async Task GetByIdAsync_WhenExpiresAtHasPassed_ReturnsNull()
-    {
-        // setup -- a Manual Run "created" long enough ago that create-time + 3 years has already
-        // passed, so its computed ExpiresAt is already in the past.
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        await PutApplicationAsync(organizationId, applicationId);
-        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
-        var longAgo = DateTimeOffset.UtcNow.AddYears(-4);
-        var run = CreateRun(
-            organizationId,
-            applicationId,
-            environmentId,
-            RunTrigger.Manual,
-            longAgo
-        );
-        await _repository.TryCreateAsync(run);
-
-        // test
-        var stored = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
-
-        // verify
-        Assert.Null(stored);
-    }
-
-    [Fact]
     public async Task TryCreateAsync_WhenSuccessful_WritesTheEnvironmentSnapshotOnItsOwnRow()
     {
         // setup -- Environment is not a header attribute: it gets a row of its own, keyed so Get Run's
@@ -447,10 +399,10 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task GetByIdAsync_WhenTheEnvironmentRowIsGone_ReturnsNull()
+    public async Task GetByIdAsync_WhenTheEnvironmentRowIsGone_ThrowsCorruptedDynamoDbRowException()
     {
-        // setup -- the header outliving its Environment row (a TTL sweep landing first, or a data
-        // anomaly) reads as not-found, never as a partial Run. See fix_run_design.md section 6.
+        // setup -- the Environment row is written in the same transaction as the header and nothing
+        // ever deletes it on its own, so a header outliving it can only mean corrupted stored data.
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
@@ -473,68 +425,54 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
                 },
             }
         );
-        var stored = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify
-        Assert.Null(stored);
+        await Assert.ThrowsAsync<CorruptedDynamoDbRowException>(() =>
+            _repository.GetByIdAsync(organizationId, applicationId, run.Id)
+        );
     }
 
     [Fact]
-    public async Task TryCreateAsync_WhenAuthoringTrigger_SetsExpiresAtSevenDaysOutOnEveryRow()
+    public async Task GetByIdAsync_WhenEveryScenarioRowIsGone_ThrowsCorruptedDynamoDbRowException()
     {
-        // setup
+        // setup -- every Scenario row is written in the same transaction as the header, and
+        // CreateRunRequest.ScenarioIds requires at least one, so a header with none surviving can only
+        // mean corrupted stored data.
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
         await PutApplicationAsync(organizationId, applicationId);
         await PutEnvironmentAsync(organizationId, applicationId, environmentId);
-        var createdAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        var run = CreateRun(
-            organizationId,
-            applicationId,
-            environmentId,
-            RunTrigger.Authoring,
-            createdAt
-        );
-        var scenarios = new[] { CreateScenarioSnapshot("A"), CreateScenarioSnapshot("B") };
+        var run = CreateRun(organizationId, applicationId, environmentId);
+        await _repository.TryCreateAsync(run);
 
-        // test
-        await _repository.TryCreateAsync(run with { Scenarios = scenarios });
-        var rawRows = await QueryRawRowsAsync(organizationId, applicationId);
-
-        // verify
-        var expectedExpiresAt = createdAt.AddDays(7).ToUnixTimeSeconds();
-        Assert.Equal(4, rawRows.Count); // header + environment row + 2 scenario rows
-        Assert.All(rawRows, row => Assert.Equal(expectedExpiresAt.ToString(), row["ExpiresAt"].N));
-    }
-
-    [Fact]
-    public async Task TryCreateAsync_WhenManualTrigger_SetsExpiresAtThreeYearsOutOnEveryRow()
-    {
-        // setup
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        await PutApplicationAsync(organizationId, applicationId);
-        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
-        var createdAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        var run = CreateRun(
-            organizationId,
-            applicationId,
-            environmentId,
-            RunTrigger.Manual,
-            createdAt
-        );
-        var scenarios = new[] { CreateScenarioSnapshot("A") };
-
-        // test
-        await _repository.TryCreateAsync(run with { Scenarios = scenarios });
-        var rawRows = await QueryRawRowsAsync(organizationId, applicationId);
+        // test -- delete every Scenario row behind the repository's back, leaving the rest intact.
+        foreach (var scenario in run.Scenarios)
+        {
+            await _client.DeleteItemAsync(
+                new DeleteItemRequest
+                {
+                    TableName = RunTableName,
+                    Key = new Dictionary<string, AttributeValue>
+                    {
+                        ["OrganizationId_ApplicationId"] = new(
+                            DynamoDbMapper.ApplicationScopedPartitionKey(
+                                organizationId,
+                                applicationId
+                            )
+                        ),
+                        ["RowKey"] = new(
+                            DynamoDbMapper.RunScenarioRowKey(run.Id, scenario.Source.Id)
+                        ),
+                    },
+                }
+            );
+        }
 
         // verify
-        var expectedExpiresAt = createdAt.AddDays(3 * 365).ToUnixTimeSeconds();
-        Assert.Equal(3, rawRows.Count); // header + environment row + 1 scenario row
-        Assert.All(rawRows, row => Assert.Equal(expectedExpiresAt.ToString(), row["ExpiresAt"].N));
+        await Assert.ThrowsAsync<CorruptedDynamoDbRowException>(() =>
+            _repository.GetByIdAsync(organizationId, applicationId, run.Id)
+        );
     }
 
     [Fact]
@@ -784,41 +722,6 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             [thirdRun.Id, secondRun.Id, firstRun.Id],
             summaries.Select(summary => summary.Id)
         );
-    }
-
-    [Fact]
-    public async Task ListByApplicationAsync_WhenExpiresAtHasPassed_ExcludesIt()
-    {
-        // setup -- one Run "created" long enough ago that its computed ExpiresAt has already passed,
-        // and one fresh Run in the same Application.
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        await PutApplicationAsync(organizationId, applicationId);
-        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
-        var longAgo = DateTimeOffset.UtcNow.AddYears(-4);
-        var expiredRun = CreateRun(
-            organizationId,
-            applicationId,
-            environmentId,
-            RunTrigger.Manual,
-            longAgo
-        );
-        var freshRun = CreateRun(organizationId, applicationId, environmentId);
-        await _repository.TryCreateAsync(
-            expiredRun with
-            {
-                Scenarios = [CreateScenarioSnapshot()],
-            }
-        );
-        await _repository.TryCreateAsync(freshRun);
-
-        // test
-        var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
-
-        // verify
-        var summary = Assert.Single(summaries);
-        Assert.Equal(freshRun.Id, summary.Id);
     }
 
     [Fact]
@@ -1589,8 +1492,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             organizationId,
             applicationId,
             runId,
-            update,
-            expiresAt: DateTimeOffset.FromUnixTimeSeconds(12345)
+            update
         );
         var headerRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
         var rawRows = await QueryRawRowsAsync(organizationId, applicationId);
@@ -1598,11 +1500,10 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         // verify
         Assert.True(result);
         Assert.Equal("1", headerRow["LastSeq"].N);
-        var updateRow = Assert.Single(
+        Assert.Single(
             rawRows,
             row => row["RowKey"].S == DynamoDbMapper.RunStatusUpdateRowKey(runId, 1)
         );
-        Assert.Equal("12345", updateRow["ExpiresAt"].N);
     }
 
     [Fact]
@@ -1625,15 +1526,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             organizationId,
             applicationId,
             runId,
-            update,
-            expiresAt: null
+            update
         );
         var retry = await _repository.TryAppendStatusUpdateAsync(
             organizationId,
             applicationId,
             runId,
-            update,
-            expiresAt: null
+            update
         );
         var headerRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
         var rawRows = await QueryRawRowsAsync(organizationId, applicationId);
@@ -1663,8 +1562,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             organizationId,
             applicationId,
             runId,
-            CreateStatusUpdate(5),
-            expiresAt: null
+            CreateStatusUpdate(5)
         );
 
         // test -- a lower Seq than the current LastSeq
@@ -1672,8 +1570,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             organizationId,
             applicationId,
             runId,
-            CreateStatusUpdate(3),
-            expiresAt: null
+            CreateStatusUpdate(3)
         );
         var headerRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
         var rawRows = await QueryRawRowsAsync(organizationId, applicationId);
@@ -1715,8 +1612,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             organizationId,
             applicationId,
             runId,
-            CreateStatusUpdate(1),
-            expiresAt: null
+            CreateStatusUpdate(1)
         );
         var headerRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
         var rawRows = await QueryRawRowsAsync(organizationId, applicationId);
@@ -1749,8 +1645,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
                 organizationId,
                 applicationId,
                 runId,
-                CreateStatusUpdate(seq),
-                expiresAt: null
+                CreateStatusUpdate(seq)
             );
         }
 
@@ -1788,8 +1683,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
                 organizationId,
                 applicationId,
                 runId,
-                CreateStatusUpdate(seq),
-                expiresAt: null
+                CreateStatusUpdate(seq)
             );
         }
 

@@ -13,45 +13,21 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
     private string RunTableName => options.Value.RunTableName;
     private string RunningRunTableName => options.Value.RunningRunTableName;
     private string ApplicationTableName => options.Value.ApplicationTableName;
-    private string EnvironmentTableName => options.Value.EnvironmentTableName;
 
     public async Task<RunCreateResult> TryCreateAsync(Run run)
     {
-        // Due to number DynamoDB transaction limits, we cannot serve more than this number of scenarios.
-        if (run.Scenarios.Count > Quota.MaxScenariosPerRun)
-        {
-            throw new ArgumentException(
-                $"A Run cannot hold more than {Quota.MaxScenariosPerRun} Scenario snapshots -- "
-                    + "DynamoDB's TransactWriteItems caps a single transaction at 100 items.",
-                nameof(run)
-            );
-        }
-
-        // TODO: why expiresAt calculated here?
-        // Every row of this Run -- the header, the Environment snapshot and every Scenario snapshot --
-        // carries the same ExpiresAt, computed once here rather than trusted from the caller, so the
-        // 7-day/3-year retention numbers stay in the one place RunRetentionPolicy puts them.
-        var expiresAt = RunRetentionPolicy.ExpiresAt(run.Trigger, run.CreatedAt);
-        var effectiveRun = run with { ExpiresAt = expiresAt };
-
         var transactItems = new List<TransactWriteItem>
         {
+            // Notes:
+            // No need conditional check for  environments, and scenario here because a run can exist despite that
+            // environments and scenario are deleted. That's the whole point of taking their snapshots. 
             ApplicationExistsCheck(run.OrganizationId, run.ApplicationId),
-            EnvironmentExistsCheck(
-                run.OrganizationId,
-                run.ApplicationId,
-                run.Environment.Source.Id
-            ),
             new()
             {
                 Put = new Put
                 {
                     TableName = RunTableName,
-                    Item = effectiveRun.ToDynamoDbRow(),
-                    // A create can never overwrite -- this is the only condition that guards the
-                    // header, and since the whole transaction is atomic, it also protects every
-                    // Environment and Scenario row below from being written alongside a duplicate
-                    // header.
+                    Item = run.ToDynamoDbRow(),
                     ConditionExpression = "attribute_not_exists(RowKey)",
                 },
             },
@@ -63,8 +39,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     Item = run.Environment.ToDynamoDbRow(
                         run.Id,
                         run.OrganizationId,
-                        run.ApplicationId,
-                        expiresAt
+                        run.ApplicationId
                     ),
                 },
             },
@@ -75,23 +50,11 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 Put = new Put
                 {
                     TableName = RunTableName,
-                    Item = scenario.ToDynamoDbRow(
-                        run.Id,
-                        run.OrganizationId,
-                        run.ApplicationId,
-                        expiresAt
-                    ),
+                    Item = scenario.ToDynamoDbRow(run.Id, run.OrganizationId, run.ApplicationId),
                 },
             })
         );
 
-        // When TransactWriteItemsAsync is cancelled due to the Application check (index 0) failing,
-        // Then return ApplicationNotFound. When it's the Environment check (index 1), Then return
-        // EnvironmentNotFound. When it's the header Put (index 2), Then a Run with this Id already
-        // exists -- return AlreadyExists. Index 3, the Environment row Put, carries no condition of its
-        // own, so it never cancels on its own account. Any other cancellation reason (throttling,
-        // conflict, etc.) is unexpected and MUST propagate instead of being reported as a business
-        // result.
         try
         {
             await client.TransactWriteItemsAsync(
@@ -100,7 +63,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             return RunCreateResult.Success;
         }
         catch (TransactionCanceledException ex)
-            when (ex.CancellationReasons is { Count: >= 4 } reasons)
+            when (ex.CancellationReasons is { Count: >= 3 } reasons)
         {
             if (reasons[0].Code == "ConditionalCheckFailed")
             {
@@ -108,11 +71,6 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             }
 
             if (reasons[1].Code == "ConditionalCheckFailed")
-            {
-                return RunCreateResult.EnvironmentNotFound;
-            }
-
-            if (reasons[2].Code == "ConditionalCheckFailed")
             {
                 return RunCreateResult.AlreadyExists;
             }
@@ -157,7 +115,12 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
 
         if (environmentRow is null)
         {
-            return null;
+            // The Environment row is written in the same transaction as the header and nothing ever
+            // deletes it on its own -- a header with no Environment row means the stored data is
+            // corrupted, not merely absent.
+            throw new CorruptedDynamoDbRowException(
+                $"Run '{runId}' has a header row but no Environment row."
+            );
         }
 
         var scenarios = rows.Where(row =>
@@ -166,16 +129,17 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             .Select(row => row.ToRunScenarioSnapshot())
             .ToList();
 
-        // When the header survives but no Scenario row does -- because they expired first, or a data
-        // anomaly -- Then treat the Run as not found rather than returning a partial result. See
-        // fix_run_design.md section 6.
+        // CreateRunRequest.ScenarioIds requires at least one entry, and every Scenario snapshot is
+        // written in the same transaction as the header -- so a header with zero surviving Scenario
+        // rows means the stored data is corrupted, not merely absent.
         if (scenarios.Count == 0)
         {
-            return null;
+            throw new CorruptedDynamoDbRowException(
+                $"Run '{runId}' has a header row but no Scenario rows."
+            );
         }
 
-        var run = headerRow.ToRun(environmentRow.ToRunEnvironmentSnapshot(), scenarios);
-        return IsExpired(run.ExpiresAt) ? null : run;
+        return headerRow.ToRun(environmentRow.ToRunEnvironmentSnapshot(), scenarios);
     }
 
     public async Task<IReadOnlyList<RunInfo>> ListByApplicationAsync(
@@ -213,15 +177,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             }
         );
 
-        // RunHeaderIndex does not project ExpiresAt, so there is no expiry attribute to read here. It
-        // does project Trigger and CreatedAt, and TryCreateAsync always derives a header's ExpiresAt
-        // from exactly those two values via RunRetentionPolicy, so recomputing it here reproduces the
-        // stored value without needing it projected.
-        return rows.Select(row => row.ToRunInfo())
-            .Where(summary =>
-                !IsExpired(RunRetentionPolicy.ExpiresAt(summary.Trigger, summary.CreatedAt))
-            )
-            .ToList();
+        return rows.Select(row => row.ToRunInfo()).ToList();
     }
 
     public async Task<RunStartResult?> TryMarkAsStartedAsync(
@@ -290,8 +246,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
-                && reasons[0].Code == "ConditionalCheckFailed"
-            )
+                  && reasons[0].Code == "ConditionalCheckFailed"
+                 )
         {
             return null;
         }
@@ -315,7 +271,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         {
             throw new ArgumentException(
                 $"{terminalStatus} is not a terminal state End Run can write -- only Completed, "
-                    + "Cancelled or Abandoned.",
+                + "Cancelled or Abandoned.",
                 nameof(terminalStatus)
             );
         }
@@ -324,7 +280,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         {
             throw new ArgumentException(
                 "StatusReason can only be written alongside Abandoned -- Completed and Cancelled are "
-                    + "self-explanatory (see Run.StatusReason's doc).",
+                + "self-explanatory (see Run.StatusReason's doc).",
                 nameof(statusReason)
             );
         }
@@ -394,8 +350,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
-                && reasons[0].Code == "ConditionalCheckFailed"
-            )
+                  && reasons[0].Code == "ConditionalCheckFailed"
+                 )
         {
             return false;
         }
@@ -521,8 +477,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         Guid organizationId,
         Guid applicationId,
         Guid id,
-        RunStatusUpdate update,
-        DateTimeOffset? expiresAt
+        RunStatusUpdate update
     )
     {
         var transactItems = new List<TransactWriteItem>
@@ -532,7 +487,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 Put = new Put
                 {
                     TableName = RunTableName,
-                    Item = update.ToDynamoDbRow(id, organizationId, applicationId, expiresAt),
+                    Item = update.ToDynamoDbRow(id, organizationId, applicationId),
                     // A retried append (dispatch is at-least-once) targets the same Seq and therefore
                     // the same RowKey, so this is what turns the retry into a no-op instead of a
                     // second row for the same update.
@@ -573,8 +528,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons?.Any(reason => reason.Code == "ConditionalCheckFailed")
-                == true
-            )
+                  == true
+                 )
         {
             return false;
         }
@@ -692,9 +647,6 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             ["RunId"] = new(id.ToString()),
         };
 
-    private static bool IsExpired(DateTimeOffset? expiresAt) =>
-        expiresAt is { } value && value <= DateTimeOffset.UtcNow;
-
     private TransactWriteItem ApplicationExistsCheck(Guid organizationId, Guid applicationId) =>
         new()
         {
@@ -705,27 +657,6 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 {
                     ["OrganizationId"] = new(organizationId.ToString()),
                     ["Id"] = new(applicationId.ToString()),
-                },
-                ConditionExpression = "attribute_exists(Id)",
-            },
-        };
-
-    private TransactWriteItem EnvironmentExistsCheck(
-        Guid organizationId,
-        Guid applicationId,
-        Guid environmentId
-    ) =>
-        new()
-        {
-            ConditionCheck = new ConditionCheck
-            {
-                TableName = EnvironmentTableName,
-                Key = new Dictionary<string, AttributeValue>
-                {
-                    ["OrganizationId_ApplicationId"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
-                    ),
-                    ["Id"] = new(environmentId.ToString()),
                 },
                 ConditionExpression = "attribute_exists(Id)",
             },

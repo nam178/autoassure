@@ -55,11 +55,8 @@ public class RunStatusUpdatesController(
 
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
 
-        // The append transaction needs the Run's own ExpiresAt to stamp onto the new row (see
-        // IRunRepository.TryAppendStatusUpdateAsync's doc) -- a stateless HTTP request has nowhere else
-        // to get it from, unlike the long-lived worker process the design assumes. This Get also answers
-        // whether the Run exists at all, which the transaction's own conditions cannot distinguish from
-        // "exists but not Running".
+        // This Get's only purpose is answering whether the Run exists at all, which the append
+        // transaction's own conditions cannot distinguish from "exists but not Running".
         var run = await runRepository.GetByIdAsync(organizationId, appId, id);
         if (run is null)
         {
@@ -71,8 +68,7 @@ public class RunStatusUpdatesController(
             organizationId,
             appId,
             id,
-            update,
-            run.ExpiresAt
+            update
         );
         return appended
             ? Ok(update.ToResponse())

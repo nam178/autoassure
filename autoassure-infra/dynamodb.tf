@@ -562,6 +562,13 @@ resource "aws_dynamodb_table" "activities" {
 # touches one small row instead of the whole Run -- see fix_run_design.md section 3. Schema must stay in
 # sync with Models/Run.cs, Models/RunEnvironmentSnapshot.cs, Models/RunStatusUpdate.cs,
 # Models/ActivityResult.cs and Repositories/DynamoDbMapper.Run.cs in autoassure-server.
+#
+# Deliberately carries no TTL: a Run's rows must be deleted together (header, Environment snapshot,
+# every Scenario snapshot, the whole status-update log), and DynamoDB TTL evicts each row independently
+# with no cross-item coordination or timing guarantee -- see the retention-mechanism discussion this
+# replaced. There is currently no automated deletion path for old Runs; a dedicated reaper (deleting a
+# Run's full row set in one TransactWriteItems, the same way TryCreateAsync writes it) is planned but not
+# yet built.
 # trivy:ignore:AWS-0025 -- AWS-owned key is sufficient for this table at this stage;
 # a customer-managed KMS key adds per-request cost and key-rotation overhead not justified yet.
 # Revisit if compliance requirements change.
@@ -611,15 +618,6 @@ resource "aws_dynamodb_table" "runs" {
       "CompletedAt",
       "LastHeartbeatAt",
     ]
-  }
-
-  # ExpiresAt is stored as epoch seconds (see DynamoDbMapper.Run.cs) so DynamoDB can use it directly
-  # for TTL-based cleanup: 7 days for an Authoring run, 3 years otherwise. TTL is the only way a run row
-  # ever leaves this table -- there is no delete path. TTL deletion isn't immediate (up to 48h), so
-  # reads still filter on ExpiresAt themselves.
-  ttl {
-    attribute_name = "ExpiresAt"
-    enabled        = true
   }
 
   point_in_time_recovery {

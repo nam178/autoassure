@@ -11,8 +11,7 @@ public record Run
 
     /// <summary>Running does not by itself mean the owning worker is still alive -- it may have crashed
     /// or been killed without anything having noticed yet. Treat Running as "not yet terminal," and
-    /// check <see cref="LastHeartbeatAt"/> against <see cref="RunExecutionPolicy.HeartbeatStaleness"/>
-    /// to tell whether it is actually making progress.</summary>
+    /// check <see cref="LastHeartbeatAt"/> to tell whether it is actually making progress.</summary>
     public required RunStatus Status { get; init; }
     public RunStatusReason? StatusReason { get; init; }
     public int TotalActivityCount { get; init; }
@@ -32,10 +31,6 @@ public record Run
     /// <summary>When the owning worker last proved it was alive. Null while the Run is Pending, since it
     /// has no owner yet.</summary>
     public DateTimeOffset? LastHeartbeatAt { get; init; }
-
-    /// <summary>The point in time after which this Run stops being retained and can no longer be found,
-    /// set when it is created and never changed. Null means it never expires.</summary>
-    public DateTimeOffset? ExpiresAt { get; init; }
 }
 
 public enum RunTrigger

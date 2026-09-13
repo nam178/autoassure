@@ -1,5 +1,3 @@
-using A2.Server.Models;
-
 namespace A2.Server.Repositories;
 
 /// <summary>The only Run fields <see cref="IRunRepository.TryUpdateAsync"/> is allowed to change. A null
@@ -7,9 +5,8 @@ namespace A2.Server.Repositories;
 public record RunUpdatableFields
 {
     /// <summary>Proves the owning worker is still alive by overwriting <c>LastHeartbeatAt</c>. This is the
-    /// one Run attribute that is never a permanent record -- it is overwritten in place every
-    /// <see cref="RunExecutionPolicy.HeartbeatInterval"/>, and a beat is worth nothing once the next one
-    /// arrives.</summary>
+    /// one Run attribute that is never a permanent record -- it is overwritten in place on every beat,
+    /// and a beat is worth nothing once the next one arrives.</summary>
     public DateTimeOffset? HeartbeatAt { get; init; }
 
     /// <summary>Overwrites the Run's four activity counts with the absolute values supplied here -- never
