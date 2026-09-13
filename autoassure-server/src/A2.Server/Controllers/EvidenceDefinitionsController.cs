@@ -16,12 +16,15 @@ public class EvidenceDefinitionsController(
     IClock clock
 ) : ControllerBase
 {
-    /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
-    [HttpPost("applications/{appId:guid}/evidence-definitions", Name = "CreateEvidenceDefinition")]
+    /// <response code="404">No Application with the given applicationId exists in the caller's Organization.</response>
+    [HttpPost(
+        "applications/{applicationId:guid}/evidence-definitions",
+        Name = "CreateEvidenceDefinition"
+    )]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EvidenceDefinitionResponse>> Create(
-        Guid appId,
+        Guid applicationId,
         CreateEvidenceDefinitionRequest request
     )
     {
@@ -32,7 +35,7 @@ public class EvidenceDefinitionsController(
         {
             Id = Guid.CreateVersion7(),
             OrganizationId = organizationId,
-            ApplicationId = appId,
+            ApplicationId = applicationId,
             Name = request.Name,
             Description = request.Description,
             ExampleValue = request.ExampleValue,
@@ -51,13 +54,18 @@ public class EvidenceDefinitionsController(
         return Ok(evidence.ToResponse());
     }
 
-    [HttpGet("applications/{appId:guid}/evidence-definitions", Name = "ListEvidenceDefinitions")]
-    public async Task<ActionResult<IReadOnlyList<EvidenceDefinitionResponse>>> List(Guid appId)
+    [HttpGet(
+        "applications/{applicationId:guid}/evidence-definitions",
+        Name = "ListEvidenceDefinitions"
+    )]
+    public async Task<ActionResult<IReadOnlyList<EvidenceDefinitionResponse>>> List(
+        Guid applicationId
+    )
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
         var evidenceDefinitions = await evidenceDefinitionRepository.ListByApplicationAsync(
             organizationId,
-            appId
+            applicationId
         );
         return Ok(evidenceDefinitions.Select(e => e.ToResponse()).ToList());
     }

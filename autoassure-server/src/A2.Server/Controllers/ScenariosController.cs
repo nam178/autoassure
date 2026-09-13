@@ -23,14 +23,14 @@ public class ScenariosController(
     private const string DefaultFolder = "/";
 
     /// <response code="400">A tag in Tags is longer than 50 characters.</response>
-    /// <response code="404">No Application with the given appId exists in the caller's Organization,
+    /// <response code="404">No Application with the given applicationId exists in the caller's Organization,
     /// or it no longer exists (deleted after this request started).</response>
-    [HttpPost("applications/{appId:guid}/scenarios", Name = "CreateScenario")]
+    [HttpPost("applications/{applicationId:guid}/scenarios", Name = "CreateScenario")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ScenarioResponse>> Create(
-        Guid appId,
+        Guid applicationId,
         CreateScenarioRequest request
     )
     {
@@ -38,7 +38,7 @@ public class ScenariosController(
 
         // The Application is the URL resource -- its non-existence must win as a 404 over a 400 for
         // an invalid request body, so it's checked before validating tags below.
-        if (await applicationRepository.GetByIdAsync(organizationId, appId) is null)
+        if (await applicationRepository.GetByIdAsync(organizationId, applicationId) is null)
         {
             return NotFound();
         }
@@ -55,7 +55,7 @@ public class ScenariosController(
         {
             Id = Guid.CreateVersion7(),
             OrganizationId = organizationId,
-            ApplicationId = appId,
+            ApplicationId = applicationId,
             Title = request.Title,
             Description = request.Description,
             Folder = string.IsNullOrEmpty(request.Folder) ? DefaultFolder : request.Folder,
@@ -74,11 +74,11 @@ public class ScenariosController(
     }
 
     /// <response code="400">Both folder and tag were provided; they are mutually exclusive.</response>
-    [HttpGet("applications/{appId:guid}/scenarios", Name = "ListScenarios")]
+    [HttpGet("applications/{applicationId:guid}/scenarios", Name = "ListScenarios")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<IReadOnlyList<ScenarioResponse>>> List(
-        Guid appId,
+        Guid applicationId,
         [FromQuery] string? folder,
         [FromQuery] string? tag
     )
@@ -91,10 +91,10 @@ public class ScenariosController(
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
         var scenarios =
             !string.IsNullOrEmpty(folder)
-                ? await scenarioRepository.ListByFolderAsync(organizationId, appId, folder)
+                ? await scenarioRepository.ListByFolderAsync(organizationId, applicationId, folder)
             : !string.IsNullOrEmpty(tag)
-                ? await scenarioRepository.ListByTagAsync(organizationId, appId, tag)
-            : await scenarioRepository.ListByApplicationAsync(organizationId, appId);
+                ? await scenarioRepository.ListByTagAsync(organizationId, applicationId, tag)
+            : await scenarioRepository.ListByApplicationAsync(organizationId, applicationId);
 
         return Ok(scenarios.Select(s => s.ToResponse()).ToList());
     }

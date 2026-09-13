@@ -30,7 +30,7 @@ public class RunStatusUpdatesController(
     /// <response code="409">Seq is not greater than the Run's current LastSeq, or the Run's Status is not
     /// Running.</response>
     [HttpPost(
-        "applications/{appId:guid}/runs/{runId:guid}/status-updates",
+        "applications/{applicationId:guid}/runs/{runId:guid}/status-updates",
         Name = "AppendRunStatusUpdate"
     )]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -38,7 +38,7 @@ public class RunStatusUpdatesController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<RunStatusUpdateResponse>> Append(
-        Guid appId,
+        Guid applicationId,
         Guid runId,
         AppendRunStatusUpdateRequest request
     )
@@ -57,7 +57,7 @@ public class RunStatusUpdatesController(
 
         // This Get's only purpose is answering whether the Run exists at all, which the append
         // transaction's own conditions cannot distinguish from "exists but not Running".
-        var run = await runRepository.GetByIdAsync(organizationId, appId, runId);
+        var run = await runRepository.GetByIdAsync(organizationId, applicationId, runId);
         if (run is null)
         {
             return NotFound();
@@ -66,7 +66,7 @@ public class RunStatusUpdatesController(
         var update = request.ToModel(clock.UtcNow);
         var appended = await runRepository.TryAppendStatusUpdateAsync(
             organizationId,
-            appId,
+            applicationId,
             runId,
             update
         );
@@ -81,13 +81,13 @@ public class RunStatusUpdatesController(
     /// from the start of the log.</param>
     /// <response code="400">after is negative.</response>
     [HttpGet(
-        "applications/{appId:guid}/runs/{runId:guid}/status-updates",
+        "applications/{applicationId:guid}/runs/{runId:guid}/status-updates",
         Name = "ListRunStatusUpdates"
     )]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<IReadOnlyList<RunStatusUpdateResponse>>> List(
-        Guid appId,
+        Guid applicationId,
         Guid runId,
         [FromQuery] long after = 0
     )
@@ -105,7 +105,7 @@ public class RunStatusUpdatesController(
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
         var updates = await runRepository.ListStatusUpdatesAsync(
             organizationId,
-            appId,
+            applicationId,
             runId,
             after,
             MaxStatusUpdatesPerPage

@@ -457,8 +457,8 @@ export interface RunPreconditionSnapshotResponse {
  * A Run's identity, execution state and what it ran, as returned to the client. Never carries
  *     the status update log -- LastSeq and Status are what tell a client whether it is worth polling List
  *     Run Status Updates and when to stop. ApplicationId is included even under the nested
- *     `/applications/{appId}/runs/{id}` route because the authoring create route
- *     (`POST /scenarios/{id}/runs`) is flat and returns this same shape -- without it, a client
+ *     `/applications/{applicationId}/runs/{runId}` route because the authoring create route
+ *     (`POST /scenarios/{scenarioId}/runs`) is flat and returns this same shape -- without it, a client
  *     following an authoring Run would have no way to build its polling URLs.
  */
 export interface RunResponse {
@@ -1256,18 +1256,18 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Environments
      * @name CreateEnvironment
-     * @request POST:/applications/{appId}/environments
+     * @request POST:/applications/{applicationId}/environments
      * @response `200` `EnvironmentResponse` OK
      * @response `400` `void` Returns 400 when the request fails a validation constraint.
-     * @response `404` `ProblemDetails` No Application with the given appId exists in the caller's Organization.
+     * @response `404` `ProblemDetails` No Application with the given applicationId exists in the caller's Organization.
      */
     createEnvironment: (
-      appId: string,
+      applicationId: string,
       data: CreateEnvironmentRequest,
       params: RequestParams = {},
     ) =>
       this.http.request<EnvironmentResponse, void | ProblemDetails>({
-        path: `/applications/${appId}/environments`,
+        path: `/applications/${applicationId}/environments`,
         method: "POST",
         body: data,
         type: ContentType.Json,
@@ -1280,12 +1280,12 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Environments
      * @name ListEnvironments
-     * @request GET:/applications/{appId}/environments
+     * @request GET:/applications/{applicationId}/environments
      * @response `200` `(EnvironmentResponse)[]` OK
      */
-    listEnvironments: (appId: string, params: RequestParams = {}) =>
+    listEnvironments: (applicationId: string, params: RequestParams = {}) =>
       this.http.request<EnvironmentResponse[], any>({
-        path: `/applications/${appId}/environments`,
+        path: `/applications/${applicationId}/environments`,
         method: "GET",
         format: "json",
         ...params,
@@ -1296,18 +1296,18 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags EvidenceDefinitions
      * @name CreateEvidenceDefinition
-     * @request POST:/applications/{appId}/evidence-definitions
+     * @request POST:/applications/{applicationId}/evidence-definitions
      * @response `200` `EvidenceDefinitionResponse` OK
      * @response `400` `void` Returns 400 when the request fails a validation constraint.
-     * @response `404` `ProblemDetails` No Application with the given appId exists in the caller's Organization.
+     * @response `404` `ProblemDetails` No Application with the given applicationId exists in the caller's Organization.
      */
     createEvidenceDefinition: (
-      appId: string,
+      applicationId: string,
       data: CreateEvidenceDefinitionRequest,
       params: RequestParams = {},
     ) =>
       this.http.request<EvidenceDefinitionResponse, void | ProblemDetails>({
-        path: `/applications/${appId}/evidence-definitions`,
+        path: `/applications/${applicationId}/evidence-definitions`,
         method: "POST",
         body: data,
         type: ContentType.Json,
@@ -1320,12 +1320,15 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags EvidenceDefinitions
      * @name ListEvidenceDefinitions
-     * @request GET:/applications/{appId}/evidence-definitions
+     * @request GET:/applications/{applicationId}/evidence-definitions
      * @response `200` `(EvidenceDefinitionResponse)[]` OK
      */
-    listEvidenceDefinitions: (appId: string, params: RequestParams = {}) =>
+    listEvidenceDefinitions: (
+      applicationId: string,
+      params: RequestParams = {},
+    ) =>
       this.http.request<EvidenceDefinitionResponse[], any>({
-        path: `/applications/${appId}/evidence-definitions`,
+        path: `/applications/${applicationId}/evidence-definitions`,
         method: "GET",
         format: "json",
         ...params,
@@ -1336,18 +1339,18 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Preconditions
      * @name CreatePrecondition
-     * @request POST:/applications/{appId}/preconditions
+     * @request POST:/applications/{applicationId}/preconditions
      * @response `200` `PreconditionResponse` OK
      * @response `400` `void` Returns 400 when the request fails a validation constraint.
-     * @response `404` `ProblemDetails` No Application with the given appId exists in the caller's Organization.
+     * @response `404` `ProblemDetails` No Application with the given applicationId exists in the caller's Organization.
      */
     createPrecondition: (
-      appId: string,
+      applicationId: string,
       data: CreatePreconditionRequest,
       params: RequestParams = {},
     ) =>
       this.http.request<PreconditionResponse, void | ProblemDetails>({
-        path: `/applications/${appId}/preconditions`,
+        path: `/applications/${applicationId}/preconditions`,
         method: "POST",
         body: data,
         type: ContentType.Json,
@@ -1360,12 +1363,12 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Preconditions
      * @name ListPreconditions
-     * @request GET:/applications/{appId}/preconditions
+     * @request GET:/applications/{applicationId}/preconditions
      * @response `200` `(PreconditionResponse)[]` OK
      */
-    listPreconditions: (appId: string, params: RequestParams = {}) =>
+    listPreconditions: (applicationId: string, params: RequestParams = {}) =>
       this.http.request<PreconditionResponse[], any>({
-        path: `/applications/${appId}/preconditions`,
+        path: `/applications/${applicationId}/preconditions`,
         method: "GET",
         format: "json",
         ...params,
@@ -1376,18 +1379,18 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Runs
      * @name CreateRun
-     * @request POST:/applications/{appId}/runs
+     * @request POST:/applications/{applicationId}/runs
      * @response `200` `RunResponse` OK
      * @response `400` `ErrorResponse` EnvironmentId does not reference an Environment belonging to this Application, ScenarioIds contains a duplicate, or ScenarioIds contains an id that does not reference a Scenario belonging to this Application. Returns 400 when the request fails a validation constraint.
-     * @response `404` `ProblemDetails` No Application with the given appId exists in the caller's Organization, or it no longer exists (deleted after this request started).
+     * @response `404` `ProblemDetails` No Application with the given applicationId exists in the caller's Organization, or it no longer exists (deleted after this request started).
      */
     createRun: (
-      appId: string,
+      applicationId: string,
       data: CreateRunRequest,
       params: RequestParams = {},
     ) =>
       this.http.request<RunResponse, ErrorResponse | ProblemDetails>({
-        path: `/applications/${appId}/runs`,
+        path: `/applications/${applicationId}/runs`,
         method: "POST",
         body: data,
         type: ContentType.Json,
@@ -1401,12 +1404,12 @@ export class Api<SecurityDataType extends unknown> {
      * @tags Runs
      * @name ListRuns
      * @summary Never returns Authoring Runs -- those are scratch runs against a Scenario under construction, not runs of the Application's saved Scenarios.
-     * @request GET:/applications/{appId}/runs
+     * @request GET:/applications/{applicationId}/runs
      * @response `200` `(RunSummaryResponse)[]` OK
      */
-    listRuns: (appId: string, params: RequestParams = {}) =>
+    listRuns: (applicationId: string, params: RequestParams = {}) =>
       this.http.request<RunSummaryResponse[], any>({
-        path: `/applications/${appId}/runs`,
+        path: `/applications/${applicationId}/runs`,
         method: "GET",
         format: "json",
         ...params,
@@ -1417,13 +1420,13 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Runs
      * @name ListRunningRuns
-     * @summary Lists the Runs currently Running for this Application, strongly consistent -- a Run that just started is never briefly missing from this result, unlike Task&lt;ActionResult&lt;IReadOnlyList&lt;RunSummaryResponse&gt;&gt;&gt; RunsController.List(Guid appId).
-     * @request GET:/applications/{appId}/runs/running
+     * @summary Lists the Runs currently Running for this Application, strongly consistent -- a Run that just started is never briefly missing from this result, unlike Task&lt;ActionResult&lt;IReadOnlyList&lt;RunSummaryResponse&gt;&gt;&gt; RunsController.List(Guid applicationId).
+     * @request GET:/applications/{applicationId}/runs/running
      * @response `200` `(RunningRunResponse)[]` OK
      */
-    listRunningRuns: (appId: string, params: RequestParams = {}) =>
+    listRunningRuns: (applicationId: string, params: RequestParams = {}) =>
       this.http.request<RunningRunResponse[], any>({
-        path: `/applications/${appId}/runs/running`,
+        path: `/applications/${applicationId}/runs/running`,
         method: "GET",
         format: "json",
         ...params,
@@ -1434,13 +1437,17 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Runs
      * @name GetRunById
-     * @request GET:/applications/{appId}/runs/{runId}
+     * @request GET:/applications/{applicationId}/runs/{runId}
      * @response `200` `RunResponse` OK
      * @response `404` `ProblemDetails` No Run with the given runId exists in this Application, in the caller's Organization.
      */
-    getRunById: (appId: string, runId: string, params: RequestParams = {}) =>
+    getRunById: (
+      applicationId: string,
+      runId: string,
+      params: RequestParams = {},
+    ) =>
       this.http.request<RunResponse, ProblemDetails>({
-        path: `/applications/${appId}/runs/${runId}`,
+        path: `/applications/${applicationId}/runs/${runId}`,
         method: "GET",
         format: "json",
         ...params,
@@ -1452,14 +1459,18 @@ export class Api<SecurityDataType extends unknown> {
      * @tags Runs
      * @name StartRun
      * @summary Claims a Pending Run for execution and returns it, unmasked, to the winning caller only -- the one time in this API's life a sensitive Environment variable's real value is ever returned. Every other response (Create Run, Get Run) always masks sensitive values regardless of what storage currently holds; see RunResponse ContractMapper.ToResponse(Run run, bool maskSensitiveValues = true).
-     * @request POST:/applications/{appId}/runs/{runId}/start
+     * @request POST:/applications/{applicationId}/runs/{runId}/start
      * @response `200` `RunResponse` OK
      * @response `404` `ProblemDetails` No Run with the given runId exists in this Application, in the caller's Organization.
      * @response `409` `ErrorResponse` The Run's Status is not Pending.
      */
-    startRun: (appId: string, runId: string, params: RequestParams = {}) =>
+    startRun: (
+      applicationId: string,
+      runId: string,
+      params: RequestParams = {},
+    ) =>
       this.http.request<RunResponse, ProblemDetails | ErrorResponse>({
-        path: `/applications/${appId}/runs/${runId}/start`,
+        path: `/applications/${applicationId}/runs/${runId}/start`,
         method: "POST",
         format: "json",
         ...params,
@@ -1470,20 +1481,20 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Runs
      * @name EndRun
-     * @request POST:/applications/{appId}/runs/{runId}/end
+     * @request POST:/applications/{applicationId}/runs/{runId}/end
      * @response `204` `void` No Content
      * @response `400` `ErrorResponse` TerminalStatus is Pending or Running, or StatusReason is set while TerminalStatus is not Abandoned. Returns 400 when the request fails a validation constraint.
      * @response `404` `ProblemDetails` No Run with the given runId exists in this Application, in the caller's Organization.
      * @response `409` `ErrorResponse` The Run's Status is not Running.
      */
     endRun: (
-      appId: string,
+      applicationId: string,
       runId: string,
       data: EndRunRequest,
       params: RequestParams = {},
     ) =>
       this.http.request<void, ErrorResponse | ProblemDetails>({
-        path: `/applications/${appId}/runs/${runId}/end`,
+        path: `/applications/${applicationId}/runs/${runId}/end`,
         method: "POST",
         body: data,
         type: ContentType.Json,
@@ -1495,18 +1506,18 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Runs
      * @name UpdateRunHeartbeat
-     * @request POST:/applications/{appId}/runs/{runId}/heartbeat
+     * @request POST:/applications/{applicationId}/runs/{runId}/heartbeat
      * @response `204` `void` No Content
      * @response `404` `ProblemDetails` No Run with the given runId exists in this Application, in the caller's Organization.
      * @response `409` `ErrorResponse` The Run's Status is not Running.
      */
     updateRunHeartbeat: (
-      appId: string,
+      applicationId: string,
       runId: string,
       params: RequestParams = {},
     ) =>
       this.http.request<void, ProblemDetails | ErrorResponse>({
-        path: `/applications/${appId}/runs/${runId}/heartbeat`,
+        path: `/applications/${applicationId}/runs/${runId}/heartbeat`,
         method: "POST",
         ...params,
       }),
@@ -1516,20 +1527,20 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Runs
      * @name UpdateRunStats
-     * @request POST:/applications/{appId}/runs/{runId}/stats
+     * @request POST:/applications/{applicationId}/runs/{runId}/stats
      * @response `204` `void` No Content
      * @response `400` `void` Returns 400 when the request fails a validation constraint.
      * @response `404` `ProblemDetails` No Run with the given runId exists in this Application, in the caller's Organization.
      * @response `409` `ErrorResponse` The Run's Status is not Running.
      */
     updateRunStats: (
-      appId: string,
+      applicationId: string,
       runId: string,
       data: UpdateRunStatsRequest,
       params: RequestParams = {},
     ) =>
       this.http.request<void, void | ProblemDetails | ErrorResponse>({
-        path: `/applications/${appId}/runs/${runId}/stats`,
+        path: `/applications/${applicationId}/runs/${runId}/stats`,
         method: "POST",
         body: data,
         type: ContentType.Json,
@@ -1541,14 +1552,14 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags RunStatusUpdates
      * @name AppendRunStatusUpdate
-     * @request POST:/applications/{appId}/runs/{runId}/status-updates
+     * @request POST:/applications/{applicationId}/runs/{runId}/status-updates
      * @response `200` `RunStatusUpdateResponse` OK
      * @response `400` `ErrorResponse` ActivityResult.Status is Pending or Running. Returns 400 when the request fails a validation constraint.
      * @response `404` `ProblemDetails` No Run with the given runId exists in this Application, in the caller's Organization.
      * @response `409` `ErrorResponse` Seq is not greater than the Run's current LastSeq, or the Run's Status is not Running.
      */
     appendRunStatusUpdate: (
-      appId: string,
+      applicationId: string,
       runId: string,
       data: AppendRunStatusUpdateRequest,
       params: RequestParams = {},
@@ -1557,7 +1568,7 @@ export class Api<SecurityDataType extends unknown> {
         RunStatusUpdateResponse,
         ErrorResponse | ProblemDetails
       >({
-        path: `/applications/${appId}/runs/${runId}/status-updates`,
+        path: `/applications/${applicationId}/runs/${runId}/status-updates`,
         method: "POST",
         body: data,
         type: ContentType.Json,
@@ -1570,12 +1581,12 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags RunStatusUpdates
      * @name ListRunStatusUpdates
-     * @request GET:/applications/{appId}/runs/{runId}/status-updates
+     * @request GET:/applications/{applicationId}/runs/{runId}/status-updates
      * @response `200` `(RunStatusUpdateResponse)[]` OK
      * @response `400` `ErrorResponse` after is negative.
      */
     listRunStatusUpdates: (
-      appId: string,
+      applicationId: string,
       runId: string,
       query?: {
         /**
@@ -1590,7 +1601,7 @@ export class Api<SecurityDataType extends unknown> {
       params: RequestParams = {},
     ) =>
       this.http.request<RunStatusUpdateResponse[], ErrorResponse>({
-        path: `/applications/${appId}/runs/${runId}/status-updates`,
+        path: `/applications/${applicationId}/runs/${runId}/status-updates`,
         method: "GET",
         query: query,
         format: "json",
@@ -1602,18 +1613,18 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Scenarios
      * @name CreateScenario
-     * @request POST:/applications/{appId}/scenarios
+     * @request POST:/applications/{applicationId}/scenarios
      * @response `200` `ScenarioResponse` OK
      * @response `400` `ErrorResponse` A tag in Tags is longer than 50 characters. Returns 400 when the request fails a validation constraint.
-     * @response `404` `ProblemDetails` No Application with the given appId exists in the caller's Organization, or it no longer exists (deleted after this request started).
+     * @response `404` `ProblemDetails` No Application with the given applicationId exists in the caller's Organization, or it no longer exists (deleted after this request started).
      */
     createScenario: (
-      appId: string,
+      applicationId: string,
       data: CreateScenarioRequest,
       params: RequestParams = {},
     ) =>
       this.http.request<ScenarioResponse, ErrorResponse | ProblemDetails>({
-        path: `/applications/${appId}/scenarios`,
+        path: `/applications/${applicationId}/scenarios`,
         method: "POST",
         body: data,
         type: ContentType.Json,
@@ -1626,12 +1637,12 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Scenarios
      * @name ListScenarios
-     * @request GET:/applications/{appId}/scenarios
+     * @request GET:/applications/{applicationId}/scenarios
      * @response `200` `(ScenarioResponse)[]` OK
      * @response `400` `ErrorResponse` Both folder and tag were provided; they are mutually exclusive.
      */
     listScenarios: (
-      appId: string,
+      applicationId: string,
       query?: {
         folder?: string;
         tag?: string;
@@ -1639,7 +1650,7 @@ export class Api<SecurityDataType extends unknown> {
       params: RequestParams = {},
     ) =>
       this.http.request<ScenarioResponse[], ErrorResponse>({
-        path: `/applications/${appId}/scenarios`,
+        path: `/applications/${applicationId}/scenarios`,
         method: "GET",
         query: query,
         format: "json",

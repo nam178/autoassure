@@ -18,12 +18,12 @@ public class EnvironmentsController(
     IClock clock
 ) : ControllerBase
 {
-    /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
-    [HttpPost("applications/{appId:guid}/environments", Name = "CreateEnvironment")]
+    /// <response code="404">No Application with the given applicationId exists in the caller's Organization.</response>
+    [HttpPost("applications/{applicationId:guid}/environments", Name = "CreateEnvironment")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EnvironmentResponse>> Create(
-        Guid appId,
+        Guid applicationId,
         CreateEnvironmentRequest request
     )
     {
@@ -35,7 +35,7 @@ public class EnvironmentsController(
         {
             Id = Guid.CreateVersion7(),
             OrganizationId = organizationId,
-            ApplicationId = appId,
+            ApplicationId = applicationId,
             Name = request.Name,
             Classification = request.Classification.ToModel(),
             CreatedByUserId = userId,
@@ -53,13 +53,13 @@ public class EnvironmentsController(
         return Ok(await ToResponseAsync(environment));
     }
 
-    [HttpGet("applications/{appId:guid}/environments", Name = "ListEnvironments")]
-    public async Task<ActionResult<IReadOnlyList<EnvironmentResponse>>> List(Guid appId)
+    [HttpGet("applications/{applicationId:guid}/environments", Name = "ListEnvironments")]
+    public async Task<ActionResult<IReadOnlyList<EnvironmentResponse>>> List(Guid applicationId)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
         var environments = await environmentRepository.ListByApplicationAsync(
             organizationId,
-            appId
+            applicationId
         );
         var responses = new List<EnvironmentResponse>(environments.Count);
         foreach (var environment in environments)

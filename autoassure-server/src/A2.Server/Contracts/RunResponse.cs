@@ -3,8 +3,8 @@ namespace A2.Server.Contracts;
 /// <summary>A Run's identity, execution state and what it ran, as returned to the client. Never carries
 /// the status update log -- LastSeq and Status are what tell a client whether it is worth polling List
 /// Run Status Updates and when to stop. ApplicationId is included even under the nested
-/// <c>/applications/{appId}/runs/{id}</c> route because the authoring create route
-/// (<c>POST /scenarios/{id}/runs</c>) is flat and returns this same shape -- without it, a client
+/// <c>/applications/{applicationId}/runs/{runId}</c> route because the authoring create route
+/// (<c>POST /scenarios/{scenarioId}/runs</c>) is flat and returns this same shape -- without it, a client
 /// following an authoring Run would have no way to build its polling URLs.</summary>
 public record RunResponse
 {

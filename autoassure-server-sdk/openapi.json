@@ -802,7 +802,7 @@
         }
       }
     },
-    "/applications/{appId}/environments": {
+    "/applications/{applicationId}/environments": {
       "post": {
         "tags": [
           "Environments"
@@ -810,7 +810,7 @@
         "operationId": "CreateEnvironment",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -861,7 +861,7 @@
             }
           },
           "404": {
-            "description": "No Application with the given appId exists in the caller's Organization.",
+            "description": "No Application with the given applicationId exists in the caller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -892,7 +892,7 @@
         "operationId": "ListEnvironments",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1208,7 +1208,7 @@
         }
       }
     },
-    "/applications/{appId}/evidence-definitions": {
+    "/applications/{applicationId}/evidence-definitions": {
       "post": {
         "tags": [
           "EvidenceDefinitions"
@@ -1216,7 +1216,7 @@
         "operationId": "CreateEvidenceDefinition",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1267,7 +1267,7 @@
             }
           },
           "404": {
-            "description": "No Application with the given appId exists in the caller's Organization.",
+            "description": "No Application with the given applicationId exists in the caller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1298,7 +1298,7 @@
         "operationId": "ListEvidenceDefinitions",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1446,7 +1446,7 @@
         }
       }
     },
-    "/applications/{appId}/preconditions": {
+    "/applications/{applicationId}/preconditions": {
       "post": {
         "tags": [
           "Preconditions"
@@ -1454,7 +1454,7 @@
         "operationId": "CreatePrecondition",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1505,7 +1505,7 @@
             }
           },
           "404": {
-            "description": "No Application with the given appId exists in the caller's Organization.",
+            "description": "No Application with the given applicationId exists in the caller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1536,7 +1536,7 @@
         "operationId": "ListPreconditions",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1684,7 +1684,7 @@
         }
       }
     },
-    "/applications/{appId}/runs": {
+    "/applications/{applicationId}/runs": {
       "post": {
         "tags": [
           "Runs"
@@ -1692,7 +1692,7 @@
         "operationId": "CreateRun",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1763,7 +1763,7 @@
             }
           },
           "404": {
-            "description": "No Application with the given appId exists in the caller's Organization, or\n    it no longer exists (deleted after this request started).",
+            "description": "No Application with the given applicationId exists in the caller's Organization, or\n    it no longer exists (deleted after this request started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1792,7 +1792,7 @@
         "operationId": "ListRuns",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1834,16 +1834,16 @@
         }
       }
     },
-    "/applications/{appId}/runs/running": {
+    "/applications/{applicationId}/runs/running": {
       "get": {
         "tags": [
           "Runs"
         ],
-        "summary": "Lists the Runs currently Running for this Application, strongly consistent -- a Run that\n    just started is never briefly missing from this result, unlike Task&lt;ActionResult&lt;IReadOnlyList&lt;RunSummaryResponse&gt;&gt;&gt; RunsController.List(Guid appId).",
+        "summary": "Lists the Runs currently Running for this Application, strongly consistent -- a Run that\n    just started is never briefly missing from this result, unlike Task&lt;ActionResult&lt;IReadOnlyList&lt;RunSummaryResponse&gt;&gt;&gt; RunsController.List(Guid applicationId).",
         "operationId": "ListRunningRuns",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1885,7 +1885,7 @@
         }
       }
     },
-    "/applications/{appId}/runs/{runId}": {
+    "/applications/{applicationId}/runs/{runId}": {
       "get": {
         "tags": [
           "Runs"
@@ -1893,7 +1893,7 @@
         "operationId": "GetRunById",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1955,7 +1955,7 @@
         }
       }
     },
-    "/applications/{appId}/runs/{runId}/start": {
+    "/applications/{applicationId}/runs/{runId}/start": {
       "post": {
         "tags": [
           "Runs"
@@ -1964,7 +1964,7 @@
         "operationId": "StartRun",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2046,7 +2046,7 @@
         }
       }
     },
-    "/applications/{appId}/runs/{runId}/end": {
+    "/applications/{applicationId}/runs/{runId}/end": {
       "post": {
         "tags": [
           "Runs"
@@ -2054,7 +2054,7 @@
         "operationId": "EndRun",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2159,7 +2159,7 @@
         }
       }
     },
-    "/applications/{appId}/runs/{runId}/heartbeat": {
+    "/applications/{applicationId}/runs/{runId}/heartbeat": {
       "post": {
         "tags": [
           "Runs"
@@ -2167,7 +2167,7 @@
         "operationId": "UpdateRunHeartbeat",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2232,7 +2232,7 @@
         }
       }
     },
-    "/applications/{appId}/runs/{runId}/stats": {
+    "/applications/{applicationId}/runs/{runId}/stats": {
       "post": {
         "tags": [
           "Runs"
@@ -2240,7 +2240,7 @@
         "operationId": "UpdateRunStats",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2328,7 +2328,7 @@
         }
       }
     },
-    "/applications/{appId}/runs/{runId}/status-updates": {
+    "/applications/{applicationId}/runs/{runId}/status-updates": {
       "post": {
         "tags": [
           "RunStatusUpdates"
@@ -2336,7 +2336,7 @@
         "operationId": "AppendRunStatusUpdate",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2464,7 +2464,7 @@
         "operationId": "ListRunStatusUpdates",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2549,7 +2549,7 @@
         }
       }
     },
-    "/applications/{appId}/scenarios": {
+    "/applications/{applicationId}/scenarios": {
       "post": {
         "tags": [
           "Scenarios"
@@ -2557,7 +2557,7 @@
         "operationId": "CreateScenario",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -2628,7 +2628,7 @@
             }
           },
           "404": {
-            "description": "No Application with the given appId exists in the caller's Organization,\n    or it no longer exists (deleted after this request started).",
+            "description": "No Application with the given applicationId exists in the caller's Organization,\n    or it no longer exists (deleted after this request started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2656,7 +2656,7 @@
         "operationId": "ListScenarios",
         "parameters": [
           {
-            "name": "appId",
+            "name": "applicationId",
             "in": "path",
             "required": true,
             "schema": {
@@ -3898,7 +3898,7 @@
             "format": "date-time"
           }
         },
-        "description": "A Run's identity, execution state and what it ran, as returned to the client. Never carries\n    the status update log -- LastSeq and Status are what tell a client whether it is worth polling List\n    Run Status Updates and when to stop. ApplicationId is included even under the nested\n    `/applications/{appId}/runs/{id}` route because the authoring create route\n    (`POST /scenarios/{id}/runs`) is flat and returns this same shape -- without it, a client\n    following an authoring Run would have no way to build its polling URLs."
+        "description": "A Run's identity, execution state and what it ran, as returned to the client. Never carries\n    the status update log -- LastSeq and Status are what tell a client whether it is worth polling List\n    Run Status Updates and when to stop. ApplicationId is included even under the nested\n    `/applications/{applicationId}/runs/{runId}` route because the authoring create route\n    (`POST /scenarios/{scenarioId}/runs`) is flat and returns this same shape -- without it, a client\n    following an authoring Run would have no way to build its polling URLs."
       },
       "RunScenarioSnapshotResponse": {
         "required": [

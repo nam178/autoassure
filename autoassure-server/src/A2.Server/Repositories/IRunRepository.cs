@@ -40,10 +40,6 @@ public interface IRunRepository
     /// doc says never carries one. Callers avoid both by only ever passing Completed, Cancelled or
     /// Abandoned, and a reason only alongside Abandoned.
     /// </exception>
-    /// <exception cref="Amazon.DynamoDBv2.Model.TransactionCanceledException">
-    /// The write transaction was cancelled for a reason other than the Run no longer being Running --
-    /// propagated as-is.
-    /// </exception>
     Task<bool> TryMarkAsEndedAsync(
         Guid organizationId,
         Guid applicationId,
@@ -86,10 +82,6 @@ public interface IRunRepository
     ///
     /// Returns false, and writes nothing, when this Seq was already appended, the Run's <c>LastSeq</c>
     /// has already moved past it, or its <c>Status</c> is not Running.</summary>
-    /// <exception cref="Amazon.DynamoDBv2.Model.TransactionCanceledException">
-    /// The write transaction was cancelled for a reason other than one of the three conditions above --
-    /// propagated as-is.
-    /// </exception>
     Task<bool> TryAppendStatusUpdateAsync(
         Guid organizationId,
         Guid applicationId,

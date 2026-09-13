@@ -16,12 +16,12 @@ public class PreconditionsController(
     IClock clock
 ) : ControllerBase
 {
-    /// <response code="404">No Application with the given appId exists in the caller's Organization.</response>
-    [HttpPost("applications/{appId:guid}/preconditions", Name = "CreatePrecondition")]
+    /// <response code="404">No Application with the given applicationId exists in the caller's Organization.</response>
+    [HttpPost("applications/{applicationId:guid}/preconditions", Name = "CreatePrecondition")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PreconditionResponse>> Create(
-        Guid appId,
+        Guid applicationId,
         CreatePreconditionRequest request
     )
     {
@@ -32,7 +32,7 @@ public class PreconditionsController(
         {
             Id = Guid.CreateVersion7(),
             OrganizationId = organizationId,
-            ApplicationId = appId,
+            ApplicationId = applicationId,
             Name = request.Name,
             ValueSource = request.ValueSource.ToModel(),
             ExampleValue = request.ExampleValue,
@@ -51,13 +51,13 @@ public class PreconditionsController(
         return Ok(precondition.ToResponse());
     }
 
-    [HttpGet("applications/{appId:guid}/preconditions", Name = "ListPreconditions")]
-    public async Task<ActionResult<IReadOnlyList<PreconditionResponse>>> List(Guid appId)
+    [HttpGet("applications/{applicationId:guid}/preconditions", Name = "ListPreconditions")]
+    public async Task<ActionResult<IReadOnlyList<PreconditionResponse>>> List(Guid applicationId)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
         var preconditions = await preconditionRepository.ListByApplicationAsync(
             organizationId,
-            appId
+            applicationId
         );
         return Ok(preconditions.Select(p => p.ToResponse()).ToList());
     }
