@@ -6,4 +6,5 @@ public static class Quota
 {
     public const int MaxActivityCountPerScenario = 90;
     public const int MaxScenariosPerRun = 96;
+    public const int MaxActivityCountPerRun = MaxActivityCountPerScenario * MaxScenariosPerRun;
 }

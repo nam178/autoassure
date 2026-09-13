@@ -1290,6 +1290,57 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
+    public async Task UpdateStats_WhenCountAtUpperBoundary_Succeeds()
+    {
+        // setup -- exactly Quota.MaxActivityCountPerRun, read from the constant so this boundary
+        // follows it rather than drifting.
+        var client = await CreateClientWithMembershipAsync();
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
+        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        await client.PostAsync($"/applications/{appId}/runs/{created.Id}/start", null);
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{appId}/runs/{created.Id}/stats",
+            new UpdateRunStatsRequest
+            {
+                TotalActivityCount = Quota.MaxActivityCountPerRun,
+                PassedActivityCount = Quota.MaxActivityCountPerRun,
+                FailedActivityCount = 0,
+                SkippedActivityCount = 0,
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateStats_WhenCountExceedsUpperBoundary_ReturnsBadRequest()
+    {
+        // setup -- one past Quota.MaxActivityCountPerRun, more activities than a Run can ever contain.
+        var client = await CreateClientWithMembershipAsync();
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
+        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        await client.PostAsync($"/applications/{appId}/runs/{created.Id}/start", null);
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{appId}/runs/{created.Id}/stats",
+            new UpdateRunStatsRequest
+            {
+                TotalActivityCount = Quota.MaxActivityCountPerRun + 1,
+                PassedActivityCount = 0,
+                FailedActivityCount = 0,
+                SkippedActivityCount = 0,
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task UpdateStats_WhenRunning_Succeeds()
     {
         // setup
