@@ -17,8 +17,6 @@ public static class RunRetentionPolicy
     /// and can no longer be found. Every part of the Run -- its identity, what it ran, and its status
     /// update log -- shares this exact value, computed once from when the Run was created, so they all
     /// expire together.</summary>
-    public static long ExpiresAt(RunTrigger trigger, DateTimeOffset createdAt) =>
-        (
-            createdAt + (trigger == RunTrigger.Authoring ? AuthoringRetention : DefaultRetention)
-        ).ToUnixTimeSeconds();
+    public static DateTimeOffset ExpiresAt(RunTrigger trigger, DateTimeOffset createdAt) =>
+        createdAt + (trigger == RunTrigger.Authoring ? AuthoringRetention : DefaultRetention);
 }

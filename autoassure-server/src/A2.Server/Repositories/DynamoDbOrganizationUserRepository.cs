@@ -32,6 +32,9 @@ public class DynamoDbOrganizationUserRepository(
                 {
                     [":userId"] = new(userId.ToString()),
                 },
+                // The index's range key, OrganizationId, is the Organization's own Guid.CreateVersion7()
+                // UUID, so descending order is newest first with no separate sort.
+                ScanIndexForward = false,
             }
         );
 

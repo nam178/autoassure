@@ -171,6 +171,9 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
                     ),
                 },
                 ConsistentRead = true,
+                // Id is the table's range key and a Guid.CreateVersion7() UUID, so descending order is
+                // newest first with no separate sort.
+                ScanIndexForward = false,
             }
         );
 
@@ -215,6 +218,9 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
                     [":partitionKey"] = new(partitionKey),
                 },
                 ConsistentRead = true,
+                // ScenarioId is the mapping table's range key and a Guid.CreateVersion7() UUID, so
+                // descending order is newest first with no separate sort.
+                ScanIndexForward = false,
             }
         );
 
@@ -252,7 +258,7 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
         );
 
         // BatchGetItem doesn't preserve request order, so re-sort to match the mapping Query's
-        // ScenarioId order (creation order) to honor this method's ordering guarantee.
+        // ScenarioId order (newest first) to honor this method's ordering guarantee.
         var scenariosById = batchResponse
             .Responses[ScenarioTableName]
             .ToDictionary(item => item["Id"].S);
@@ -293,7 +299,7 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
                     [":title"] = new(scenario.Title),
                     [":description"] = new(scenario.Description),
                     [":folder"] = new(scenario.Folder),
-                    [":tags"] = new AttributeValue
+                    [":tags"] = new()
                     {
                         L = scenario.Tags.Select(tag => new AttributeValue(tag)).ToList(),
                     },

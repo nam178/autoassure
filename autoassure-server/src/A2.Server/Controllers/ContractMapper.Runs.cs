@@ -18,52 +18,54 @@ namespace A2.Server.Controllers;
 /// <summary>Mapping between Run Contracts and domain Models.</summary>
 public static partial class ContractMapper
 {
-    /// <summary>Assembles a RunDetail (header plus Scenario snapshots) into the full response returned
-    /// by Create Run, Get Run and Start Run. Never carries the status update log -- see RunResponse's
-    /// doc.
+    /// <summary>Maps a whole Run to the response Create Run, Get Run and Start Run return. Never carries
+    /// the status update log -- see RunResponse's doc.
     ///
     /// <paramref name="maskSensitiveValues"/> defaults to true, masking every sensitive variable's value
-    /// (see <see cref="SensitiveValueMasker.Mask"/>) regardless of whether storage currently holds the
-    /// real value or an already-masked one -- masking an already-masked value is harmless. The only
-    /// caller that passes false is Start Run's success path: the winning claim gets the real values back
-    /// exactly once, from the pre-claim read it already made before <c>TryStartAsync</c> overwrote
-    /// storage with the masked snapshot.</summary>
-    public static RunResponse ToResponse(this RunDetail detail, bool maskSensitiveValues = true) =>
+    /// (see <see cref="SensitiveValueMasker.Mask"/>) whether or not it is already masked, which is
+    /// harmless. Start Run's success path is the only caller that passes false: the winning claim is the
+    /// one time real values are ever returned.</summary>
+    public static RunResponse ToResponse(this Run run, bool maskSensitiveValues = true) =>
         new()
         {
-            Id = detail.Header.Id,
-            ApplicationId = detail.Header.ApplicationId,
-            Trigger = detail.Header.Trigger.ToContract(),
-            Status = detail.Header.Status.ToContract(),
-            StatusReason = detail.Header.StatusReason?.ToContract(),
-            TotalActivityCount = detail.Header.TotalActivityCount,
-            PassedActivityCount = detail.Header.PassedActivityCount,
-            FailedActivityCount = detail.Header.FailedActivityCount,
-            SkippedActivityCount = detail.Header.SkippedActivityCount,
-            Environment = detail.Header.Environment.ToResponse(maskSensitiveValues),
-            Scenarios = detail.Scenarios.Select(s => s.ToResponse()).ToList(),
-            LastSeq = detail.Header.LastSeq,
-            TriggeredByUserId = detail.Header.TriggeredByUserId,
-            CreatedAt = detail.Header.CreatedAt,
-            StartedAt = detail.Header.StartedAt,
-            CompletedAt = detail.Header.CompletedAt,
+            Id = run.Id,
+            ApplicationId = run.ApplicationId,
+            Trigger = run.Trigger.ToContract(),
+            Status = run.Status.ToContract(),
+            StatusReason = run.StatusReason?.ToContract(),
+            TotalActivityCount = run.TotalActivityCount,
+            PassedActivityCount = run.PassedActivityCount,
+            FailedActivityCount = run.FailedActivityCount,
+            SkippedActivityCount = run.SkippedActivityCount,
+            Environment = run.Environment.ToResponse(maskSensitiveValues),
+            Scenarios = run.Scenarios.Select(s => s.ToResponse()).ToList(),
+            LastSeq = run.LastStatusUpdateSequenceNumber,
+            TriggeredByUserId = run.TriggeredByUserId,
+            CreatedAt = run.CreatedAt,
+            StartedAt = run.StartedAt,
+            CompletedAt = run.CompletedAt,
+            LastHeartbeatAt = run.LastHeartbeatAt,
         };
 
-    public static RunSummaryResponse ToResponse(this RunSummary summary) =>
+    public static RunSummaryResponse ToResponse(this RunInfo info) =>
         new()
         {
-            Id = summary.Id,
-            Trigger = summary.Trigger.ToContract(),
-            Status = summary.Status.ToContract(),
-            StatusReason = summary.StatusReason?.ToContract(),
-            TotalActivityCount = summary.TotalActivityCount,
-            PassedActivityCount = summary.PassedActivityCount,
-            FailedActivityCount = summary.FailedActivityCount,
-            SkippedActivityCount = summary.SkippedActivityCount,
-            CreatedAt = summary.CreatedAt,
-            StartedAt = summary.StartedAt,
-            CompletedAt = summary.CompletedAt,
+            Id = info.Id,
+            Trigger = info.Trigger.ToContract(),
+            Status = info.Status.ToContract(),
+            StatusReason = info.StatusReason?.ToContract(),
+            TotalActivityCount = info.TotalActivityCount,
+            PassedActivityCount = info.PassedActivityCount,
+            FailedActivityCount = info.FailedActivityCount,
+            SkippedActivityCount = info.SkippedActivityCount,
+            CreatedAt = info.CreatedAt,
+            StartedAt = info.StartedAt,
+            CompletedAt = info.CompletedAt,
+            LastHeartbeatAt = info.LastHeartbeatAt,
         };
+
+    public static RunningRunResponse ToResponse(this RunningRun runningRun) =>
+        new() { Id = runningRun.Id, StartedAt = runningRun.StartedAt };
 
     public static RunStatusUpdateResponse ToResponse(this RunStatusUpdate update) =>
         new()
@@ -74,7 +76,7 @@ public static partial class ContractMapper
             ActivityResult = update.ActivityResult?.ToResponse(),
         };
 
-    private static SnapshotSourceResponse ToResponse(this SnapshotSource source) =>
+    private static SnapshotSourceResponse ToResponse(this RunSnapshotSource source) =>
         new()
         {
             Id = source.Id,
@@ -189,9 +191,8 @@ public static partial class ContractMapper
             ScenarioId = result.ScenarioId,
             ActivityId = result.ActivityId,
             Status = result.Status.ToModel(),
-            ResolvedPreconditions =
-                result.ResolvedPreconditions ?? new Dictionary<string, string>(),
-            Evidence = result.Evidence ?? new Dictionary<string, string>(),
+            ResolvedPreconditions = result.ResolvedPreconditions ?? new Dictionary<Guid, string>(),
+            Evidence = result.Evidence ?? new Dictionary<Guid, string>(),
             ContinuationReasoning = result.ContinuationReasoning,
         };
 

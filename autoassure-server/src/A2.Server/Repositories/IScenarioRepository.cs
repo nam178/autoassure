@@ -28,17 +28,17 @@ public interface IScenarioRepository
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
     Task<Scenario?> GetByIdAsync(Guid organizationId, Guid id);
 
-    /// <summary>All Scenarios in this Application, no folder/tag filter. Ordering: creation order.</summary>
+    /// <summary>All Scenarios in this Application, no folder/tag filter. Ordering: newest first.</summary>
     Task<IReadOnlyList<Scenario>> ListByApplicationAsync(Guid organizationId, Guid applicationId);
 
-    /// <summary>Scenarios currently in this folder. Strongly consistent. Ordering: creation order.</summary>
+    /// <summary>Scenarios currently in this folder. Strongly consistent. Ordering: newest first.</summary>
     Task<IReadOnlyList<Scenario>> ListByFolderAsync(
         Guid organizationId,
         Guid applicationId,
         string folder
     );
 
-    /// <summary>Scenarios currently carrying this tag. Strongly consistent. Ordering: creation order.</summary>
+    /// <summary>Scenarios currently carrying this tag. Strongly consistent. Ordering: newest first.</summary>
     Task<IReadOnlyList<Scenario>> ListByTagAsync(
         Guid organizationId,
         Guid applicationId,

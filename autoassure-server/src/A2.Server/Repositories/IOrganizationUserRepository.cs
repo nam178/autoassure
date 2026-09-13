@@ -10,6 +10,6 @@ public interface IOrganizationUserRepository
     Task SaveAsync(OrganizationUser membership);
 
     /// <summary>All Organizations this User belongs to. Ordering: by the Organization's creation
-    /// time, not the order the memberships were created.</summary>
+    /// time, newest first -- not the order the memberships were created.</summary>
     Task<IReadOnlyList<OrganizationUser>> ListByUserAsync(Guid userId);
 }

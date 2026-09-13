@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using A2.Server.Common;
 using A2.Server.Contracts;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
@@ -54,6 +55,7 @@ public sealed class RunsControllerTests
                             ["DynamoDb:ScenariosByTagTableName"] = "ScenariosByTag",
                             ["DynamoDb:ActivityTableName"] = "Activities",
                             ["DynamoDb:RunTableName"] = "Runs",
+                            ["DynamoDb:RunningRunTableName"] = "RunningRuns",
                             ["DynamoDb:OrganizationTableName"] = "Organizations",
                             ["DynamoDb:OrganizationUserTableName"] = "OrganizationUsers",
                         }
@@ -225,8 +227,6 @@ public sealed class RunsControllerTests
                     new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
                     new AttributeDefinition("RowKey", ScalarAttributeType.S),
                     new AttributeDefinition("HeaderId", ScalarAttributeType.S),
-                    new AttributeDefinition("InFlightShard", ScalarAttributeType.S),
-                    new AttributeDefinition("LastHeartbeatAt", ScalarAttributeType.S),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -254,19 +254,28 @@ public sealed class RunsControllerTests
                                 "CreatedAt",
                                 "StartedAt",
                                 "CompletedAt",
+                                "LastHeartbeatAt",
                             ],
                         },
                     },
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "InFlightIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement("InFlightShard", KeyType.HASH),
-                            new KeySchemaElement("LastHeartbeatAt", KeyType.RANGE),
-                        ],
-                        Projection = new Projection { ProjectionType = ProjectionType.KEYS_ONLY },
-                    },
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+            }
+        );
+
+        await _client.CreateTableAsync(
+            new CreateTableRequest
+            {
+                TableName = "RunningRuns",
+                KeySchema =
+                [
+                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement("RunId", KeyType.RANGE),
+                ],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition("RunId", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -385,6 +394,7 @@ public sealed class RunsControllerTests
                 "ScenariosByTag",
                 "Activities",
                 "Runs",
+                "RunningRuns",
                 "Organizations",
                 "OrganizationUsers",
             }
@@ -798,6 +808,45 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
+    public async Task ListRunning_WhenRunIsRunning_ReturnsIt()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
+        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        var startResponse = await client.PostAsync(
+            $"/applications/{appId}/runs/{created.Id}/start",
+            null
+        );
+        var started = await startResponse.Content.ReadFromJsonAsync<RunResponse>();
+
+        // test
+        var listResponse = await client.GetAsync($"/applications/{appId}/runs/running");
+
+        // verify
+        var running = await listResponse.Content.ReadFromJsonAsync<List<RunningRunResponse>>();
+        var runningRun = Assert.Single(running!);
+        Assert.Equal(created.Id, runningRun.Id);
+        Assert.Equal(started!.StartedAt, runningRun.StartedAt);
+    }
+
+    [Fact]
+    public async Task ListRunning_WhenNoRunIsRunning_ReturnsEmpty()
+    {
+        // setup -- a Run exists but was never started, so it never has a RunningRuns row.
+        var client = await CreateClientWithMembershipAsync();
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
+        await CreateRunAsync(client, appId, [scenarioId], environmentId);
+
+        // test
+        var listResponse = await client.GetAsync($"/applications/{appId}/runs/running");
+
+        // verify
+        var running = await listResponse.Content.ReadFromJsonAsync<List<RunningRunResponse>>();
+        Assert.Empty(running!);
+    }
+
+    [Fact]
     public async Task Start_WhenPending_ReturnsRunningRunWithOkStatus()
     {
         // setup
@@ -816,6 +865,7 @@ public sealed class RunsControllerTests
         var started = await startResponse.Content.ReadFromJsonAsync<RunResponse>();
         Assert.Equal(RunStatus.Running, started!.Status);
         Assert.NotNull(started.StartedAt);
+        Assert.NotNull(started.LastHeartbeatAt);
         var fetched = await (
             await client.GetAsync($"/applications/{appId}/runs/{created.Id}")
         ).Content.ReadFromJsonAsync<RunResponse>();
@@ -1070,6 +1120,7 @@ public sealed class RunsControllerTests
                 "createdAt",
                 "startedAt",
                 "completedAt",
+                "lastHeartbeatAt",
             },
             topLevelPropertyNames
         );
@@ -1103,13 +1154,14 @@ public sealed class RunsControllerTests
     [Fact]
     public async Task Create_WhenScenarioIdsCountAtUpperBoundary_Succeeds()
     {
-        // setup -- Quota.MaxScenariosPerRun is 97; every id must reference a real Scenario belonging to
-        // this Application for the request to pass validation and actually succeed.
+        // setup -- exactly Quota.MaxScenariosPerRun ids, read from the constant so this boundary follows
+        // it rather than drifting. Every id must reference a real Scenario belonging to this Application
+        // for the request to pass validation and actually succeed.
         var client = await CreateClientWithMembershipAsync();
         var appId = await CreateApplicationAsync(client);
         var environmentId = await CreateEnvironmentAsync(client, appId);
         var scenarioIds = new List<Guid>();
-        for (var i = 0; i < 97; i++)
+        for (var i = 0; i < Quota.MaxScenariosPerRun; i++)
         {
             scenarioIds.Add(await CreateScenarioAsync(client, appId, $"Scenario {i}"));
         }
@@ -1127,12 +1179,15 @@ public sealed class RunsControllerTests
     [Fact]
     public async Task Create_WhenScenarioIdsCountExceedsUpperBoundary_ReturnsBadRequest()
     {
-        // setup -- 98 exceeds Quota.MaxScenariosPerRun (97), so [MaxLength] rejects this before any id is
-        // looked up -- the ids need not reference real Scenarios.
+        // setup -- one past Quota.MaxScenariosPerRun, so [MaxLength] rejects this before any id is looked
+        // up -- the ids need not reference real Scenarios.
         var client = await CreateClientWithMembershipAsync();
         var appId = await CreateApplicationAsync(client);
         var environmentId = await CreateEnvironmentAsync(client, appId);
-        var scenarioIds = Enumerable.Range(0, 98).Select(_ => Guid.CreateVersion7()).ToList();
+        var scenarioIds = Enumerable
+            .Range(0, Quota.MaxScenariosPerRun + 1)
+            .Select(_ => Guid.CreateVersion7())
+            .ToList();
 
         // test
         var response = await client.PostAsJsonAsync(
@@ -1371,6 +1426,18 @@ public sealed class RunsControllerTests
         var response = await _factory
             .CreateClient()
             .GetAsync($"/applications/{Guid.CreateVersion7()}/runs");
+
+        // verify
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ListRunning_WhenNoAccessToken_ReturnsUnauthorized()
+    {
+        // test
+        var response = await _factory
+            .CreateClient()
+            .GetAsync($"/applications/{Guid.CreateVersion7()}/runs/running");
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

@@ -84,6 +84,7 @@ public class RunsController(
                     )
                 );
             }
+
             scenarios.Add(scenario);
         }
 
@@ -108,6 +109,16 @@ public class RunsController(
         return Ok(runs.Select(r => r.ToResponse()).ToList());
     }
 
+    /// <summary>Lists the Runs currently Running for this Application, strongly consistent -- a Run that
+    /// just started is never briefly missing from this result, unlike <see cref="List"/>.</summary>
+    [HttpGet("applications/{appId:guid}/runs/running", Name = "ListRunningRuns")]
+    public async Task<ActionResult<IReadOnlyList<RunningRunResponse>>> ListRunning(Guid appId)
+    {
+        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
+        var runs = await runRepository.ListRunningByApplicationAsync(organizationId, appId);
+        return Ok(runs.Select(r => r.ToResponse()).ToList());
+    }
+
     /// <response code="404">No Run with the given id exists in this Application, in the caller's
     /// Organization.</response>
     [HttpGet("applications/{appId:guid}/runs/{id:guid}", Name = "GetRunById")]
@@ -116,14 +127,14 @@ public class RunsController(
     public async Task<ActionResult<RunResponse>> GetById(Guid appId, Guid id)
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var detail = await runRepository.GetByIdAsync(organizationId, appId, id);
-        return detail is null ? NotFound() : Ok(detail.ToResponse());
+        var run = await runRepository.GetByIdAsync(organizationId, appId, id);
+        return run is null ? NotFound() : Ok(run.ToResponse());
     }
 
     /// <summary>Claims a Pending Run for execution and returns it, unmasked, to the winning caller only
     /// -- the one time in this API's life a sensitive Environment variable's real value is ever returned.
     /// Every other response (Create Run, Get Run) always masks sensitive values regardless of what
-    /// storage currently holds; see <see cref="ContractMapper.ToResponse(RunDetail, bool)"/>.</summary>
+    /// storage currently holds; see <see cref="ContractMapper.ToResponse(Run, bool)"/>.</summary>
     /// <response code="404">No Run with the given id exists in this Application, in the caller's
     /// Organization.</response>
     /// <response code="409">The Run's Status is not Pending.</response>
@@ -133,21 +144,24 @@ public class RunsController(
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<RunResponse>> Start(Guid appId, Guid id)
     {
+        // TODO:  UpdateHeartbeat, UpdateStats, and End all call the full GetByIdAsync purely as
+        //                               an existence check before a narrow, already-conditioned write, on the hottest
+        //                               write path.
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
 
-        // A Run's own existence is checked with a Get first, since TryStartAsync's condition alone
+        // A Run's own existence is checked with a Get first, since TryMarkAsStartedAsync's condition alone
         // cannot tell "does not exist" apart from "exists but is not Pending" -- both fail the same way.
-        // This read happens before TryStartAsync's write below, so detail.Header.Environment still holds
-        // the real (unmasked) values -- TryStartAsync has not yet overwritten storage with the masked
+        // This read happens before TryMarkAsStartedAsync's write below, so run.Environment still holds the
+        // real (unmasked) values -- TryMarkAsStartedAsync has not yet overwritten storage with the masked
         // snapshot computed from it.
-        var detail = await runRepository.GetByIdAsync(organizationId, appId, id);
-        if (detail is null)
+        var run = await runRepository.GetByIdAsync(organizationId, appId, id);
+        if (run is null)
         {
             return NotFound();
         }
 
-        var maskedEnvironment = detail.Header.Environment.Masked();
-        var started = await runRepository.TryStartAsync(
+        var maskedEnvironment = run.Environment.Masked();
+        var started = await runRepository.TryMarkAsStartedAsync(
             organizationId,
             appId,
             id,
@@ -159,23 +173,18 @@ public class RunsController(
             return Conflict(new ErrorResponse("The Run's Status is not Pending."));
         }
 
-        // When the claim wins, Then this applies exactly the values TryStartAsync reports it wrote, so
+        // When the claim wins, Then this applies exactly the values TryMarkAsStartedAsync reports it wrote, so
         // the response reflects what was actually persisted instead of a second, independent derivation
-        // that could drift from the repository's own. Environment stays the original unmasked value from
-        // detail.Header.Environment, not the masked one just written to storage, since this response is
-        // the winning caller's one chance to get the real values back.
-        var startedHeader = detail.Header with
+        // that could drift from the repository's own. Environment is deliberately left as the original
+        // unmasked snapshot, not the masked one just written to storage, since this response is the
+        // winning caller's one chance to get the real values back.
+        var startedRun = run with
         {
             Status = ModelRunStatus.Running,
             StartedAt = started.StartedAt,
             LastHeartbeatAt = started.LastHeartbeatAt,
-            DeadlineAt = started.DeadlineAt,
         };
-        return Ok(
-            new RunDetail { Header = startedHeader, Scenarios = detail.Scenarios }.ToResponse(
-                maskSensitiveValues: false
-            )
-        );
+        return Ok(startedRun.ToResponse(maskSensitiveValues: false));
     }
 
     /// <response code="400">TerminalStatus is Pending or Running, or StatusReason is set while
@@ -217,7 +226,7 @@ public class RunsController(
             return NotFound();
         }
 
-        var ended = await runRepository.TryEndAsync(
+        var ended = await runRepository.TryMarkAsEndedAsync(
             organizationId,
             appId,
             id,
@@ -245,7 +254,12 @@ public class RunsController(
             return NotFound();
         }
 
-        var beat = await runRepository.TryHeartbeatAsync(organizationId, appId, id, clock.UtcNow);
+        var beat = await runRepository.TryUpdateAsync(
+            organizationId,
+            appId,
+            id,
+            new RunUpdatableFields { HeartbeatAt = clock.UtcNow }
+        );
         return beat ? NoContent() : Conflict(new ErrorResponse("The Run's Status is not Running."));
     }
 
@@ -264,14 +278,17 @@ public class RunsController(
             return NotFound();
         }
 
-        var updated = await runRepository.TryUpdateStatsAsync(
+        var updated = await runRepository.TryUpdateAsync(
             organizationId,
             appId,
             id,
-            request.TotalActivityCount,
-            request.PassedActivityCount,
-            request.FailedActivityCount,
-            request.SkippedActivityCount
+            new RunUpdatableFields
+            {
+                TotalActivityCount = request.TotalActivityCount,
+                PassedActivityCount = request.PassedActivityCount,
+                FailedActivityCount = request.FailedActivityCount,
+                SkippedActivityCount = request.SkippedActivityCount,
+            }
         );
         return updated
             ? NoContent()
@@ -312,19 +329,18 @@ public class RunsController(
             OrganizationId = organizationId,
             ApplicationId = applicationId,
             Trigger = trigger,
+            Environment = environmentSnapshot,
+            Scenarios = scenarioSnapshots,
             Status = ModelRunStatus.Pending,
             TotalActivityCount = scenarioSnapshots.Sum(s => s.Activities.Count),
-            Environment = environmentSnapshot,
             TriggeredByUserId = triggeredByUserId,
             CreatedAt = clock.UtcNow,
         };
 
-        var result = await runRepository.TryCreateAsync(run, scenarioSnapshots);
+        var result = await runRepository.TryCreateAsync(run);
         return result switch
         {
-            RunCreateResult.Success => new OkObjectResult(
-                new RunDetail { Header = run, Scenarios = scenarioSnapshots }.ToResponse()
-            ),
+            RunCreateResult.Success => new OkObjectResult(run.ToResponse()),
             RunCreateResult.ApplicationNotFound => new NotFoundResult(),
             RunCreateResult.EnvironmentNotFound => new BadRequestObjectResult(
                 new ErrorResponse(

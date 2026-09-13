@@ -15,10 +15,10 @@ public record ActivityResult
     public required ActivityResultStatus Status { get; init; }
 
     [MaxLength(50)]
-    public IReadOnlyDictionary<string, string>? ResolvedPreconditions { get; init; }
+    public IReadOnlyDictionary<Guid, string>? ResolvedPreconditions { get; init; }
 
     [MaxLength(50)]
-    public IReadOnlyDictionary<string, string>? Evidence { get; init; }
+    public IReadOnlyDictionary<Guid, string>? Evidence { get; init; }
 
     /// <summary>Why this Activity was chosen for execution despite an earlier Activity failing.</summary>
     [MaxLength(2000)]

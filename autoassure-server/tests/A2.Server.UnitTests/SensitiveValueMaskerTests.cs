@@ -39,7 +39,7 @@ public sealed class SensitiveValueMaskerTests
             "abcdefg",
             "abcdefgh",
             "a-very-long-value-that-is-much-longer-than-the-others-here",
-            new string('x', 500),
+            new('x', 500),
         ];
 
         // test

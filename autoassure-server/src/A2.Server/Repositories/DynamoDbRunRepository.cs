@@ -11,29 +11,26 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
     : IRunRepository
 {
     private string RunTableName => options.Value.RunTableName;
+    private string RunningRunTableName => options.Value.RunningRunTableName;
     private string ApplicationTableName => options.Value.ApplicationTableName;
     private string EnvironmentTableName => options.Value.EnvironmentTableName;
 
-    public async Task<RunCreateResult> TryCreateAsync(
-        Run run,
-        IReadOnlyList<RunScenarioSnapshot> scenarios
-    )
+    public async Task<RunCreateResult> TryCreateAsync(Run run)
     {
-        // DynamoDB's TransactWriteItems caps a transaction at 100 items and 4 MB. The Application
-        // check, the Environment check and the header Put already spend 3 of those items, leaving
-        // Quota.MaxScenariosPerRun for Scenario rows -- see its doc for the exact number.
-        if (scenarios.Count > Quota.MaxScenariosPerRun)
+        // Due to number DynamoDB transaction limits, we cannot serve more than this number of scenarios.
+        if (run.Scenarios.Count > Quota.MaxScenariosPerRun)
         {
             throw new ArgumentException(
                 $"A Run cannot hold more than {Quota.MaxScenariosPerRun} Scenario snapshots -- "
                     + "DynamoDB's TransactWriteItems caps a single transaction at 100 items.",
-                nameof(scenarios)
+                nameof(run)
             );
         }
 
-        // Every row of this Run -- the header and every Scenario snapshot -- carries the same
-        // ExpiresAt, computed once here rather than trusted from the caller, so the 7-day/3-year
-        // retention numbers stay in the one place RunRetentionPolicy puts them.
+        // TODO: why expiresAt calculated here?
+        // Every row of this Run -- the header, the Environment snapshot and every Scenario snapshot --
+        // carries the same ExpiresAt, computed once here rather than trusted from the caller, so the
+        // 7-day/3-year retention numbers stay in the one place RunRetentionPolicy puts them.
         var expiresAt = RunRetentionPolicy.ExpiresAt(run.Trigger, run.CreatedAt);
         var effectiveRun = run with { ExpiresAt = expiresAt };
 
@@ -45,7 +42,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 run.ApplicationId,
                 run.Environment.Source.Id
             ),
-            new TransactWriteItem
+            new()
             {
                 Put = new Put
                 {
@@ -53,13 +50,27 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     Item = effectiveRun.ToDynamoDbRow(),
                     // A create can never overwrite -- this is the only condition that guards the
                     // header, and since the whole transaction is atomic, it also protects every
-                    // Scenario row below from being written alongside a duplicate header.
+                    // Environment and Scenario row below from being written alongside a duplicate
+                    // header.
                     ConditionExpression = "attribute_not_exists(RowKey)",
+                },
+            },
+            new()
+            {
+                Put = new Put
+                {
+                    TableName = RunTableName,
+                    Item = run.Environment.ToDynamoDbRow(
+                        run.Id,
+                        run.OrganizationId,
+                        run.ApplicationId,
+                        expiresAt
+                    ),
                 },
             },
         };
         transactItems.AddRange(
-            scenarios.Select(scenario => new TransactWriteItem
+            run.Scenarios.Select(scenario => new TransactWriteItem
             {
                 Put = new Put
                 {
@@ -77,8 +88,10 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         // When TransactWriteItemsAsync is cancelled due to the Application check (index 0) failing,
         // Then return ApplicationNotFound. When it's the Environment check (index 1), Then return
         // EnvironmentNotFound. When it's the header Put (index 2), Then a Run with this Id already
-        // exists -- return AlreadyExists. Any other cancellation reason (throttling, conflict, etc.)
-        // is unexpected and MUST propagate instead of being reported as a business result.
+        // exists -- return AlreadyExists. Index 3, the Environment row Put, carries no condition of its
+        // own, so it never cancels on its own account. Any other cancellation reason (throttling,
+        // conflict, etc.) is unexpected and MUST propagate instead of being reported as a business
+        // result.
         try
         {
             await client.TransactWriteItemsAsync(
@@ -87,7 +100,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             return RunCreateResult.Success;
         }
         catch (TransactionCanceledException ex)
-            when (ex.CancellationReasons is { Count: >= 3 } reasons)
+            when (ex.CancellationReasons is { Count: >= 4 } reasons)
         {
             if (reasons[0].Code == "ConditionalCheckFailed")
             {
@@ -108,13 +121,10 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
     }
 
-    public async Task<RunDetail?> GetByIdAsync(Guid organizationId, Guid applicationId, Guid id)
+    public async Task<Run?> GetByIdAsync(Guid organizationId, Guid applicationId, Guid runId)
     {
-        var headerRowKey = DynamoDbMapper.RunHeaderRowKey(id);
-
-        // BETWEEN the header key and the status-update prefix reads the header and every Scenario
-        // snapshot row in one Query, while never touching a status update row -- see
-        // RunStatusUpdateRowKeyPrefix's doc for why that boundary is safe to rely on.
+        var headerRowKey = DynamoDbMapper.RunHeaderRowKey(runId);
+        var environmentRowKey = DynamoDbMapper.RunEnvironmentRowKey(runId);
         var rows = await QueryAllPagesAsync(
             new QueryRequest
             {
@@ -126,8 +136,12 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     [":partitionKey"] = new(
                         DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
                     ),
+                    // TODO: are we assume that the run header, environments and  scenarios row appear
+                    // before the status update row.
+                    // It's a big assumptions.
+                    // How can we GUARANTEE that?
                     [":low"] = new(headerRowKey),
-                    [":high"] = new(DynamoDbMapper.RunStatusUpdateRowKeyPrefix(id)),
+                    [":high"] = new(DynamoDbMapper.RunStatusUpdateRowKeyPrefix(runId)),
                 },
                 ConsistentRead = true,
             }
@@ -139,13 +153,16 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             return null;
         }
 
-        var header = headerRow.ToRun();
-        if (IsExpired(header.ExpiresAt))
+        var environmentRow = rows.Find(row => row["RowKey"].S == environmentRowKey);
+
+        if (environmentRow is null)
         {
             return null;
         }
 
-        var scenarios = rows.Where(row => row["RowKey"].S != headerRowKey)
+        var scenarios = rows.Where(row =>
+                row["RowKey"].S != headerRowKey && row["RowKey"].S != environmentRowKey
+            )
             .Select(row => row.ToRunScenarioSnapshot())
             .ToList();
 
@@ -157,10 +174,11 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             return null;
         }
 
-        return new RunDetail { Header = header, Scenarios = scenarios };
+        var run = headerRow.ToRun(environmentRow.ToRunEnvironmentSnapshot(), scenarios);
+        return IsExpired(run.ExpiresAt) ? null : run;
     }
 
-    public async Task<IReadOnlyList<RunSummary>> ListByApplicationAsync(
+    public async Task<IReadOnlyList<RunInfo>> ListByApplicationAsync(
         Guid organizationId,
         Guid applicationId
     )
@@ -189,9 +207,9 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     ),
                     [":authoring"] = new(RunTrigger.Authoring.ToString()),
                 },
-                // The index's range key, HeaderId, is the Run's own UUIDv7 id, so ascending order (the
-                // default, set explicitly here) is creation order with no separate sort.
-                ScanIndexForward = true,
+                // The index's range key, HeaderId, is the Run's own UUIDv7 id, so descending order is
+                // newest-first with no separate sort.
+                ScanIndexForward = false,
             }
         );
 
@@ -199,14 +217,14 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         // does project Trigger and CreatedAt, and TryCreateAsync always derives a header's ExpiresAt
         // from exactly those two values via RunRetentionPolicy, so recomputing it here reproduces the
         // stored value without needing it projected.
-        return rows.Select(row => row.ToRunSummary())
+        return rows.Select(row => row.ToRunInfo())
             .Where(summary =>
                 !IsExpired(RunRetentionPolicy.ExpiresAt(summary.Trigger, summary.CreatedAt))
             )
             .ToList();
     }
 
-    public async Task<RunStartResult?> TryStartAsync(
+    public async Task<RunStartResult?> TryMarkAsStartedAsync(
         Guid organizationId,
         Guid applicationId,
         Guid id,
@@ -214,30 +232,16 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         RunEnvironmentSnapshot maskedEnvironment
     )
     {
-        // When a Run is claimed, Then its DeadlineAt is fixed from this same instant so the sweeper
-        // (task 8) always compares against the moment the worker actually started, not against a
-        // separately-read clock.
-        var deadlineAt = startedAt + RunExecutionPolicy.MaxRunDuration;
-
-        try
+        var transactItems = new List<TransactWriteItem>
         {
-            await client.UpdateItemAsync(
-                new UpdateItemRequest
+            new()
+            {
+                Update = new Update
                 {
                     TableName = RunTableName,
                     Key = HeaderKey(organizationId, applicationId, id),
-                    // Overwriting Environment with the caller's already-masked snapshot here, atomically
-                    // with the Pending->Running transition, is what wipes the real sensitive values
-                    // captured at create time out of storage the instant the Run is claimed -- see this
-                    // method's doc on IRunRepository.
                     UpdateExpression =
-                        "SET #status = :running, StartedAt = :startedAt, DeadlineAt = :deadlineAt, "
-                        + "LastHeartbeatAt = :startedAt, InFlightShard = :shard, "
-                        + "Environment = :maskedEnvironment",
-                    // Status is the only concurrency control (see fix_run_design.md section 5) -- this
-                    // is what lets exactly one of several racing claims win, and it doubles as an
-                    // existence check: a Run that does not exist has no Status attribute at all, so the
-                    // comparison fails the same way.
+                        "SET #status = :running, StartedAt = :startedAt, LastHeartbeatAt = :startedAt",
                     ConditionExpression = "#status = :pending",
                     ExpressionAttributeNames = new Dictionary<string, string>
                     {
@@ -245,29 +249,55 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     },
                     ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                     {
-                        [":running"] = new(RunStatus.Running.ToString()),
-                        [":pending"] = new(RunStatus.Pending.ToString()),
+                        [":running"] = new(nameof(RunStatus.Running)),
+                        [":pending"] = new(nameof(RunStatus.Pending)),
                         [":startedAt"] = new(startedAt.ToString("O")),
-                        [":deadlineAt"] = new(deadlineAt.ToString("O")),
-                        [":shard"] = new(DynamoDbMapper.RunInFlightShard(id)),
-                        [":maskedEnvironment"] = maskedEnvironment.ToAttributeValue(),
                     },
-                }
-            );
-            return new RunStartResult
+                },
+            },
+            new()
             {
-                StartedAt = startedAt,
-                LastHeartbeatAt = startedAt,
-                DeadlineAt = deadlineAt,
-            };
+                Update = new Update
+                {
+                    TableName = RunTableName,
+                    Key = EnvironmentRowKey(organizationId, applicationId, id),
+                    UpdateExpression = "SET Variables = :variables",
+                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    {
+                        [":variables"] = maskedEnvironment.ToVariablesAttributeValue(),
+                    },
+                },
+            },
+            new()
+            {
+                Put = new Put
+                {
+                    TableName = RunningRunTableName,
+                    Item = new RunningRun { Id = id, StartedAt = startedAt }.ToDynamoDbRow(
+                        organizationId,
+                        applicationId
+                    ),
+                },
+            },
+        };
+
+        try
+        {
+            await client.TransactWriteItemsAsync(
+                new TransactWriteItemsRequest { TransactItems = transactItems }
+            );
+            return new RunStartResult { StartedAt = startedAt, LastHeartbeatAt = startedAt };
         }
-        catch (ConditionalCheckFailedException)
+        catch (TransactionCanceledException ex)
+            when (ex.CancellationReasons is { Count: > 0 } reasons
+                && reasons[0].Code == "ConditionalCheckFailed"
+            )
         {
             return null;
         }
     }
 
-    public async Task<bool> TryEndAsync(
+    public async Task<bool> TryMarkAsEndedAsync(
         Guid organizationId,
         Guid applicationId,
         Guid id,
@@ -299,9 +329,9 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             );
         }
 
-        // When the sweeper calls End Run, Then it adds LastHeartbeatAt < heartbeatCutoff on top of the
-        // Status = Running condition every caller shares, so a worker that beat again after the sweeper
-        // read it as stale keeps its Run.
+        // A caller ending a Run whose heartbeat it already read as stale adds LastHeartbeatAt < cutoff on
+        // top of the Status = Running condition every caller shares, so a worker that beat again after
+        // that read keeps its Run.
         var conditionExpression = "#status = :running";
         var attributeValues = new Dictionary<string, AttributeValue>
         {
@@ -315,16 +345,123 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             attributeValues[":cutoff"] = new(cutoff.ToString("O"));
         }
 
-        // Removing InFlightShard on every terminal transition is what drops a finished Run out of the
-        // sweeper's sparse InFlightIndex, whichever of the three callers ended it.
-        var updateExpression =
-            "SET #status = :terminal, CompletedAt = :completedAt REMOVE InFlightShard";
+        var updateExpression = "SET #status = :terminal, CompletedAt = :completedAt";
         if (statusReason is { } reason)
         {
             updateExpression =
-                "SET #status = :terminal, StatusReason = :reason, CompletedAt = :completedAt "
-                + "REMOVE InFlightShard";
+                "SET #status = :terminal, StatusReason = :reason, CompletedAt = :completedAt";
             attributeValues[":reason"] = new(reason.ToString());
+        }
+
+        // Two items, one transaction: the header item carries every condition above, and deleting the
+        // RunningRuns row rides along with no condition of its own -- if the header's condition fails,
+        // the whole transaction cancels and the row is left in place. Deleting it in the same
+        // transaction, rather than as a separate write, is what keeps it from ever drifting out of sync
+        // with the header's own Status, whichever of the three callers ended the Run.
+        var transactItems = new List<TransactWriteItem>
+        {
+            new()
+            {
+                Update = new Update
+                {
+                    TableName = RunTableName,
+                    Key = HeaderKey(organizationId, applicationId, id),
+                    UpdateExpression = updateExpression,
+                    ConditionExpression = conditionExpression,
+                    ExpressionAttributeNames = new Dictionary<string, string>
+                    {
+                        ["#status"] = "Status",
+                    },
+                    ExpressionAttributeValues = attributeValues,
+                },
+            },
+            new()
+            {
+                Delete = new Delete
+                {
+                    TableName = RunningRunTableName,
+                    Key = RunningRunKey(organizationId, applicationId, id),
+                },
+            },
+        };
+
+        try
+        {
+            await client.TransactWriteItemsAsync(
+                new TransactWriteItemsRequest { TransactItems = transactItems }
+            );
+            return true;
+        }
+        catch (TransactionCanceledException ex)
+            when (ex.CancellationReasons is { Count: > 0 } reasons
+                && reasons[0].Code == "ConditionalCheckFailed"
+            )
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> TryUpdateAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid id,
+        RunUpdatableFields fields
+    )
+    {
+        var setClauses = new List<string>();
+        var attributeValues = new Dictionary<string, AttributeValue>
+        {
+            [":running"] = new(RunStatus.Running.ToString()),
+        };
+
+        if (fields.HeartbeatAt is { } heartbeatAt)
+        {
+            setClauses.Add("LastHeartbeatAt = :heartbeatAt");
+            attributeValues[":heartbeatAt"] = new(heartbeatAt.ToString("O"));
+        }
+
+        if (fields.TotalActivityCount is { } total)
+        {
+            setClauses.Add("TotalActivityCount = :total");
+            attributeValues[":total"] = new AttributeValue
+            {
+                N = total.ToString(CultureInfo.InvariantCulture),
+            };
+        }
+
+        if (fields.PassedActivityCount is { } passed)
+        {
+            setClauses.Add("PassedActivityCount = :passed");
+            attributeValues[":passed"] = new AttributeValue
+            {
+                N = passed.ToString(CultureInfo.InvariantCulture),
+            };
+        }
+
+        if (fields.FailedActivityCount is { } failed)
+        {
+            setClauses.Add("FailedActivityCount = :failed");
+            attributeValues[":failed"] = new AttributeValue
+            {
+                N = failed.ToString(CultureInfo.InvariantCulture),
+            };
+        }
+
+        if (fields.SkippedActivityCount is { } skipped)
+        {
+            setClauses.Add("SkippedActivityCount = :skipped");
+            attributeValues[":skipped"] = new AttributeValue
+            {
+                N = skipped.ToString(CultureInfo.InvariantCulture),
+            };
+        }
+
+        if (setClauses.Count == 0)
+        {
+            throw new ArgumentException(
+                "At least one field on RunUpdatableFields must be set.",
+                nameof(fields)
+            );
         }
 
         try
@@ -334,8 +471,11 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 {
                     TableName = RunTableName,
                     Key = HeaderKey(organizationId, applicationId, id),
-                    UpdateExpression = updateExpression,
-                    ConditionExpression = conditionExpression,
+                    UpdateExpression = "SET " + string.Join(", ", setClauses),
+                    // When the Run was cancelled or already swept, Then Status is no longer Running and
+                    // this condition fails -- a heartbeating worker finds out on its very next beat with
+                    // no separate signalling channel (see fix_run_design.md section 5).
+                    ConditionExpression = "#status = :running",
                     ExpressionAttributeNames = new Dictionary<string, string>
                     {
                         ["#status"] = "Status",
@@ -351,192 +491,30 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
     }
 
-    public async Task<bool> TryUpdateStatsAsync(
+    public async Task<IReadOnlyList<RunningRun>> ListRunningByApplicationAsync(
         Guid organizationId,
-        Guid applicationId,
-        Guid id,
-        int totalActivityCount,
-        int passedActivityCount,
-        int failedActivityCount,
-        int skippedActivityCount
+        Guid applicationId
     )
     {
-        try
-        {
-            await client.UpdateItemAsync(
-                new UpdateItemRequest
-                {
-                    TableName = RunTableName,
-                    Key = HeaderKey(organizationId, applicationId, id),
-                    UpdateExpression =
-                        "SET TotalActivityCount = :total, PassedActivityCount = :passed, "
-                        + "FailedActivityCount = :failed, SkippedActivityCount = :skipped",
-                    ConditionExpression = "#status = :running",
-                    ExpressionAttributeNames = new Dictionary<string, string>
-                    {
-                        ["#status"] = "Status",
-                    },
-                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
-                    {
-                        [":total"] = new AttributeValue
-                        {
-                            N = totalActivityCount.ToString(CultureInfo.InvariantCulture),
-                        },
-                        [":passed"] = new AttributeValue
-                        {
-                            N = passedActivityCount.ToString(CultureInfo.InvariantCulture),
-                        },
-                        [":failed"] = new AttributeValue
-                        {
-                            N = failedActivityCount.ToString(CultureInfo.InvariantCulture),
-                        },
-                        [":skipped"] = new AttributeValue
-                        {
-                            N = skippedActivityCount.ToString(CultureInfo.InvariantCulture),
-                        },
-                        [":running"] = new(RunStatus.Running.ToString()),
-                    },
-                }
-            );
-            return true;
-        }
-        catch (ConditionalCheckFailedException)
-        {
-            return false;
-        }
-    }
-
-    public async Task<bool> TryHeartbeatAsync(
-        Guid organizationId,
-        Guid applicationId,
-        Guid id,
-        DateTimeOffset heartbeatAt
-    )
-    {
-        try
-        {
-            await client.UpdateItemAsync(
-                new UpdateItemRequest
-                {
-                    TableName = RunTableName,
-                    Key = HeaderKey(organizationId, applicationId, id),
-                    UpdateExpression = "SET LastHeartbeatAt = :heartbeatAt",
-                    // When the Run was cancelled or already swept, Then Status is no longer Running and
-                    // this condition fails -- the worker finds out on its very next beat with no
-                    // separate signalling channel (see fix_run_design.md section 5).
-                    ConditionExpression = "#status = :running",
-                    ExpressionAttributeNames = new Dictionary<string, string>
-                    {
-                        ["#status"] = "Status",
-                    },
-                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
-                    {
-                        [":heartbeatAt"] = new(heartbeatAt.ToString("O")),
-                        [":running"] = new(RunStatus.Running.ToString()),
-                    },
-                }
-            );
-            return true;
-        }
-        catch (ConditionalCheckFailedException)
-        {
-            return false;
-        }
-    }
-
-    public async Task<IReadOnlyList<StaleInFlightRun>> ListStaleInFlightRunsAsync(
-        int shard,
-        DateTimeOffset heartbeatCutoff
-    )
-    {
-        if (shard < 0 || shard >= RunExecutionPolicy.InFlightShardCount)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(shard),
-                shard,
-                $"Shard must be between 0 and {RunExecutionPolicy.InFlightShardCount - 1}."
-            );
-        }
-
-        // The InFlightIndex is KEYS_ONLY, so a query against it can only ever return LastHeartbeatAt and
-        // the base table's own keys -- never DeadlineAt. A KeyConditionExpression can only narrow this
-        // Query by LastHeartbeatAt (the index's range key), so bounding it there would silently drop the
-        // "fresh heartbeat, passed deadline" half of the OR the design requires. Reading the whole shard
-        // instead, unbounded, is what lets the loop below still catch that case with a follow-up read.
+        // A strongly consistent read against the RunningRuns table itself, not a GSI -- GSIs never
+        // support ConsistentRead, so a Run that just started in the same transaction that put it here
+        // could otherwise be briefly missing from this result.
         var rows = await QueryAllPagesAsync(
             new QueryRequest
             {
-                TableName = RunTableName,
-                IndexName = "InFlightIndex",
-                KeyConditionExpression = "InFlightShard = :shard",
+                TableName = RunningRunTableName,
+                KeyConditionExpression = "OrganizationId_ApplicationId = :partitionKey",
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
-                    [":shard"] = new(DynamoDbMapper.RunInFlightShardKey(shard)),
+                    [":partitionKey"] = new(
+                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                    ),
                 },
+                ConsistentRead = true,
             }
         );
 
-        var now = DateTimeOffset.UtcNow;
-        var staleRuns = new List<StaleInFlightRun>();
-        foreach (var row in rows)
-        {
-            var (organizationId, applicationId) = DynamoDbMapper.ParseApplicationScopedPartitionKey(
-                row["OrganizationId_ApplicationId"].S
-            );
-            // Only a header row ever carries InFlightShard, so RowKey here is always the bare RunId --
-            // never a Scenario or status update row's suffixed key.
-            var id = Guid.Parse(row["RowKey"].S);
-            var lastHeartbeatAt = DateTimeOffset.Parse(
-                row["LastHeartbeatAt"].S,
-                CultureInfo.InvariantCulture
-            );
-
-            // When the heartbeat itself is already older than the cutoff, Then this Run is stale without
-            // reading anything else -- LastHeartbeatAt is one of the attributes this index projects.
-            if (lastHeartbeatAt < heartbeatCutoff)
-            {
-                staleRuns.Add(
-                    new StaleInFlightRun
-                    {
-                        OrganizationId = organizationId,
-                        ApplicationId = applicationId,
-                        Id = id,
-                    }
-                );
-                continue;
-            }
-
-            // When the heartbeat is fresh, Then only a passed DeadlineAt can still make this Run stale,
-            // and DeadlineAt is not projected onto this index -- a consistent read of the header itself
-            // is the only way to check it. A Run that ended between the Query above and this read still
-            // carries a (now historical) DeadlineAt, but that is harmless: the sweeper's own End Run call
-            // is conditioned on Status = Running and simply no-ops for a Run that already ended.
-            var headerRow = await client.GetItemAsync(
-                new GetItemRequest
-                {
-                    TableName = RunTableName,
-                    Key = HeaderKey(organizationId, applicationId, id),
-                    ConsistentRead = true,
-                    ProjectionExpression = "DeadlineAt",
-                }
-            );
-            if (
-                headerRow.Item.TryGetValue("DeadlineAt", out var deadlineAtValue)
-                && DateTimeOffset.Parse(deadlineAtValue.S, CultureInfo.InvariantCulture) < now
-            )
-            {
-                staleRuns.Add(
-                    new StaleInFlightRun
-                    {
-                        OrganizationId = organizationId,
-                        ApplicationId = applicationId,
-                        Id = id,
-                    }
-                );
-            }
-        }
-
-        return staleRuns;
+        return rows.Select(row => row.ToRunningRun()).ToList();
     }
 
     public async Task<bool> TryAppendStatusUpdateAsync(
@@ -544,12 +522,12 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         Guid applicationId,
         Guid id,
         RunStatusUpdate update,
-        long? expiresAt
+        DateTimeOffset? expiresAt
     )
     {
         var transactItems = new List<TransactWriteItem>
         {
-            new TransactWriteItem
+            new()
             {
                 Put = new Put
                 {
@@ -561,7 +539,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     ConditionExpression = "attribute_not_exists(RowKey)",
                 },
             },
-            new TransactWriteItem
+            new()
             {
                 Update = new Update
                 {
@@ -579,10 +557,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     },
                     ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                     {
-                        [":seq"] = new AttributeValue
-                        {
-                            N = update.Seq.ToString(CultureInfo.InvariantCulture),
-                        },
+                        [":seq"] = new() { N = update.Seq.ToString(CultureInfo.InvariantCulture) },
                         [":running"] = new(RunStatus.Running.ToString()),
                     },
                 },
@@ -685,8 +660,40 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             ["RowKey"] = new(DynamoDbMapper.RunHeaderRowKey(id)),
         };
 
-    private static bool IsExpired(long? expiresAt) =>
-        expiresAt is { } value && value <= DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    // Builds a Run's Environment snapshot row's primary key -- the Key TryMarkAsStartedAsync's masked
+    // Variables
+    // overwrite targets. Mirrors HeaderKey.
+    private static Dictionary<string, AttributeValue> EnvironmentRowKey(
+        Guid organizationId,
+        Guid applicationId,
+        Guid id
+    ) =>
+        new()
+        {
+            ["OrganizationId_ApplicationId"] = new(
+                DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+            ),
+            ["RowKey"] = new(DynamoDbMapper.RunEnvironmentRowKey(id)),
+        };
+
+    // Builds a RunningRuns row's primary key -- the Key TryMarkAsEndedAsync's Delete targets. Mirrors
+    // HeaderKey, but against RunningRunTableName's own key shape (OrganizationId_ApplicationId + RunId),
+    // not the Runs table's RowKey.
+    private static Dictionary<string, AttributeValue> RunningRunKey(
+        Guid organizationId,
+        Guid applicationId,
+        Guid id
+    ) =>
+        new()
+        {
+            ["OrganizationId_ApplicationId"] = new(
+                DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+            ),
+            ["RunId"] = new(id.ToString()),
+        };
+
+    private static bool IsExpired(DateTimeOffset? expiresAt) =>
+        expiresAt is { } value && value <= DateTimeOffset.UtcNow;
 
     private TransactWriteItem ApplicationExistsCheck(Guid organizationId, Guid applicationId) =>
         new()

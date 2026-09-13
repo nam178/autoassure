@@ -53,6 +53,7 @@ public sealed class RunStatusUpdatesControllerTests
                             ["DynamoDb:ScenariosByTagTableName"] = "ScenariosByTag",
                             ["DynamoDb:ActivityTableName"] = "Activities",
                             ["DynamoDb:RunTableName"] = "Runs",
+                            ["DynamoDb:RunningRunTableName"] = "RunningRuns",
                             ["DynamoDb:OrganizationTableName"] = "Organizations",
                             ["DynamoDb:OrganizationUserTableName"] = "OrganizationUsers",
                         }
@@ -222,8 +223,6 @@ public sealed class RunStatusUpdatesControllerTests
                     new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
                     new AttributeDefinition("RowKey", ScalarAttributeType.S),
                     new AttributeDefinition("HeaderId", ScalarAttributeType.S),
-                    new AttributeDefinition("InFlightShard", ScalarAttributeType.S),
-                    new AttributeDefinition("LastHeartbeatAt", ScalarAttributeType.S),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -251,19 +250,28 @@ public sealed class RunStatusUpdatesControllerTests
                                 "CreatedAt",
                                 "StartedAt",
                                 "CompletedAt",
+                                "LastHeartbeatAt",
                             ],
                         },
                     },
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "InFlightIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement("InFlightShard", KeyType.HASH),
-                            new KeySchemaElement("LastHeartbeatAt", KeyType.RANGE),
-                        ],
-                        Projection = new Projection { ProjectionType = ProjectionType.KEYS_ONLY },
-                    },
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+            }
+        );
+
+        await _client.CreateTableAsync(
+            new CreateTableRequest
+            {
+                TableName = "RunningRuns",
+                KeySchema =
+                [
+                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement("RunId", KeyType.RANGE),
+                ],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition("RunId", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -382,6 +390,7 @@ public sealed class RunStatusUpdatesControllerTests
                 "ScenariosByTag",
                 "Activities",
                 "Runs",
+                "RunningRuns",
                 "Organizations",
                 "OrganizationUsers",
             }
@@ -535,7 +544,7 @@ public sealed class RunStatusUpdatesControllerTests
             $"/applications/{appId}/runs/{run.Id}/start",
             null
         );
-        Assert.Equal(HttpStatusCode.NoContent, startResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
 
         return (appId, run.Id, scenarioId, activityIds);
     }
@@ -827,7 +836,7 @@ public sealed class RunStatusUpdatesControllerTests
             $"/applications/{appId}/runs/{run.Id}/start",
             null
         );
-        Assert.Equal(HttpStatusCode.NoContent, startResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
 
         // The client folds the log as it goes: a Dictionary keyed by ActivityId standing in for the
         // fold, which every real client implements its own way.

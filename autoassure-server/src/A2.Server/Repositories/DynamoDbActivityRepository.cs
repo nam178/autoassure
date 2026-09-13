@@ -166,8 +166,7 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
                 && reasons[0].Code == "ConditionalCheckFailed"
-            )
-        { }
+            ) { }
     }
 
     // BUG: this doesn't decrement the Scenario's ActivityCount. Harmless today since the only
@@ -292,10 +291,7 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                         },
                         ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                         {
-                            [":order"] = new AttributeValue
-                            {
-                                N = index.ToString(CultureInfo.InvariantCulture),
-                            },
+                            [":order"] = new() { N = index.ToString(CultureInfo.InvariantCulture) },
                         },
                     },
                 }
@@ -371,8 +367,8 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                     "attribute_exists(Id) AND (attribute_not_exists(ActivityCount) OR ActivityCount < :max)",
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
-                    [":one"] = new AttributeValue { N = "1" },
-                    [":max"] = new AttributeValue
+                    [":one"] = new() { N = "1" },
+                    [":max"] = new()
                     {
                         N = Quota.MaxActivityCountPerScenario.ToString(
                             CultureInfo.InvariantCulture
@@ -406,8 +402,8 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                     "attribute_exists(Id) AND (attribute_not_exists(ActivityCount) OR ActivityCount > :zero)",
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
-                    [":minusOne"] = new AttributeValue { N = "-1" },
-                    [":zero"] = new AttributeValue { N = "0" },
+                    [":minusOne"] = new() { N = "-1" },
+                    [":zero"] = new() { N = "0" },
                 },
             },
         };
@@ -438,13 +434,13 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
                     [":description"] = new(fields.Description),
-                    [":preconditionIds"] = new AttributeValue
+                    [":preconditionIds"] = new()
                     {
                         L = fields
                             .PreconditionIds.Select(pid => new AttributeValue(pid.ToString()))
                             .ToList(),
                     },
-                    [":evidenceIds"] = new AttributeValue
+                    [":evidenceIds"] = new()
                     {
                         L = fields
                             .EvidenceIds.Select(eid => new AttributeValue(eid.ToString()))

@@ -54,6 +54,7 @@ public sealed class AuthoringRunsControllerTests
                             ["DynamoDb:ScenariosByTagTableName"] = "ScenariosByTag",
                             ["DynamoDb:ActivityTableName"] = "Activities",
                             ["DynamoDb:RunTableName"] = "Runs",
+                            ["DynamoDb:RunningRunTableName"] = "RunningRuns",
                             ["DynamoDb:OrganizationTableName"] = "Organizations",
                             ["DynamoDb:OrganizationUserTableName"] = "OrganizationUsers",
                         }
@@ -223,8 +224,6 @@ public sealed class AuthoringRunsControllerTests
                     new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
                     new AttributeDefinition("RowKey", ScalarAttributeType.S),
                     new AttributeDefinition("HeaderId", ScalarAttributeType.S),
-                    new AttributeDefinition("InFlightShard", ScalarAttributeType.S),
-                    new AttributeDefinition("LastHeartbeatAt", ScalarAttributeType.S),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -252,19 +251,28 @@ public sealed class AuthoringRunsControllerTests
                                 "CreatedAt",
                                 "StartedAt",
                                 "CompletedAt",
+                                "LastHeartbeatAt",
                             ],
                         },
                     },
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "InFlightIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement("InFlightShard", KeyType.HASH),
-                            new KeySchemaElement("LastHeartbeatAt", KeyType.RANGE),
-                        ],
-                        Projection = new Projection { ProjectionType = ProjectionType.KEYS_ONLY },
-                    },
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+            }
+        );
+
+        await _client.CreateTableAsync(
+            new CreateTableRequest
+            {
+                TableName = "RunningRuns",
+                KeySchema =
+                [
+                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement("RunId", KeyType.RANGE),
+                ],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition("RunId", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -383,6 +391,7 @@ public sealed class AuthoringRunsControllerTests
                 "ScenariosByTag",
                 "Activities",
                 "Runs",
+                "RunningRuns",
                 "Organizations",
                 "OrganizationUsers",
             }

@@ -22,7 +22,7 @@ public interface IEvidenceDefinitionRepository
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
     Task<EvidenceDefinition?> GetByIdAsync(Guid organizationId, Guid id);
 
-    /// <summary>All EvidenceDefinitions in this Application's library. Ordering: creation order.</summary>
+    /// <summary>All EvidenceDefinitions in this Application's library. Ordering: newest first.</summary>
     Task<IReadOnlyList<EvidenceDefinition>> ListByApplicationAsync(
         Guid organizationId,
         Guid applicationId

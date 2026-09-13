@@ -60,8 +60,8 @@ public class RunStatusUpdatesController(
         // to get it from, unlike the long-lived worker process the design assumes. This Get also answers
         // whether the Run exists at all, which the transaction's own conditions cannot distinguish from
         // "exists but not Running".
-        var detail = await runRepository.GetByIdAsync(organizationId, appId, id);
-        if (detail is null)
+        var run = await runRepository.GetByIdAsync(organizationId, appId, id);
+        if (run is null)
         {
             return NotFound();
         }
@@ -72,7 +72,7 @@ public class RunStatusUpdatesController(
             appId,
             id,
             update,
-            detail.Header.ExpiresAt
+            run.ExpiresAt
         );
         return appended
             ? Ok(update.ToResponse())

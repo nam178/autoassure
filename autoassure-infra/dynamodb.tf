@@ -555,11 +555,12 @@ resource "aws_dynamodb_table" "activities" {
   }
 }
 
-# Stores a Run's three row shapes -- header, one row per Scenario snapshot, one row per status
-# update -- all under the same OrganizationId_ApplicationId partition and a RowKey range key built as
-# "<runId>", "<runId>#scenario#<scenarioId>" or "<runId>#update#<seq, zero-padded to 12 digits>". Split
-# this way so a single activity result write touches one small row instead of the whole Run -- see
-# fix_run_design.md section 3. Schema must stay in sync with Models/Run.cs, Models/RunStatusUpdate.cs,
+# Stores a Run's four row shapes -- header, Environment snapshot, one row per Scenario snapshot, one
+# row per status update -- all under the same OrganizationId_ApplicationId partition and a RowKey range
+# key built as "<runId>", "<runId>#environment", "<runId>#scenario#<scenarioId>" or
+# "<runId>#update#<seq, zero-padded to 12 digits>". Split this way so a single activity result write
+# touches one small row instead of the whole Run -- see fix_run_design.md section 3. Schema must stay in
+# sync with Models/Run.cs, Models/RunEnvironmentSnapshot.cs, Models/RunStatusUpdate.cs,
 # Models/ActivityResult.cs and Repositories/DynamoDbMapper.Run.cs in autoassure-server.
 # trivy:ignore:AWS-0025 -- AWS-owned key is sufficient for this table at this stage;
 # a customer-managed KMS key adds per-request cost and key-rotation overhead not justified yet.
@@ -587,18 +588,6 @@ resource "aws_dynamodb_table" "runs" {
     type = "S"
   }
 
-  # Only an in-flight (Running) header row carries InFlightShard -- a Pending, Completed, Cancelled or
-  # Abandoned run has no attribute here at all, so it drops out of the index entirely.
-  attribute {
-    name = "InFlightShard"
-    type = "S"
-  }
-
-  attribute {
-    name = "LastHeartbeatAt"
-    type = "S"
-  }
-
   # Answers List Runs by reading headers only, never a Scenario snapshot or status update row -- a
   # FilterExpression over the base partition would read (and charge for) every row of every Run.
   # Eventually consistent (GSIs don't support ConsistentRead) -- see DynamoDbRunRepository.cs. Projects
@@ -620,19 +609,8 @@ resource "aws_dynamodb_table" "runs" {
       "CreatedAt",
       "StartedAt",
       "CompletedAt",
+      "LastHeartbeatAt",
     ]
-  }
-
-  # Lets the sweeper find stale in-flight runs (a heartbeat past the cutoff, or a passed deadline)
-  # without a table scan. Sharded ("Running#<0-9>", derived from the run id -- see
-  # DynamoDbMapper.RunInFlightShard) so the index is ten partitions wide instead of one hot one; this
-  # shard key cannot be added later without a backfill, so it is built in from day one. KEYS_ONLY since
-  # the sweeper only needs to know which Run to act on, not read its data through the index.
-  global_secondary_index {
-    name            = "InFlightIndex"
-    hash_key        = "InFlightShard"
-    range_key       = "LastHeartbeatAt"
-    projection_type = "KEYS_ONLY"
   }
 
   # ExpiresAt is stored as epoch seconds (see DynamoDbMapper.Run.cs) so DynamoDB can use it directly
@@ -642,6 +620,47 @@ resource "aws_dynamodb_table" "runs" {
   ttl {
     attribute_name = "ExpiresAt"
     enabled        = true
+  }
+
+  point_in_time_recovery {
+    enabled = var.environment == "prod"
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = "autoassure"
+  }
+}
+
+# Holds one row per Run that is currently Running, deleted the instant it ends. A real table, not a GSI
+# off the runs table, specifically so ListRunningByApplicationAsync can read it with ConsistentRead:
+# GSIs never support consistent reads, which would let a Run that just started be briefly missing from
+# this list on refresh. Written and deleted in the exact same transaction as the runs table's own
+# Status transition (see DynamoDbRunRepository.cs), so the two can never drift out of sync -- this table
+# deliberately carries no TTL of its own, since that would reintroduce exactly that drift.
+# Schema must stay in sync with Models/RunningRun.cs and Repositories/DynamoDbMapper.Run.cs in
+# autoassure-server.
+# trivy:ignore:AWS-0025 -- AWS-owned key is sufficient for this table at this stage;
+# a customer-managed KMS key adds per-request cost and key-rotation overhead not justified yet.
+# Revisit if compliance requirements change.
+resource "aws_dynamodb_table" "running_runs" {
+  name         = "${local.name_prefix}-running-run-table"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "OrganizationId_ApplicationId"
+  range_key    = "RunId"
+
+  attribute {
+    name = "OrganizationId_ApplicationId"
+    type = "S"
+  }
+
+  attribute {
+    name = "RunId"
+    type = "S"
   }
 
   point_in_time_recovery {

@@ -1,4 +1,3 @@
-using System.Globalization;
 using A2.Server.Common;
 using A2.Server.Models;
 using A2.Server.Repositories;
@@ -9,18 +8,19 @@ using Microsoft.Extensions.Options;
 namespace A2.Server.Tests.Repositories;
 
 /// <summary>Integration tests for <see cref="DynamoDbRunRepository"/> against DynamoDB Local, covering
-/// Create Run, Get Run, List Runs, Start Run, End Run, Update Run Stats, Update Run Heart Beat, the
-/// stale in-flight Run query, and Append/List Run Status Update: the transactional create, its
-/// Application/Environment existence checks, the TTL retention numbers, the LastEvaluatedKey pagination
-/// loop, Get Run's exclusion of status update rows, List Runs' sparse RunHeaderIndex query, the state
-/// machine's conditioned writes, the sparse InFlightIndex query's stale-heartbeat-or-passed-deadline
-/// logic across its ten shards, the append transaction's two conditions, and the status update log's
-/// cursor query across the zero-padding boundary at ten.</summary>
+/// Create Run, Get Run, List Runs, List Running Runs, Start Run, End Run, Update Run Stats, Update Run
+/// Heart Beat, and Append/List Run Status Update: the transactional create, its Application/Environment
+/// existence checks, the TTL retention numbers, the LastEvaluatedKey pagination loop, Get Run's
+/// exclusion of status update rows, List Runs' sparse RunHeaderIndex query, List Running Runs'
+/// strongly consistent read against the separate RunningRuns table, the state machine's conditioned
+/// writes, the append transaction's two conditions, and the status update log's cursor query across the
+/// zero-padding boundary at ten.</summary>
 [Collection("DynamoDbLocal")]
 public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLocalFixture)
     : IAsyncLifetime
 {
     private const string RunTableName = "Runs";
+    private const string RunningRunTableName = "RunningRuns";
     private const string ApplicationTableName = "Applications";
     private const string EnvironmentTableName = "Environments";
 
@@ -38,6 +38,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
                 new DynamoDbOptions
                 {
                     RunTableName = RunTableName,
+                    RunningRunTableName = RunningRunTableName,
                     ApplicationTableName = ApplicationTableName,
                     EnvironmentTableName = EnvironmentTableName,
                 }
@@ -58,12 +59,10 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
                     new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
                     new AttributeDefinition("RowKey", ScalarAttributeType.S),
                     new AttributeDefinition("HeaderId", ScalarAttributeType.S),
-                    new AttributeDefinition("InFlightShard", ScalarAttributeType.S),
-                    new AttributeDefinition("LastHeartbeatAt", ScalarAttributeType.S),
                 ],
-                // Mirrors ../../autoassure-infra/dynamodb.tf's RunHeaderIndex and InFlightIndex exactly
-                // -- same sparse key shapes and the same projections -- so a test proves what the real
-                // indexes actually return rather than what a looser local approximation would.
+                // Mirrors ../../autoassure-infra/dynamodb.tf's RunHeaderIndex exactly -- same sparse key
+                // shape and the same projection -- so a test proves what the real index actually returns
+                // rather than what a looser local approximation would.
                 GlobalSecondaryIndexes =
                 [
                     new GlobalSecondaryIndex
@@ -90,19 +89,28 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
                                 "CreatedAt",
                                 "StartedAt",
                                 "CompletedAt",
+                                "LastHeartbeatAt",
                             ],
                         },
                     },
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "InFlightIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement("InFlightShard", KeyType.HASH),
-                            new KeySchemaElement("LastHeartbeatAt", KeyType.RANGE),
-                        ],
-                        Projection = new Projection { ProjectionType = ProjectionType.KEYS_ONLY },
-                    },
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+            }
+        );
+
+        await _client.CreateTableAsync(
+            new CreateTableRequest
+            {
+                TableName = RunningRunTableName,
+                KeySchema =
+                [
+                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement("RunId", KeyType.RANGE),
+                ],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition("RunId", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -148,6 +156,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     public async Task DisposeAsync()
     {
         await _client.DeleteTableAsync(RunTableName);
+        await _client.DeleteTableAsync(RunningRunTableName);
         await _client.DeleteTableAsync(ApplicationTableName);
         await _client.DeleteTableAsync(EnvironmentTableName);
         _client.Dispose();
@@ -181,7 +190,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             }
         );
 
-    private static SnapshotSource CreateSnapshotSource(Guid id) =>
+    private static RunSnapshotSource CreateSnapshotSource(Guid id) =>
         new()
         {
             Id = id,
@@ -216,12 +225,15 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             UpdatedAt = FixedNow,
         };
 
+    // Defaults to one Scenario, since most tests here only need a Run to have some. A test that cares
+    // about Scenario content passes its own.
     private static Run CreateRun(
         Guid organizationId,
         Guid applicationId,
         Guid environmentId,
         RunTrigger trigger = RunTrigger.Manual,
-        DateTimeOffset? createdAt = null
+        DateTimeOffset? createdAt = null,
+        IReadOnlyList<RunScenarioSnapshot>? scenarios = null
     ) =>
         new()
         {
@@ -231,6 +243,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             Trigger = trigger,
             Status = RunStatus.Pending,
             Environment = CreateEnvironmentSnapshot(environmentId),
+            Scenarios = scenarios ?? [CreateScenarioSnapshot()],
             CreatedAt = createdAt ?? FixedNow,
         };
 
@@ -296,16 +309,16 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var scenarios = new[] { CreateScenarioSnapshot("First"), CreateScenarioSnapshot("Second") };
 
         // test
-        var result = await _repository.TryCreateAsync(run, scenarios);
-        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
+        var result = await _repository.TryCreateAsync(run with { Scenarios = scenarios });
+        var stored = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify
         Assert.Equal(RunCreateResult.Success, result);
-        Assert.NotNull(detail);
-        Assert.Equal(run.Id, detail.Header.Id);
-        Assert.Equal(2, detail.Scenarios.Count);
-        Assert.Contains(detail.Scenarios, scenario => scenario.Description == "First");
-        Assert.Contains(detail.Scenarios, scenario => scenario.Description == "Second");
+        Assert.NotNull(stored);
+        Assert.Equal(run.Id, stored.Id);
+        Assert.Equal(2, stored.Scenarios.Count);
+        Assert.Contains(stored.Scenarios, scenario => scenario.Description == "First");
+        Assert.Contains(stored.Scenarios, scenario => scenario.Description == "Second");
     }
 
     [Fact]
@@ -319,7 +332,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         await PutEnvironmentAsync(organizationId, applicationId, environmentId);
         var run = CreateRun(organizationId, applicationId, environmentId);
         var originalScenarios = new[] { CreateScenarioSnapshot("Original") };
-        await _repository.TryCreateAsync(run, originalScenarios);
+        await _repository.TryCreateAsync(run with { Scenarios = originalScenarios });
 
         // test -- a second create for the same Run id, with different Scenario content
         var duplicateScenarios = new[]
@@ -327,13 +340,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             CreateScenarioSnapshot("Retry-1"),
             CreateScenarioSnapshot("Retry-2"),
         };
-        var result = await _repository.TryCreateAsync(run, duplicateScenarios);
-        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
+        var result = await _repository.TryCreateAsync(run with { Scenarios = duplicateScenarios });
+        var stored = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify
         Assert.Equal(RunCreateResult.AlreadyExists, result);
-        Assert.NotNull(detail);
-        var found = Assert.Single(detail.Scenarios);
+        Assert.NotNull(stored);
+        var found = Assert.Single(stored.Scenarios);
         Assert.Equal("Original", found.Description);
     }
 
@@ -348,12 +361,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var scenarios = new[] { CreateScenarioSnapshot() };
 
         // test
-        var result = await _repository.TryCreateAsync(run, scenarios);
-        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
+        var result = await _repository.TryCreateAsync(run with { Scenarios = scenarios });
+        var stored = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify
         Assert.Equal(RunCreateResult.ApplicationNotFound, result);
-        Assert.Null(detail);
+        Assert.Null(stored);
     }
 
     [Fact]
@@ -368,12 +381,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var scenarios = new[] { CreateScenarioSnapshot() };
 
         // test
-        var result = await _repository.TryCreateAsync(run, scenarios);
-        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
+        var result = await _repository.TryCreateAsync(run with { Scenarios = scenarios });
+        var stored = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify
         Assert.Equal(RunCreateResult.EnvironmentNotFound, result);
-        Assert.Null(detail);
+        Assert.Null(stored);
     }
 
     [Fact]
@@ -394,13 +407,76 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             RunTrigger.Manual,
             longAgo
         );
-        await _repository.TryCreateAsync(run, [CreateScenarioSnapshot()]);
+        await _repository.TryCreateAsync(run);
 
         // test
-        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
+        var stored = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify
-        Assert.Null(detail);
+        Assert.Null(stored);
+    }
+
+    [Fact]
+    public async Task TryCreateAsync_WhenSuccessful_WritesTheEnvironmentSnapshotOnItsOwnRow()
+    {
+        // setup -- Environment is not a header attribute: it gets a row of its own, keyed so Get Run's
+        // BETWEEN query still picks it up.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutApplicationAsync(organizationId, applicationId);
+        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
+        var run = CreateRun(organizationId, applicationId, environmentId);
+
+        // test
+        await _repository.TryCreateAsync(run);
+        var rawRows = await QueryRawRowsAsync(organizationId, applicationId);
+
+        // verify
+        var headerRow = Assert.Single(
+            rawRows,
+            row => row["RowKey"].S == DynamoDbMapper.RunHeaderRowKey(run.Id)
+        );
+        Assert.False(headerRow.ContainsKey("Environment"));
+
+        var environmentRow = Assert.Single(
+            rawRows,
+            row => row["RowKey"].S == DynamoDbMapper.RunEnvironmentRowKey(run.Id)
+        );
+        Assert.Equal(environmentId.ToString(), environmentRow["Source"].M["Id"].S);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenTheEnvironmentRowIsGone_ReturnsNull()
+    {
+        // setup -- the header outliving its Environment row (a TTL sweep landing first, or a data
+        // anomaly) reads as not-found, never as a partial Run. See fix_run_design.md section 6.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutApplicationAsync(organizationId, applicationId);
+        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
+        var run = CreateRun(organizationId, applicationId, environmentId);
+        await _repository.TryCreateAsync(run);
+
+        // test -- delete the Environment row behind the repository's back, leaving the rest intact.
+        await _client.DeleteItemAsync(
+            new DeleteItemRequest
+            {
+                TableName = RunTableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    ["OrganizationId_ApplicationId"] = new(
+                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                    ),
+                    ["RowKey"] = new(DynamoDbMapper.RunEnvironmentRowKey(run.Id)),
+                },
+            }
+        );
+        var stored = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
+
+        // verify
+        Assert.Null(stored);
     }
 
     [Fact]
@@ -423,12 +499,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var scenarios = new[] { CreateScenarioSnapshot("A"), CreateScenarioSnapshot("B") };
 
         // test
-        await _repository.TryCreateAsync(run, scenarios);
+        await _repository.TryCreateAsync(run with { Scenarios = scenarios });
         var rawRows = await QueryRawRowsAsync(organizationId, applicationId);
 
         // verify
         var expectedExpiresAt = createdAt.AddDays(7).ToUnixTimeSeconds();
-        Assert.Equal(3, rawRows.Count); // header + 2 scenario rows
+        Assert.Equal(4, rawRows.Count); // header + environment row + 2 scenario rows
         Assert.All(rawRows, row => Assert.Equal(expectedExpiresAt.ToString(), row["ExpiresAt"].N));
     }
 
@@ -452,12 +528,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var scenarios = new[] { CreateScenarioSnapshot("A") };
 
         // test
-        await _repository.TryCreateAsync(run, scenarios);
+        await _repository.TryCreateAsync(run with { Scenarios = scenarios });
         var rawRows = await QueryRawRowsAsync(organizationId, applicationId);
 
         // verify
         var expectedExpiresAt = createdAt.AddDays(3 * 365).ToUnixTimeSeconds();
-        Assert.Equal(2, rawRows.Count); // header + 1 scenario row
+        Assert.Equal(3, rawRows.Count); // header + environment row + 1 scenario row
         Assert.All(rawRows, row => Assert.Equal(expectedExpiresAt.ToString(), row["ExpiresAt"].N));
     }
 
@@ -479,8 +555,8 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             .ToList();
 
         // test
-        var createResult = await _repository.TryCreateAsync(run, scenarios);
-        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
+        var createResult = await _repository.TryCreateAsync(run with { Scenarios = scenarios });
+        var stored = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify -- first, prove a single (non-looping) Query of this data really does get cut off,
         // so the assertion below is actually exercising the LastEvaluatedKey loop and not just
@@ -507,10 +583,10 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         );
 
         Assert.Equal(RunCreateResult.Success, createResult);
-        Assert.NotNull(detail);
-        Assert.Equal(50, detail.Scenarios.Count);
+        Assert.NotNull(stored);
+        Assert.Equal(50, stored.Scenarios.Count);
         var expectedIds = scenarios.Select(scenario => scenario.Source.Id).ToHashSet();
-        var actualIds = detail.Scenarios.Select(scenario => scenario.Source.Id).ToHashSet();
+        var actualIds = stored.Scenarios.Select(scenario => scenario.Source.Id).ToHashSet();
         Assert.Equal(expectedIds, actualIds);
     }
 
@@ -524,7 +600,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         await PutApplicationAsync(organizationId, applicationId);
         await PutEnvironmentAsync(organizationId, applicationId, environmentId);
         var run = CreateRun(organizationId, applicationId, environmentId);
-        await _repository.TryCreateAsync(run, [CreateScenarioSnapshot()]);
+        await _repository.TryCreateAsync(run);
 
         // Writes a status update row by hand, bypassing the repository entirely (Task 5 adds no
         // append method yet), to prove Get Run never returns it even when one exists in the table.
@@ -543,13 +619,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         );
 
         // test
-        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
+        var stored = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify -- only the real Scenario row comes back; the hand-written update row did not blow
         // up the read (it would fail to parse as a Scenario snapshot if it were included) and did not
         // inflate the count.
-        Assert.NotNull(detail);
-        Assert.Single(detail.Scenarios);
+        Assert.NotNull(stored);
+        Assert.Single(stored.Scenarios);
     }
 
     [Fact]
@@ -585,7 +661,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             CreateScenarioSnapshot("B"),
             CreateScenarioSnapshot("C"),
         };
-        await _repository.TryCreateAsync(run, scenarios);
+        await _repository.TryCreateAsync(run with { Scenarios = scenarios });
 
         // test
         var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
@@ -596,6 +672,33 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         Assert.Equal(run.Trigger, summary.Trigger);
         Assert.Equal(run.Status, summary.Status);
         Assert.Equal(run.CreatedAt, summary.CreatedAt);
+    }
+
+    [Fact]
+    public async Task ListByApplicationAsync_WhenRunIsRunning_IncludesLastHeartbeatAt()
+    {
+        // setup -- RunHeaderIndex's projection was widened to carry LastHeartbeatAt so a caller can
+        // tell a Running Run apart from one whose worker died without anything having ended it yet;
+        // this proves that attribute actually comes back through the index, not just through GetById.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+        var startedAt = FixedNow;
+        await _repository.TryMarkAsStartedAsync(
+            organizationId,
+            applicationId,
+            runId,
+            startedAt,
+            CreateEnvironmentSnapshot(environmentId)
+        );
+
+        // test
+        var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
+
+        // verify
+        var summary = Assert.Single(summaries);
+        Assert.Equal(startedAt, summary.LastHeartbeatAt);
     }
 
     [Fact]
@@ -610,7 +713,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         await PutApplicationAsync(organizationId, otherApplicationId);
         await PutEnvironmentAsync(organizationId, otherApplicationId, environmentId);
         var otherApplicationRun = CreateRun(organizationId, otherApplicationId, environmentId);
-        await _repository.TryCreateAsync(otherApplicationRun, [CreateScenarioSnapshot()]);
+        await _repository.TryCreateAsync(
+            otherApplicationRun with
+            {
+                Scenarios = [CreateScenarioSnapshot()],
+            }
+        );
 
         // test
         var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
@@ -635,8 +743,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             environmentId,
             RunTrigger.Authoring
         );
-        await _repository.TryCreateAsync(manualRun, [CreateScenarioSnapshot()]);
-        await _repository.TryCreateAsync(authoringRun, [CreateScenarioSnapshot()]);
+        await _repository.TryCreateAsync(manualRun);
+        await _repository.TryCreateAsync(
+            authoringRun with
+            {
+                Scenarios = [CreateScenarioSnapshot()],
+            }
+        );
 
         // test
         var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
@@ -647,28 +760,28 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task ListByApplicationAsync_WhenMultipleRuns_ReturnsInCreationOrder()
+    public async Task ListByApplicationAsync_WhenMultipleRuns_ReturnsNewestFirst()
     {
         // setup -- three Runs created in sequence. Guid.CreateVersion7() ids are time-sortable, so
-        // ascending id order is creation order.
+        // descending id order is newest first.
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
         await PutApplicationAsync(organizationId, applicationId);
         await PutEnvironmentAsync(organizationId, applicationId, environmentId);
         var firstRun = CreateRun(organizationId, applicationId, environmentId);
-        await _repository.TryCreateAsync(firstRun, [CreateScenarioSnapshot()]);
+        await _repository.TryCreateAsync(firstRun);
         var secondRun = CreateRun(organizationId, applicationId, environmentId);
-        await _repository.TryCreateAsync(secondRun, [CreateScenarioSnapshot()]);
+        await _repository.TryCreateAsync(secondRun);
         var thirdRun = CreateRun(organizationId, applicationId, environmentId);
-        await _repository.TryCreateAsync(thirdRun, [CreateScenarioSnapshot()]);
+        await _repository.TryCreateAsync(thirdRun);
 
         // test
         var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
 
         // verify
         Assert.Equal(
-            [firstRun.Id, secondRun.Id, thirdRun.Id],
+            [thirdRun.Id, secondRun.Id, firstRun.Id],
             summaries.Select(summary => summary.Id)
         );
     }
@@ -692,8 +805,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             longAgo
         );
         var freshRun = CreateRun(organizationId, applicationId, environmentId);
-        await _repository.TryCreateAsync(expiredRun, [CreateScenarioSnapshot()]);
-        await _repository.TryCreateAsync(freshRun, [CreateScenarioSnapshot()]);
+        await _repository.TryCreateAsync(
+            expiredRun with
+            {
+                Scenarios = [CreateScenarioSnapshot()],
+            }
+        );
+        await _repository.TryCreateAsync(freshRun);
 
         // test
         var summaries = await _repository.ListByApplicationAsync(organizationId, applicationId);
@@ -703,8 +821,124 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         Assert.Equal(freshRun.Id, summary.Id);
     }
 
+    [Fact]
+    public async Task ListRunningByApplicationAsync_WhenRunIsRunning_ReturnsIt()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var startedAt = FixedNow;
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+        await _repository.TryMarkAsStartedAsync(
+            organizationId,
+            applicationId,
+            runId,
+            startedAt,
+            CreateEnvironmentSnapshot(environmentId)
+        );
+
+        // test
+        var running = await _repository.ListRunningByApplicationAsync(
+            organizationId,
+            applicationId
+        );
+
+        // verify
+        var runningRun = Assert.Single(running);
+        Assert.Equal(runId, runningRun.Id);
+        Assert.Equal(startedAt, runningRun.StartedAt);
+    }
+
+    [Fact]
+    public async Task ListRunningByApplicationAsync_WhenRunIsPending_DoesNotReturnIt()
+    {
+        // setup -- a Run that has never started, so it never had a RunningRuns row to begin with.
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+
+        // test
+        var running = await _repository.ListRunningByApplicationAsync(
+            organizationId,
+            applicationId
+        );
+
+        // verify
+        Assert.Empty(running);
+    }
+
+    [Theory]
+    [InlineData(RunStatus.Completed)]
+    [InlineData(RunStatus.Cancelled)]
+    [InlineData(RunStatus.Abandoned)]
+    public async Task ListRunningByApplicationAsync_WhenRunHasEnded_DoesNotReturnIt(
+        RunStatus terminalStatus
+    )
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
+        await _repository.TryMarkAsStartedAsync(
+            organizationId,
+            applicationId,
+            runId,
+            FixedNow,
+            CreateEnvironmentSnapshot(environmentId)
+        );
+        await _repository.TryMarkAsEndedAsync(
+            organizationId,
+            applicationId,
+            runId,
+            terminalStatus,
+            terminalStatus == RunStatus.Abandoned ? RunStatusReason.WorkerCrashed : null,
+            FixedNow.AddMinutes(5)
+        );
+
+        // test
+        var running = await _repository.ListRunningByApplicationAsync(
+            organizationId,
+            applicationId
+        );
+
+        // verify
+        Assert.Empty(running);
+    }
+
+    [Fact]
+    public async Task ListRunningByApplicationAsync_WhenRunBelongsToAnotherApplication_DoesNotReturnIt()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var otherApplicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutApplicationAsync(organizationId, otherApplicationId);
+        await PutEnvironmentAsync(organizationId, otherApplicationId, environmentId);
+        var runId = await CreatePendingRunAsync(organizationId, otherApplicationId, environmentId);
+        await _repository.TryMarkAsStartedAsync(
+            organizationId,
+            otherApplicationId,
+            runId,
+            FixedNow,
+            CreateEnvironmentSnapshot(environmentId)
+        );
+
+        // test
+        var running = await _repository.ListRunningByApplicationAsync(
+            organizationId,
+            applicationId
+        );
+
+        // verify
+        Assert.Empty(running);
+    }
+
     // Reads a Run header's raw row straight from the table, bypassing the repository, so a test can
-    // check storage-only attributes like InFlightShard that no repository method surfaces on a Run.
+    // check storage-only attributes that no repository method surfaces on a Run.
     private async Task<Dictionary<string, AttributeValue>> GetRawHeaderRowAsync(
         Guid organizationId,
         Guid applicationId,
@@ -728,6 +962,32 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         return response.Item;
     }
 
+    // Reads a Run's raw row straight from the RunningRuns table, bypassing the repository, so a test
+    // can check for its presence/absence directly -- returns an empty dictionary when no such row
+    // exists.
+    private async Task<Dictionary<string, AttributeValue>> GetRawRunningRunRowAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid runId
+    )
+    {
+        var response = await _client.GetItemAsync(
+            new GetItemRequest
+            {
+                TableName = RunningRunTableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    ["OrganizationId_ApplicationId"] = new(
+                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                    ),
+                    ["RunId"] = new(runId.ToString()),
+                },
+                ConsistentRead = true,
+            }
+        );
+        return response.Item ?? [];
+    }
+
     private async Task<Guid> CreatePendingRunAsync(
         Guid organizationId,
         Guid applicationId,
@@ -737,12 +997,12 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         await PutApplicationAsync(organizationId, applicationId);
         await PutEnvironmentAsync(organizationId, applicationId, environmentId);
         var run = CreateRun(organizationId, applicationId, environmentId);
-        await _repository.TryCreateAsync(run, [CreateScenarioSnapshot()]);
+        await _repository.TryCreateAsync(run);
         return run.Id;
     }
 
     [Fact]
-    public async Task TryStartAsync_WhenRunIsPending_SucceedsAndWritesInFlightShard()
+    public async Task TryMarkAsStartedAsync_WhenRunIsPending_SucceedsAndWritesRunningRunRow()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -752,7 +1012,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var startedAt = FixedNow;
 
         // test
-        var result = await _repository.TryStartAsync(
+        var result = await _repository.TryMarkAsStartedAsync(
             organizationId,
             applicationId,
             runId,
@@ -760,24 +1020,20 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             CreateEnvironmentSnapshot(environmentId)
         );
         var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+        var runningRunRow = await GetRawRunningRunRowAsync(organizationId, applicationId, runId);
 
         // verify
         Assert.NotNull(result);
         Assert.Equal(startedAt, result.StartedAt);
         Assert.Equal(startedAt, result.LastHeartbeatAt);
-        Assert.Equal(startedAt + RunExecutionPolicy.MaxRunDuration, result.DeadlineAt);
         Assert.Equal(RunStatus.Running.ToString(), row["Status"].S);
         Assert.Equal(startedAt.ToString("O"), row["StartedAt"].S);
         Assert.Equal(startedAt.ToString("O"), row["LastHeartbeatAt"].S);
-        Assert.Equal(
-            (startedAt + RunExecutionPolicy.MaxRunDuration).ToString("O"),
-            row["DeadlineAt"].S
-        );
-        Assert.Equal(DynamoDbMapper.RunInFlightShard(runId), row["InFlightShard"].S);
+        Assert.Equal(startedAt.ToString("O"), runningRunRow["StartedAt"].S);
     }
 
     [Fact]
-    public async Task TryStartAsync_WhenSucceeds_OverwritesStoredEnvironmentWithTheMaskedSnapshot()
+    public async Task TryMarkAsStartedAsync_WhenSucceeds_OverwritesStoredEnvironmentWithTheMaskedSnapshot()
     {
         // setup -- a Pending Run whose Environment snapshot carries the real (unmasked) value of a
         // sensitive variable, the way TryCreateAsync stores it since Create no longer masks at write
@@ -805,36 +1061,30 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         {
             Environment = environment,
         };
-        await _repository.TryCreateAsync(run, [CreateScenarioSnapshot()]);
+        await _repository.TryCreateAsync(run);
         var startedAt = FixedNow;
 
         // test
-        var result = await _repository.TryStartAsync(
+        var result = await _repository.TryMarkAsStartedAsync(
             organizationId,
             applicationId,
             run.Id,
             startedAt,
             environment.Masked()
         );
-        var detail = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
+        var stored = await _repository.GetByIdAsync(organizationId, applicationId, run.Id);
 
         // verify -- storage now holds the masked sensitive value and the untouched plain value, proving
         // the Environment attribute was actually overwritten, not just returned masked.
         Assert.NotNull(result);
-        var storedSensitive = Assert.Single(
-            detail!.Header.Environment.Variables,
-            v => v.Key == "API_KEY"
-        );
+        var storedSensitive = Assert.Single(stored!.Environment.Variables, v => v.Key == "API_KEY");
         Assert.Equal(SensitiveValueMasker.Mask(sensitiveVariable.Value), storedSensitive.Value);
         Assert.NotEqual(sensitiveVariable.Value, storedSensitive.Value);
-        var storedPlain = Assert.Single(
-            detail.Header.Environment.Variables,
-            v => v.Key == "BASE_URL"
-        );
+        var storedPlain = Assert.Single(stored.Environment.Variables, v => v.Key == "BASE_URL");
         Assert.Equal(plainVariable.Value, storedPlain.Value);
 
         // verify -- a second racing claim still fails and changes nothing, same as without variables.
-        var secondClaim = await _repository.TryStartAsync(
+        var secondClaim = await _repository.TryMarkAsStartedAsync(
             organizationId,
             applicationId,
             run.Id,
@@ -849,7 +1099,9 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     [InlineData(RunStatus.Completed)]
     [InlineData(RunStatus.Cancelled)]
     [InlineData(RunStatus.Abandoned)]
-    public async Task TryStartAsync_WhenRunIsNotPending_FailsAndChangesNothing(RunStatus notPending)
+    public async Task TryMarkAsStartedAsync_WhenRunIsNotPending_FailsAndChangesNothing(
+        RunStatus notPending
+    )
     {
         // setup -- claim the Run once to reach Running, then optionally end it, so its Status is
         // notPending before the real test call.
@@ -857,7 +1109,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
-        await _repository.TryStartAsync(
+        await _repository.TryMarkAsStartedAsync(
             organizationId,
             applicationId,
             runId,
@@ -866,7 +1118,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         );
         if (notPending != RunStatus.Running)
         {
-            await _repository.TryEndAsync(
+            await _repository.TryMarkAsEndedAsync(
                 organizationId,
                 applicationId,
                 runId,
@@ -878,7 +1130,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var beforeRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
 
         // test
-        var result = await _repository.TryStartAsync(
+        var result = await _repository.TryMarkAsStartedAsync(
             organizationId,
             applicationId,
             runId,
@@ -894,7 +1146,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task TryStartAsync_WhenTwoStartsRaceTheSamePendingRun_ExactlyOneWins()
+    public async Task TryMarkAsStartedAsync_WhenTwoStartsRaceTheSamePendingRun_ExactlyOneWins()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -905,14 +1157,14 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         // test -- two sequential claims stand in for two racing workers; the second one arriving after
         // the first already flipped Status is enough to prove the conditional write, without needing
         // real concurrent threads.
-        var first = await _repository.TryStartAsync(
+        var first = await _repository.TryMarkAsStartedAsync(
             organizationId,
             applicationId,
             runId,
             FixedNow,
             CreateEnvironmentSnapshot(environmentId)
         );
-        var second = await _repository.TryStartAsync(
+        var second = await _repository.TryMarkAsStartedAsync(
             organizationId,
             applicationId,
             runId,
@@ -929,7 +1181,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     [InlineData(RunStatus.Completed)]
     [InlineData(RunStatus.Cancelled)]
     [InlineData(RunStatus.Abandoned)]
-    public async Task TryEndAsync_WhenRunIsRunning_SucceedsAndRemovesInFlightShard(
+    public async Task TryMarkAsEndedAsync_WhenRunIsRunning_SucceedsAndDeletesRunningRunRow(
         RunStatus terminalStatus
     )
     {
@@ -938,7 +1190,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
-        await _repository.TryStartAsync(
+        await _repository.TryMarkAsStartedAsync(
             organizationId,
             applicationId,
             runId,
@@ -950,7 +1202,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             terminalStatus == RunStatus.Abandoned ? RunStatusReason.HeartbeatLost : null;
 
         // test
-        var result = await _repository.TryEndAsync(
+        var result = await _repository.TryMarkAsEndedAsync(
             organizationId,
             applicationId,
             runId,
@@ -959,12 +1211,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             completedAt
         );
         var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
+        var runningRunRow = await GetRawRunningRunRowAsync(organizationId, applicationId, runId);
 
         // verify
         Assert.True(result);
         Assert.Equal(terminalStatus.ToString(), row["Status"].S);
         Assert.Equal(completedAt.ToString("O"), row["CompletedAt"].S);
-        Assert.False(row.ContainsKey("InFlightShard"));
+        Assert.Empty(runningRunRow);
         if (statusReason is { } reason)
         {
             Assert.Equal(reason.ToString(), row["StatusReason"].S);
@@ -980,7 +1233,9 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     [InlineData(RunStatus.Completed)]
     [InlineData(RunStatus.Cancelled)]
     [InlineData(RunStatus.Abandoned)]
-    public async Task TryEndAsync_WhenRunIsNotRunning_FailsAndChangesNothing(RunStatus notRunning)
+    public async Task TryMarkAsEndedAsync_WhenRunIsNotRunning_FailsAndChangesNothing(
+        RunStatus notRunning
+    )
     {
         // setup -- reach notRunning by claiming the Run and, unless it must stay Pending, ending it once
         // with that status, so the real test call attempts to end a Run that is not Running.
@@ -990,14 +1245,14 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
         if (notRunning != RunStatus.Pending)
         {
-            await _repository.TryStartAsync(
+            await _repository.TryMarkAsStartedAsync(
                 organizationId,
                 applicationId,
                 runId,
                 FixedNow,
                 CreateEnvironmentSnapshot(environmentId)
             );
-            await _repository.TryEndAsync(
+            await _repository.TryMarkAsEndedAsync(
                 organizationId,
                 applicationId,
                 runId,
@@ -1009,7 +1264,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var beforeRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
 
         // test
-        var result = await _repository.TryEndAsync(
+        var result = await _repository.TryMarkAsEndedAsync(
             organizationId,
             applicationId,
             runId,
@@ -1031,7 +1286,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task TryEndAsync_WhenSweeperCallsWithFreshHeartbeat_Fails()
+    public async Task TryMarkAsEndedAsync_WhenHeartbeatCutoffIsBeforeLastHeartbeat_Fails()
     {
         // setup -- a Running Run whose heartbeat was just set by Start Run
         var organizationId = Guid.CreateVersion7();
@@ -1039,7 +1294,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var environmentId = Guid.CreateVersion7();
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
         var startedAt = FixedNow;
-        await _repository.TryStartAsync(
+        await _repository.TryMarkAsStartedAsync(
             organizationId,
             applicationId,
             runId,
@@ -1047,10 +1302,10 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             CreateEnvironmentSnapshot(environmentId)
         );
 
-        // test -- the sweeper's cutoff is before the Run's actual heartbeat, so the heartbeat is fresh
-        // relative to it and the sweeper must not end the Run
+        // test -- the cutoff is before the Run's actual heartbeat, so the heartbeat is fresh relative to
+        // it and this caller must not end the Run
         var staleBeforeCutoff = startedAt.AddSeconds(-90);
-        var result = await _repository.TryEndAsync(
+        var result = await _repository.TryMarkAsEndedAsync(
             organizationId,
             applicationId,
             runId,
@@ -1061,13 +1316,13 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         );
         var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
 
-        // verify -- the Run is still Running; the sweeper's condition rejected the fresh heartbeat
+        // verify -- the Run is still Running; the condition rejected the fresh heartbeat
         Assert.False(result);
         Assert.Equal(RunStatus.Running.ToString(), row["Status"].S);
     }
 
     [Fact]
-    public async Task TryEndAsync_WhenSweeperCallsWithStaleHeartbeatCutoff_Succeeds()
+    public async Task TryMarkAsEndedAsync_WhenHeartbeatCutoffIsAfterLastHeartbeat_Succeeds()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -1075,7 +1330,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var environmentId = Guid.CreateVersion7();
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
         var startedAt = FixedNow;
-        await _repository.TryStartAsync(
+        await _repository.TryMarkAsStartedAsync(
             organizationId,
             applicationId,
             runId,
@@ -1083,10 +1338,10 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             CreateEnvironmentSnapshot(environmentId)
         );
 
-        // test -- the sweeper's cutoff is after the Run's last heartbeat, so the heartbeat reads as
-        // stale and the sweeper may abandon the Run
+        // test -- the cutoff is after the Run's last heartbeat, so the heartbeat reads as stale and this
+        // caller may abandon the Run
         var cutoffAfterHeartbeat = startedAt.AddSeconds(90);
-        var result = await _repository.TryEndAsync(
+        var result = await _repository.TryMarkAsEndedAsync(
             organizationId,
             applicationId,
             runId,
@@ -1104,14 +1359,14 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task TryUpdateStatsAsync_WhenRunIsRunning_WritesAbsoluteCounts()
+    public async Task TryUpdateAsync_StatsWhenRunIsRunning_WritesAbsoluteCounts()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
-        await _repository.TryStartAsync(
+        await _repository.TryMarkAsStartedAsync(
             organizationId,
             applicationId,
             runId,
@@ -1121,23 +1376,29 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
 
         // test -- a second call with different, still-absolute numbers proves a retry (or a later
         // progress update) simply overwrites rather than accumulating.
-        await _repository.TryUpdateStatsAsync(
+        await _repository.TryUpdateAsync(
             organizationId,
             applicationId,
             runId,
-            totalActivityCount: 10,
-            passedActivityCount: 3,
-            failedActivityCount: 1,
-            skippedActivityCount: 0
+            new RunUpdatableFields
+            {
+                TotalActivityCount = 10,
+                PassedActivityCount = 3,
+                FailedActivityCount = 1,
+                SkippedActivityCount = 0,
+            }
         );
-        var result = await _repository.TryUpdateStatsAsync(
+        var result = await _repository.TryUpdateAsync(
             organizationId,
             applicationId,
             runId,
-            totalActivityCount: 10,
-            passedActivityCount: 7,
-            failedActivityCount: 2,
-            skippedActivityCount: 1
+            new RunUpdatableFields
+            {
+                TotalActivityCount = 10,
+                PassedActivityCount = 7,
+                FailedActivityCount = 2,
+                SkippedActivityCount = 1,
+            }
         );
         var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
 
@@ -1154,7 +1415,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     [InlineData(RunStatus.Completed)]
     [InlineData(RunStatus.Cancelled)]
     [InlineData(RunStatus.Abandoned)]
-    public async Task TryUpdateStatsAsync_WhenRunIsNotRunning_FailsAndChangesNothing(
+    public async Task TryUpdateAsync_StatsWhenRunIsNotRunning_FailsAndChangesNothing(
         RunStatus notRunning
     )
     {
@@ -1166,14 +1427,14 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
         if (notRunning != RunStatus.Pending)
         {
-            await _repository.TryStartAsync(
+            await _repository.TryMarkAsStartedAsync(
                 organizationId,
                 applicationId,
                 runId,
                 FixedNow,
                 CreateEnvironmentSnapshot(environmentId)
             );
-            await _repository.TryEndAsync(
+            await _repository.TryMarkAsEndedAsync(
                 organizationId,
                 applicationId,
                 runId,
@@ -1184,14 +1445,17 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         }
 
         // test
-        var result = await _repository.TryUpdateStatsAsync(
+        var result = await _repository.TryUpdateAsync(
             organizationId,
             applicationId,
             runId,
-            totalActivityCount: 5,
-            passedActivityCount: 5,
-            failedActivityCount: 0,
-            skippedActivityCount: 0
+            new RunUpdatableFields
+            {
+                TotalActivityCount = 5,
+                PassedActivityCount = 5,
+                FailedActivityCount = 0,
+                SkippedActivityCount = 0,
+            }
         );
         var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
 
@@ -1200,8 +1464,8 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         Assert.Equal("0", row["TotalActivityCount"].N);
     }
 
-    // Claims a fresh pending Run and immediately starts it at startedAt, so its LastHeartbeatAt and
-    // DeadlineAt derive from that single instant -- what every stale-query test below manipulates.
+    // Claims a fresh pending Run and immediately starts it at startedAt, so its LastHeartbeatAt derives
+    // from that single instant -- what several tests below manipulate.
     private async Task<Guid> CreateRunningRunAsync(
         Guid organizationId,
         Guid applicationId,
@@ -1210,7 +1474,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     )
     {
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
-        await _repository.TryStartAsync(
+        await _repository.TryMarkAsStartedAsync(
             organizationId,
             applicationId,
             runId,
@@ -1220,16 +1484,8 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         return runId;
     }
 
-    // Extracts the 0-9 digit DynamoDbMapper.RunInFlightShard bakes into "Running#<digit>", so a test can
-    // ask ListStaleInFlightRunsAsync for exactly the shard a given Run id actually landed on.
-    private static int ShardOf(Guid runId) =>
-        int.Parse(
-            DynamoDbMapper.RunInFlightShard(runId)["Running#".Length..],
-            CultureInfo.InvariantCulture
-        );
-
     [Fact]
-    public async Task TryHeartbeatAsync_WhenRunIsRunning_MovesLastHeartbeatAt()
+    public async Task TryUpdateAsync_HeartbeatWhenRunIsRunning_MovesLastHeartbeatAt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -1244,11 +1500,11 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
 
         // test
         var heartbeatAt = FixedNow.AddSeconds(30);
-        var result = await _repository.TryHeartbeatAsync(
+        var result = await _repository.TryUpdateAsync(
             organizationId,
             applicationId,
             runId,
-            heartbeatAt
+            new RunUpdatableFields { HeartbeatAt = heartbeatAt }
         );
         var row = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
 
@@ -1262,7 +1518,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     [InlineData(RunStatus.Completed)]
     [InlineData(RunStatus.Cancelled)]
     [InlineData(RunStatus.Abandoned)]
-    public async Task TryHeartbeatAsync_WhenRunIsNotRunning_FailsAndChangesNothing(
+    public async Task TryUpdateAsync_HeartbeatWhenRunIsNotRunning_FailsAndChangesNothing(
         RunStatus notRunning
     )
     {
@@ -1274,14 +1530,14 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var runId = await CreatePendingRunAsync(organizationId, applicationId, environmentId);
         if (notRunning != RunStatus.Pending)
         {
-            await _repository.TryStartAsync(
+            await _repository.TryMarkAsStartedAsync(
                 organizationId,
                 applicationId,
                 runId,
                 FixedNow,
                 CreateEnvironmentSnapshot(environmentId)
             );
-            await _repository.TryEndAsync(
+            await _repository.TryMarkAsEndedAsync(
                 organizationId,
                 applicationId,
                 runId,
@@ -1293,11 +1549,11 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         var beforeRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
 
         // test
-        var result = await _repository.TryHeartbeatAsync(
+        var result = await _repository.TryUpdateAsync(
             organizationId,
             applicationId,
             runId,
-            FixedNow.AddMinutes(10)
+            new RunUpdatableFields { HeartbeatAt = FixedNow.AddMinutes(10) }
         );
         var afterRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
 
@@ -1311,199 +1567,6 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         {
             Assert.Equal(lastHeartbeatAt.S, afterRow["LastHeartbeatAt"].S);
         }
-    }
-
-    [Fact]
-    public async Task ListStaleInFlightRunsAsync_WhenHeartbeatIsPastCutoff_ReturnsIt()
-    {
-        // setup -- a Running Run whose heartbeat is older than the sweeper's cutoff, with a DeadlineAt
-        // nowhere near passed, so only the heartbeat half of the OR can be what catches it.
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        var startedAt = DateTimeOffset.UtcNow.AddMinutes(-2);
-        var runId = await CreateRunningRunAsync(
-            organizationId,
-            applicationId,
-            environmentId,
-            startedAt
-        );
-        var cutoff = DateTimeOffset.UtcNow.AddSeconds(-90);
-
-        // test
-        var staleRuns = await _repository.ListStaleInFlightRunsAsync(ShardOf(runId), cutoff);
-
-        // verify
-        Assert.Contains(
-            staleRuns,
-            staleRun =>
-                staleRun.Id == runId
-                && staleRun.OrganizationId == organizationId
-                && staleRun.ApplicationId == applicationId
-        );
-    }
-
-    [Fact]
-    public async Task ListStaleInFlightRunsAsync_WhenHeartbeatIsFreshAndDeadlineNotPassed_DoesNotReturnIt()
-    {
-        // setup -- a Running Run that just started: fresh heartbeat, DeadlineAt hours away.
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        var runId = await CreateRunningRunAsync(
-            organizationId,
-            applicationId,
-            environmentId,
-            DateTimeOffset.UtcNow
-        );
-        var cutoff = DateTimeOffset.UtcNow.AddSeconds(-90);
-
-        // test
-        var staleRuns = await _repository.ListStaleInFlightRunsAsync(ShardOf(runId), cutoff);
-
-        // verify
-        Assert.DoesNotContain(staleRuns, staleRun => staleRun.Id == runId);
-    }
-
-    [Fact]
-    public async Task ListStaleInFlightRunsAsync_WhenHeartbeatIsFreshButDeadlineHasPassed_ReturnsIt()
-    {
-        // setup -- a Run claimed long enough ago that its fixed DeadlineAt has already passed, then
-        // heartbeats just now -- the "stuck in a retry loop, still beating" case the OR exists for. A
-        // KeyConditionExpression on LastHeartbeatAt alone would miss this Run entirely.
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        var startedAt =
-            DateTimeOffset.UtcNow - RunExecutionPolicy.MaxRunDuration - TimeSpan.FromHours(1);
-        var runId = await CreateRunningRunAsync(
-            organizationId,
-            applicationId,
-            environmentId,
-            startedAt
-        );
-        await _repository.TryHeartbeatAsync(
-            organizationId,
-            applicationId,
-            runId,
-            DateTimeOffset.UtcNow
-        );
-        // A cutoff this recent would not flag the (now fresh) heartbeat as stale on its own.
-        var cutoff = DateTimeOffset.UtcNow.AddSeconds(-90);
-
-        // test
-        var staleRuns = await _repository.ListStaleInFlightRunsAsync(ShardOf(runId), cutoff);
-
-        // verify -- caught only via the DeadlineAt half of the OR.
-        Assert.Contains(
-            staleRuns,
-            staleRun =>
-                staleRun.Id == runId
-                && staleRun.OrganizationId == organizationId
-                && staleRun.ApplicationId == applicationId
-        );
-    }
-
-    [Fact]
-    public async Task ListStaleInFlightRunsAsync_WhenRunHasEnded_NeverReturnsIt()
-    {
-        // setup -- a Run that, were it still in flight, would be caught by both halves of the OR (stale
-        // heartbeat and passed deadline), but has since ended.
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        var startedAt = DateTimeOffset.UtcNow.AddHours(-5);
-        var runId = await CreateRunningRunAsync(
-            organizationId,
-            applicationId,
-            environmentId,
-            startedAt
-        );
-        await _repository.TryEndAsync(
-            organizationId,
-            applicationId,
-            runId,
-            RunStatus.Completed,
-            null,
-            DateTimeOffset.UtcNow
-        );
-        var cutoff = DateTimeOffset.UtcNow.AddSeconds(-90);
-
-        // test
-        var staleRuns = await _repository.ListStaleInFlightRunsAsync(ShardOf(runId), cutoff);
-
-        // verify -- ending the Run removed InFlightShard (task 7), which is what drops it out of this
-        // query no matter how stale its (now-frozen) heartbeat and deadline still look.
-        Assert.DoesNotContain(staleRuns, staleRun => staleRun.Id == runId);
-    }
-
-    [Fact]
-    public async Task ListStaleInFlightRunsAsync_WhenRunsSpanMultipleShards_EachShardReturnsOnlyItsOwn()
-    {
-        // setup -- enough Running Runs with stale heartbeats that RunInFlightShard's even spread across
-        // ten shards makes it overwhelmingly likely several distinct shards end up populated, proving
-        // this Query reads one shard rather than the whole table.
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        await PutApplicationAsync(organizationId, applicationId);
-        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
-        var startedAt = DateTimeOffset.UtcNow.AddMinutes(-5);
-        var runIds = new List<Guid>();
-        for (var i = 0; i < 40; i++)
-        {
-            var run = CreateRun(organizationId, applicationId, environmentId);
-            await _repository.TryCreateAsync(run, [CreateScenarioSnapshot()]);
-            await _repository.TryStartAsync(
-                organizationId,
-                applicationId,
-                run.Id,
-                startedAt,
-                CreateEnvironmentSnapshot(environmentId)
-            );
-            runIds.Add(run.Id);
-        }
-        var cutoff = DateTimeOffset.UtcNow.AddSeconds(-90);
-
-        // test -- query every shard independently, the way a sweeper walking 0..9 would.
-        var foundByShard = new Dictionary<int, IReadOnlyList<StaleInFlightRun>>();
-        for (var shard = 0; shard < RunExecutionPolicy.InFlightShardCount; shard++)
-        {
-            foundByShard[shard] = await _repository.ListStaleInFlightRunsAsync(shard, cutoff);
-        }
-
-        // verify -- every created Run turns up under its own shard and nowhere else, and more than one
-        // shard actually held a result.
-        foreach (var runId in runIds)
-        {
-            var ownShard = ShardOf(runId);
-            Assert.Contains(foundByShard[ownShard], staleRun => staleRun.Id == runId);
-            foreach (
-                var otherShard in Enumerable
-                    .Range(0, RunExecutionPolicy.InFlightShardCount)
-                    .Where(candidate => candidate != ownShard)
-            )
-            {
-                Assert.DoesNotContain(foundByShard[otherShard], staleRun => staleRun.Id == runId);
-            }
-        }
-        var populatedShardCount = foundByShard.Count(entry => entry.Value.Count > 0);
-        Assert.True(
-            populatedShardCount > 1,
-            $"expected the 40 created Run ids to spread across more than one shard, got {populatedShardCount}"
-        );
-    }
-
-    [Fact]
-    public async Task ListStaleInFlightRunsAsync_WhenShardIsOutOfRange_Throws()
-    {
-        // test & verify
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
-            _repository.ListStaleInFlightRunsAsync(
-                RunExecutionPolicy.InFlightShardCount,
-                DateTimeOffset.UtcNow
-            )
-        );
     }
 
     [Fact]
@@ -1527,7 +1590,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             applicationId,
             runId,
             update,
-            expiresAt: 12345
+            expiresAt: DateTimeOffset.FromUnixTimeSeconds(12345)
         );
         var headerRow = await GetRawHeaderRowAsync(organizationId, applicationId, runId);
         var rawRows = await QueryRawRowsAsync(organizationId, applicationId);
@@ -1638,7 +1701,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
             environmentId,
             FixedNow
         );
-        await _repository.TryEndAsync(
+        await _repository.TryMarkAsEndedAsync(
             organizationId,
             applicationId,
             runId,

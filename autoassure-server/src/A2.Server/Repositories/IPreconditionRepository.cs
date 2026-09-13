@@ -22,7 +22,7 @@ public interface IPreconditionRepository
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
     Task<Precondition?> GetByIdAsync(Guid organizationId, Guid id);
 
-    /// <summary>All Preconditions in this Application's library. Ordering: creation order.</summary>
+    /// <summary>All Preconditions in this Application's library. Ordering: newest first.</summary>
     Task<IReadOnlyList<Precondition>> ListByApplicationAsync(
         Guid organizationId,
         Guid applicationId

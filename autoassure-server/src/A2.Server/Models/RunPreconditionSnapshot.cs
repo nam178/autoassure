@@ -4,17 +4,17 @@ namespace A2.Server.Models;
 /// never changes when the library definition is edited or deleted later.</summary>
 public record RunPreconditionSnapshot
 {
-    public required SnapshotSource Source { get; init; }
+    public required RunSnapshotSource Source { get; init; }
     public required string Name { get; init; }
     public required PreconditionValueSource ValueSource { get; init; }
     public required string ExampleValue { get; init; }
 
     /// <summary>Copies a Precondition as it is right now. OrganizationId and ApplicationId are left out --
-    /// they already live on the Run header, and a Run never spans two of either.</summary>
+    /// they already live on the Run, and a Run never spans two of either.</summary>
     public static RunPreconditionSnapshot FromPrecondition(Precondition precondition) =>
         new()
         {
-            Source = new SnapshotSource
+            Source = new RunSnapshotSource
             {
                 Id = precondition.Id,
                 CreatedByUserId = precondition.CreatedByUserId,

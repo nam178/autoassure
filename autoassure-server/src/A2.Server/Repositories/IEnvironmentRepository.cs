@@ -20,7 +20,7 @@ public interface IEnvironmentRepository
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
     Task<Environment?> GetByIdAsync(Guid organizationId, Guid id);
 
-    /// <summary>All Environments belonging to this Application. Ordering: creation order.</summary>
+    /// <summary>All Environments belonging to this Application. Ordering: newest first.</summary>
     Task<IReadOnlyList<Environment>> ListByApplicationAsync(
         Guid organizationId,
         Guid applicationId

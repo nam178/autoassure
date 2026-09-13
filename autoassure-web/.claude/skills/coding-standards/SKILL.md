@@ -38,6 +38,7 @@ intention, then the "why") Bad: // DynamoDB is used because user is stored here
 
 - Wite as a linguist expert in jsdoc, comments, classes, methods, variable
   naming, etc. Writing MUST flow nice, simple, and easy to understand.
+- jsdoc MUST NOT exceed 2 sentences. DO NOT leak implementation details.
 - Exported classes, public methods, and public APIs, constants MUST have a super
   short JSDoc: what it does, not how.
 - Non-obvious constants MUST have a one-line jsdoc saying what they are.
@@ -50,6 +51,8 @@ intention, then the "why") Bad: // DynamoDB is used because user is stored here
 - Methods that can throw MUST have a `@throws` JSDoc explaining when, so callers
   can avoid/handle it. Include throws from downstream services/calls, not just
   direct `throw`s.
+- All throws indicate expected errors MUST be documented, except those to
+  indicate bugs - unexpected errors, like OutOfMemory etc.
 - NEVER catch-all error, only catch DOCUMENTED errors (@throws). Except when
   you're at the top of the callstack (e.g. a top-level request handler, an app
   error boundary).

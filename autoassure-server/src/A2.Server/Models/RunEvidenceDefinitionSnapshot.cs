@@ -4,19 +4,19 @@ namespace A2.Server.Models;
 /// captured never changes when the library definition is edited or deleted later.</summary>
 public record RunEvidenceDefinitionSnapshot
 {
-    public required SnapshotSource Source { get; init; }
+    public required RunSnapshotSource Source { get; init; }
     public required string Name { get; init; }
     public required string Description { get; init; }
     public required string ExampleValue { get; init; }
 
     /// <summary>Copies an EvidenceDefinition as it is right now. OrganizationId and ApplicationId are left
-    /// out -- they already live on the Run header, and a Run never spans two of either.</summary>
+    /// out -- they already live on the Run, and a Run never spans two of either.</summary>
     public static RunEvidenceDefinitionSnapshot FromEvidenceDefinition(
         EvidenceDefinition evidenceDefinition
     ) =>
         new()
         {
-            Source = new SnapshotSource
+            Source = new RunSnapshotSource
             {
                 Id = evidenceDefinition.Id,
                 CreatedByUserId = evidenceDefinition.CreatedByUserId,

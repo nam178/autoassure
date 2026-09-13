@@ -84,6 +84,9 @@ public class DynamoDbApplicationRepository(
                     [":organizationId"] = new(organizationId.ToString()),
                 },
                 ConsistentRead = true,
+                // Id is the table's range key and a Guid.CreateVersion7() UUID, so descending order is
+                // newest first with no separate sort.
+                ScanIndexForward = false,
             }
         );
 
