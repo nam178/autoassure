@@ -149,8 +149,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             ),
         };
         var triggerPlaceholders = triggers
-            .Select(
-                (trigger, index) =>
+            .Select((trigger, index) =>
                 {
                     var placeholder = $":trigger{index}";
                     expressionAttributeValues[placeholder] = new AttributeValue(trigger.ToString());
@@ -246,8 +245,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
-                && reasons[0].Code == "ConditionalCheckFailed"
-            )
+                  && reasons[0].Code == "ConditionalCheckFailed"
+                 )
         {
             return null;
         }
@@ -269,7 +268,7 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         {
             throw new ArgumentException(
                 $"{terminalStatus} is not a terminal state End Run can write -- only Completed, "
-                    + "Cancelled or Abandoned.",
+                + "Cancelled or Abandoned.",
                 nameof(terminalStatus)
             );
         }
@@ -325,8 +324,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
-                && reasons[0].Code == "ConditionalCheckFailed"
-            )
+                  && reasons[0].Code == "ConditionalCheckFailed"
+                 )
         {
             return false;
         }
@@ -463,9 +462,6 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 {
                     TableName = RunTableName,
                     Item = update.ToDynamoDbRow(runId, organizationId, applicationId),
-                    // A retried append (dispatch is at-least-once) targets the same Seq and therefore
-                    // the same RowKey, so this is what turns the retry into a no-op instead of a
-                    // second row for the same update.
                     ConditionExpression = "attribute_not_exists(RowKey)",
                 },
             },
@@ -476,10 +472,6 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     TableName = RunTableName,
                     Key = HeaderKey(organizationId, applicationId, runId),
                     UpdateExpression = "SET LastSeq = :seq",
-                    // When LastSeq has already reached or passed this Seq, Then this append is a stale
-                    // retry and this condition fails alongside the Put above. When Status is not
-                    // Running, Then the owning worker was cancelled or swept and cannot append further
-                    // -- there is no other signalling channel (see fix_run_design.md section 5).
                     ConditionExpression = "LastSeq < :seq AND #status = :running",
                     ExpressionAttributeNames = new Dictionary<string, string>
                     {
@@ -503,8 +495,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons?.Any(reason => reason.Code == "ConditionalCheckFailed")
-                == true
-            )
+                  == true
+                 )
         {
             return false;
         }
@@ -532,22 +524,11 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             throw new ArgumentOutOfRangeException(nameof(limit), limit, "limit must be positive.");
         }
 
-        // When afterSeq is already the largest value a seq can ever take, Then no row could possibly
-        // sort after it -- return empty rather than overflow computing afterSeq + 1 below.
         if (afterSeq == long.MaxValue)
         {
             return [];
         }
 
-        // BETWEEN this Run's own next-Seq key and its own highest-possible-Seq key stays entirely
-        // within this Run's update rows and never crosses into another Run's rows sharing the same
-        // partition -- see RunStatusUpdateRowKeyPrefix's doc for why a shared 36-character RunId prefix
-        // makes that safe. A bare "RowKey > :cursor" comparator alone would not: DynamoDB allows only
-        // one condition on a Query's sort key, so without this upper bound the query would also return
-        // every later-sorting row of every OTHER Run in the same Application, since every Run's rows
-        // share one partition. Seq is dense (see fix_run_design.md decision 9), so afterSeq + 1 is
-        // exactly the smallest Seq an actual row after the cursor could have -- there is no gap a real
-        // row could occupy strictly between afterSeq and afterSeq + 1.
         var response = await client.QueryAsync(
             new QueryRequest
             {
@@ -564,10 +545,6 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 },
                 ConsistentRead = true,
                 ScanIndexForward = true,
-                // One bounded page, not the LastEvaluatedKey loop GetByIdAsync and
-                // ListByApplicationAsync use -- this cursor is a public, client-driven pagination
-                // mechanism (see fix_run_design.md section 4), so a caller wanting more polls again with
-                // the last Seq it received rather than this method reading until exhausted.
                 Limit = limit,
             }
         );
@@ -637,10 +614,6 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             },
         };
 
-    // DynamoDB caps a single Query response at 1 MB, so a Run whose header and Scenario snapshots
-    // together exceed that must be read across multiple pages. Then loop on LastEvaluatedKey until
-    // DynamoDB reports none remain, rather than assuming the first page is everything -- nothing else
-    // in this codebase does that yet (see fix_run_design.md section 3).
     private async Task<List<Dictionary<string, AttributeValue>>> QueryAllPagesAsync(
         QueryRequest request
     )

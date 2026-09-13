@@ -54,29 +54,17 @@ public interface IRunRepository
         RunUpdatableFields fields
     );
 
-    /// <summary>Lists the Runs currently Running for this Application. Backed by a separate table, kept
-    /// in sync with every Start/End Run write, and read with a strongly consistent read -- unlike
-    /// <see cref="ListByApplicationAsync"/>'s index, a Run that just started can never be briefly missing
-    /// from this result.
-    ///
-    /// Returns identifying info only (<see cref="RunningRun"/>), not full Run data. A caller wanting the
-    /// full Run makes its own follow-up <see cref="GetByIdAsync"/>.</summary>
+    /// <summary>Lists the Runs currently Running for this Application.</summary>
     Task<IReadOnlyList<RunningRun>> ListRunningByApplicationAsync(
         Guid organizationId,
         Guid applicationId
     );
 
     /// <summary>Appends one entry to the Run's status update log and advances the Run's <c>LastSeq</c> to
-    /// match, atomically. A retried append changes nothing, and a worker whose Run was cancelled or swept
-    /// cannot append to it (see fix_run_design.md section 3).
-    ///
-    /// The owning worker allocates <see cref="RunStatusUpdate.Seq"/> and supplies it on
-    /// <paramref name="update"/>; this repository never invents one, since one owner for life means
-    /// nothing else contends for the next number. Sequence numbers are 1-based, which is what lets
-    /// <see cref="ListStatusUpdatesAsync"/>'s <c>afterSeq = 0</c> mean "from the start".
-    ///
-    /// Returns false, and writes nothing, when this Seq was already appended, the Run's <c>LastSeq</c>
-    /// has already moved past it, or its <c>Status</c> is not Running.</summary>
+    /// match, atomically.
+    /// Returns false, and writes nothing, when this Seq was already appended; when a concurrent append
+    /// with a larger Seq has already moved the Run's <c>LastSeq</c> past it, so this one permanently loses
+    /// its slot rather than being applied out of order; or when its <c>Status</c> is not Running.</summary>
     Task<bool> TryAppendStatusUpdateAsync(
         Guid organizationId,
         Guid applicationId,
@@ -85,17 +73,10 @@ public interface IRunRepository
     );
 
     /// <summary>Returns one page of the Run's status update log, strictly after
-    /// <paramref name="afterSeq"/>, in ascending sequence order -- the log only the client folds (see
-    /// fix_run_design.md section 7). Never folds, interprets or derives Run state from these entries; it
-    /// hands them back exactly as appended.
-    ///
-    /// Pass <paramref name="afterSeq"/> as 0 to read from the start: sequence numbers are 1-based (see
-    /// <see cref="TryAppendStatusUpdateAsync"/>), so 0 excludes nothing real.
-    ///
-    /// Returns at most <paramref name="limit"/> entries, in one bounded page. Unlike
-    /// <see cref="GetByIdAsync"/> and <see cref="ListByApplicationAsync"/>, this deliberately stops at one
-    /// page instead of assembling a complete result: the cursor here is a public mechanism the client
-    /// drives itself, polling again with the last Seq it holds (see fix_run_design.md section 4).</summary>
+    /// <paramref name="afterSeq"/>, in ascending sequence order.
+    /// Pass <paramref name="afterSeq"/> as 0 to read from the start.
+    /// Returns at most <paramref name="limit"/> entries.
+    /// </summary>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="afterSeq"/> is negative or <paramref name="limit"/> is not positive.
     /// </exception>
