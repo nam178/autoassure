@@ -19,8 +19,8 @@ public record Run
     public int SkippedActivityCount { get; init; }
     public long LastStatusUpdateSequenceNumber { get; init; }
 
-    /// <summary>Who triggered this Run. A person triggers a Manual or Authoring run. Null means a system
-    /// timer triggered it.</summary>
+    /// <summary>Who triggered this Run. A person triggers a Manual run. Null means a system timer
+    /// triggered it.</summary>
     public Guid? TriggeredByUserId { get; init; }
 
     public required DateTimeOffset CreatedAt { get; init; }
@@ -36,7 +36,6 @@ public enum RunTrigger
 {
     Manual,
     Scheduled,
-    Authoring,
 }
 
 public enum RunStatus

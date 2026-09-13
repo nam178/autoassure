@@ -6,5 +6,4 @@ public enum RunTrigger
 {
     Manual,
     Scheduled,
-    Authoring,
 }

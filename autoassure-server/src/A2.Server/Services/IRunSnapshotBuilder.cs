@@ -6,8 +6,7 @@ namespace A2.Server.Services;
 /// <summary>Assembles the snapshot rows a Run is created with, by reading the live Scenarios, their
 /// Activities, the Preconditions/EvidenceDefinitions those Activities reference, and an Environment's
 /// variables, then copying each into its dedicated snapshot type (see the snapshot models in
-/// <c>Models/</c>). Used by both create-Run paths -- Manual (over several Scenarios) and Authoring (over
-/// one) -- so the copy-depth rules live in exactly one place.</summary>
+/// <c>Models/</c>).</summary>
 public interface IRunSnapshotBuilder
 {
     /// <summary>Copies <paramref name="environment"/> and its current variables into a

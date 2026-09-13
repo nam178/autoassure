@@ -785,17 +785,12 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task List_ReturnsSummariesAndExcludesAuthoringRuns()
+    public async Task List_ReturnsCreatedRunSummary()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
         var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var manualRun = await CreateRunAsync(client, appId, [scenarioId], environmentId);
-        var authoringResponse = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/runs",
-            new CreateAuthoringRunRequest { EnvironmentId = environmentId }
-        );
-        Assert.Equal(HttpStatusCode.OK, authoringResponse.StatusCode);
+        var run = await CreateRunAsync(client, appId, [scenarioId], environmentId);
 
         // test
         var listResponse = await client.GetAsync($"/applications/{appId}/runs");
@@ -803,7 +798,7 @@ public sealed class RunsControllerTests
         // verify
         var summaries = await listResponse.Content.ReadFromJsonAsync<List<RunSummaryResponse>>();
         var summary = Assert.Single(summaries!);
-        Assert.Equal(manualRun.Id, summary.Id);
+        Assert.Equal(run.Id, summary.Id);
     }
 
     [Fact]

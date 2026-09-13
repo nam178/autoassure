@@ -7,7 +7,6 @@ using A2.Server.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ContractRunStatus = A2.Server.Contracts.RunStatus;
-using Environment = A2.Server.Models.Environment;
 using ModelRunStatus = A2.Server.Models.RunStatus;
 using ModelRunTrigger = A2.Server.Models.RunTrigger;
 using Run = A2.Server.Models.Run;
@@ -15,9 +14,7 @@ using Run = A2.Server.Models.Run;
 namespace A2.Server.Controllers;
 
 /// <summary>Manual Runs, nested under their Application, and the shared state-machine operations
-/// (Start/End/Heartbeat/Update Stats) every Run goes through regardless of how it was created. The
-/// Authoring create path lives on <see cref="AuthoringRunsController"/> instead, since it is a flat route
-/// over a Scenario rather than a nested one over an Application.</summary>
+/// (Start/End/Heartbeat/Update Stats) every Run goes through regardless of how it was created.</summary>
 [ApiController]
 [Authorize]
 public class RunsController(
@@ -46,11 +43,6 @@ public class RunsController(
     {
         var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
 
-        // The Application is the URL resource -- its non-existence must win as a 404 over a 400 for a
-        // semantically invalid body (an EnvironmentId/ScenarioIds that don't exist), so it is checked
-        // before validating those below. A structurally invalid body (missing field, wrong type) fails
-        // ASP.NET's automatic model validation before this action ever runs, and gets 400 like any other
-        // endpoint in this codebase.
         if (await applicationRepository.GetByIdAsync(organizationId, applicationId) is null)
         {
             return NotFound();
@@ -83,7 +75,7 @@ public class RunsController(
                 return BadRequest(
                     new ErrorResponse(
                         "ScenarioIds contains an id that does not reference a Scenario belonging to "
-                            + "this Application."
+                        + "this Application."
                     )
                 );
             }
@@ -91,21 +83,48 @@ public class RunsController(
             scenarios.Add(scenario);
         }
 
-        return await CreateRunAsync(
+        var environmentSnapshot = await runSnapshotBuilder.BuildEnvironmentSnapshotAsync(
+            organizationId,
+            environment
+        );
+        var scenarioSnapshots = await runSnapshotBuilder.BuildScenarioSnapshotsAsync(
             organizationId,
             applicationId,
-            ModelRunTrigger.Manual,
-            environment,
-            scenarios,
-            runSnapshotBuilder,
-            runRepository,
-            clock,
-            User.GetUserId()
+            scenarios
         );
+
+        // TotalActivityCount is counted from the snapshot just built, never read off the live
+        // Scenario's own denormalized ActivityCount -- that field can drift (see
+        // fix_run_design.md section 5 and the `// BUG:` in DynamoDbActivityRepository).
+        var run = new Run
+        {
+            Id = Guid.CreateVersion7(),
+            OrganizationId = organizationId,
+            ApplicationId = applicationId,
+            Trigger = ModelRunTrigger.Manual,
+            Environment = environmentSnapshot,
+            Scenarios = scenarioSnapshots,
+            Status = ModelRunStatus.Pending,
+            TotalActivityCount = scenarioSnapshots.Sum(s => s.Activities.Count),
+            TriggeredByUserId = User.GetUserId(),
+            CreatedAt = clock.UtcNow,
+        };
+
+        var result = await runRepository.TryCreateAsync(run);
+        return result switch
+        {
+            RunCreateResult.Success => Ok(run.ToResponse()),
+            RunCreateResult.ApplicationNotFound => NotFound(),
+            // Run.Id is a freshly generated UUIDv7, so this can only mean an id collision -- not
+            // something a retry or a different request body can fix, but still a real enum value this
+            // switch must handle rather than assume away.
+            RunCreateResult.AlreadyExists => Conflict(
+                new ErrorResponse("A Run with this Id already exists.")
+            ),
+            _ => throw new UnreachableException($"Unhandled {nameof(RunCreateResult)}: {result}"),
+        };
     }
 
-    /// <summary>Never returns Authoring Runs -- those are scratch runs against a Scenario under
-    /// construction, not runs of the Application's saved Scenarios.</summary>
     [HttpGet("applications/{applicationId:guid}/runs", Name = "ListRuns")]
     public async Task<ActionResult<IReadOnlyList<RunSummaryResponse>>> List(Guid applicationId)
     {
@@ -299,62 +318,5 @@ public class RunsController(
         return updated
             ? NoContent()
             : Conflict(new ErrorResponse("The Run's Status is not Running."));
-    }
-
-    /// <summary>Shared by Create Run (Manual) and Create Run (Authoring, on
-    /// <see cref="AuthoringRunsController"/>): builds every snapshot, creates the Run, and maps the
-    /// result to the same response shape both create paths return.</summary>
-    internal static async Task<ActionResult<RunResponse>> CreateRunAsync(
-        Guid organizationId,
-        Guid applicationId,
-        ModelRunTrigger trigger,
-        Environment environment,
-        IReadOnlyList<Scenario> scenarios,
-        IRunSnapshotBuilder runSnapshotBuilder,
-        IRunRepository runRepository,
-        IClock clock,
-        Guid? triggeredByUserId
-    )
-    {
-        var environmentSnapshot = await runSnapshotBuilder.BuildEnvironmentSnapshotAsync(
-            organizationId,
-            environment
-        );
-        var scenarioSnapshots = await runSnapshotBuilder.BuildScenarioSnapshotsAsync(
-            organizationId,
-            applicationId,
-            scenarios
-        );
-
-        // TotalActivityCount is counted from the snapshot just built, never read off the live
-        // Scenario's own denormalized ActivityCount -- that field can drift (see
-        // fix_run_design.md section 5 and the `// BUG:` in DynamoDbActivityRepository).
-        var run = new Run
-        {
-            Id = Guid.CreateVersion7(),
-            OrganizationId = organizationId,
-            ApplicationId = applicationId,
-            Trigger = trigger,
-            Environment = environmentSnapshot,
-            Scenarios = scenarioSnapshots,
-            Status = ModelRunStatus.Pending,
-            TotalActivityCount = scenarioSnapshots.Sum(s => s.Activities.Count),
-            TriggeredByUserId = triggeredByUserId,
-            CreatedAt = clock.UtcNow,
-        };
-
-        var result = await runRepository.TryCreateAsync(run);
-        return result switch
-        {
-            RunCreateResult.Success => new OkObjectResult(run.ToResponse()),
-            RunCreateResult.ApplicationNotFound => new NotFoundResult(),
-            // Run.Id is a freshly generated UUIDv7, so this can only mean an id collision -- not
-            // something a retry or a different request body can fix, but still a real enum value this
-            // switch must handle rather than assume away.
-            RunCreateResult.AlreadyExists => new ConflictObjectResult(
-                new ErrorResponse("A Run with this Id already exists.")
-            ),
-            _ => throw new UnreachableException($"Unhandled {nameof(RunCreateResult)}: {result}"),
-        };
     }
 }

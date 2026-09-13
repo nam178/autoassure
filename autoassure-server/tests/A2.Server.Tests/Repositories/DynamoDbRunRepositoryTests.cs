@@ -676,7 +676,7 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task ListByApplicationAsync_WhenTriggersExcludesAuthoring_DoesNotReturnAuthoringRuns()
+    public async Task ListByApplicationAsync_WhenTriggersExcludesScheduled_DoesNotReturnScheduledRuns()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -685,65 +685,25 @@ public sealed class DynamoDbRunRepositoryTests(DynamoDbLocalFixture dynamoDbLoca
         await PutApplicationAsync(organizationId, applicationId);
         await PutEnvironmentAsync(organizationId, applicationId, environmentId);
         var manualRun = CreateRun(organizationId, applicationId, environmentId);
-        var authoringRun = CreateRun(
+        var scheduledRun = CreateRun(
             organizationId,
             applicationId,
             environmentId,
-            RunTrigger.Authoring
+            RunTrigger.Scheduled
         );
         await _repository.TryCreateAsync(manualRun);
-        await _repository.TryCreateAsync(
-            authoringRun with
-            {
-                Scenarios = [CreateScenarioSnapshot()],
-            }
-        );
+        await _repository.TryCreateAsync(scheduledRun);
 
         // test
         var summaries = await _repository.ListByApplicationAsync(
             organizationId,
             applicationId,
-            [RunTrigger.Manual, RunTrigger.Scheduled]
+            [RunTrigger.Manual]
         );
 
         // verify
         var summary = Assert.Single(summaries);
         Assert.Equal(manualRun.Id, summary.Id);
-    }
-
-    [Fact]
-    public async Task ListByApplicationAsync_WhenTriggersIncludesAuthoring_ReturnsAuthoringRuns()
-    {
-        // setup -- proves the trigger filter is a plain allow-list rather than a hardcoded Authoring
-        // exclusion: a caller that asks for Authoring gets it back.
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        await PutApplicationAsync(organizationId, applicationId);
-        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
-        var authoringRun = CreateRun(
-            organizationId,
-            applicationId,
-            environmentId,
-            RunTrigger.Authoring
-        );
-        await _repository.TryCreateAsync(
-            authoringRun with
-            {
-                Scenarios = [CreateScenarioSnapshot()],
-            }
-        );
-
-        // test
-        var summaries = await _repository.ListByApplicationAsync(
-            organizationId,
-            applicationId,
-            [RunTrigger.Authoring]
-        );
-
-        // verify
-        var summary = Assert.Single(summaries);
-        Assert.Equal(authoringRun.Id, summary.Id);
     }
 
     [Fact]

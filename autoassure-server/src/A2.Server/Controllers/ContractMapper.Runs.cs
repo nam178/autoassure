@@ -219,7 +219,6 @@ public static partial class ContractMapper
         {
             ModelRunTrigger.Manual => ContractRunTrigger.Manual,
             ModelRunTrigger.Scheduled => ContractRunTrigger.Scheduled,
-            ModelRunTrigger.Authoring => ContractRunTrigger.Authoring,
             _ => throw new ArgumentOutOfRangeException(nameof(trigger)),
         };
 
