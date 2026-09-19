@@ -93,21 +93,6 @@ public class DynamoDbEnvironmentVariableRepository(
         }
     }
 
-    public Task DeleteAsync(Guid organizationId, Guid environmentId, string key) =>
-        client.DeleteItemAsync(
-            new DeleteItemRequest
-            {
-                TableName = TableName,
-                Key = new Dictionary<string, AttributeValue>
-                {
-                    ["OrganizationId_EnvironmentId"] = new(
-                        GetPartitionKey(organizationId, environmentId)
-                    ),
-                    ["Key"] = new(key),
-                },
-            }
-        );
-
     public async Task<IReadOnlyList<EnvironmentVariable>> ListByEnvironmentAsync(
         Guid organizationId,
         Guid environmentId

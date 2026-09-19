@@ -479,47 +479,6 @@ public sealed class EnvironmentsControllerTests
     }
 
     [Fact]
-    public async Task DeleteVariable_WhenKeyExists_RemovesOnlyThatVariable()
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-        var createResponse = await client.PostAsJsonAsync(
-            $"/applications/{appId}/environments",
-            new CreateEnvironmentRequest
-            {
-                Name = "Staging",
-                Classification = EnvironmentClassification.NonProduction,
-            }
-        );
-        var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
-        await client.PutAsJsonAsync(
-            $"/environments/{created.Id}/variables/API_URL",
-            new SetEnvironmentVariableRequest
-            {
-                Value = "https://staging.example.com",
-                IsSensitive = false,
-            }
-        );
-        await client.PutAsJsonAsync(
-            $"/environments/{created.Id}/variables/API_KEY",
-            new SetEnvironmentVariableRequest { Value = "secret-1", IsSensitive = false }
-        );
-
-        // test
-        var deleteResponse = await client.DeleteAsync(
-            $"/environments/{created.Id}/variables/API_KEY"
-        );
-
-        // verify
-        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
-        var getResponse = await client.GetAsync($"/environments/{created.Id}");
-        var environment = await getResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
-        var variable = Assert.Single(environment!.Variables);
-        Assert.Equal("API_URL", variable.Key);
-    }
-
-    [Fact]
     public async Task Create_WhenNoAccessToken_ReturnsUnauthorized()
     {
         // setup
@@ -630,18 +589,6 @@ public sealed class EnvironmentsControllerTests
                 $"/environments/{Guid.CreateVersion7()}/variables/API_URL",
                 new SetEnvironmentVariableRequest { Value = "x", IsSensitive = false }
             );
-
-        // verify
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task DeleteVariable_WhenNoAccessToken_ReturnsUnauthorized()
-    {
-        // test
-        var response = await _factory
-            .CreateClient()
-            .DeleteAsync($"/environments/{Guid.CreateVersion7()}/variables/API_URL");
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

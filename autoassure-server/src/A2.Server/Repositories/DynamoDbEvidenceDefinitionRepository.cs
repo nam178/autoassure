@@ -106,34 +106,6 @@ public class DynamoDbEvidenceDefinitionRepository(
         }
     }
 
-    public async Task DeleteAsync(Guid organizationId, Guid evidenceDefinitionId)
-    {
-        // The main table's partition key is OrganizationId_ApplicationId, but callers only have the
-        // EvidenceDefinition's Id -- resolve its ApplicationId via the IdIndex GSI first, same as GetByIdAsync.
-        var existing = await GetByIdAsync(organizationId, evidenceDefinitionId);
-        if (existing is null)
-        {
-            return;
-        }
-
-        await client.DeleteItemAsync(
-            new DeleteItemRequest
-            {
-                TableName = TableName,
-                Key = new Dictionary<string, AttributeValue>
-                {
-                    ["OrganizationId_ApplicationId"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(
-                            organizationId,
-                            existing.ApplicationId
-                        )
-                    ),
-                    ["Id"] = new(evidenceDefinitionId.ToString()),
-                },
-            }
-        );
-    }
-
     public async Task<EvidenceDefinition?> GetByIdAsync(
         Guid organizationId,
         Guid evidenceDefinitionId

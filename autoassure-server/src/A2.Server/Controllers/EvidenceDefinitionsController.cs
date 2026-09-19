@@ -121,16 +121,4 @@ public class EvidenceDefinitionsController(
         };
         return Ok(updated.ToResponse());
     }
-
-    [HttpDelete(
-        "evidence-definitions/{evidenceDefinitionId:guid}",
-        Name = "DeleteEvidenceDefinition"
-    )]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<ActionResult> Delete(Guid evidenceDefinitionId)
-    {
-        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        await evidenceDefinitionRepository.DeleteAsync(organizationId, evidenceDefinitionId);
-        return NoContent();
-    }
 }

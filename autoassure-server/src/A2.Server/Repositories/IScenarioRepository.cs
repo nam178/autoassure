@@ -6,7 +6,7 @@ namespace A2.Server.Repositories;
 /// Storage-agnostic — callers only ever see the Scenario domain model. There is no separate public
 /// repository for the folder/tag lookup structures backing <see cref="ListByFolderAsync"/>/
 /// <see cref="ListByTagAsync"/> — they're a private implementation detail, always kept in sync with the
-/// Scenario item in one atomic write. <see cref="TryUpdateAsync"/> and <see cref="DeleteAsync"/> take
+/// Scenario item in one atomic write. <see cref="TryUpdateAsync"/> takes
 /// the previous Scenario state because that's the only way the implementation can know which folder/tag
 /// mappings must be removed — the caller must GetByIdAsync first and pass the result in.</summary>
 public interface IScenarioRepository
@@ -21,9 +21,6 @@ public interface IScenarioRepository
     /// exist. Takes the full Scenario (not a narrower fields type) because the mapping diff needs
     /// every field.</summary>
     Task<ScenarioUpdateResult> TryUpdateAsync(Scenario scenario, Scenario previousState);
-
-    /// <summary>Atomically deletes the Scenario and its folder/tag mappings.</summary>
-    Task DeleteAsync(Scenario scenario);
 
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
     Task<Scenario?> GetByIdAsync(Guid organizationId, Guid scenarioId);

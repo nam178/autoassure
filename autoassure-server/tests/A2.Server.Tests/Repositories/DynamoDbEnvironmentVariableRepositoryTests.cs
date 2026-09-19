@@ -187,32 +187,6 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
     }
 
     [Fact]
-    public async Task DeleteAsync_WhenVariableExists_RemovesRow()
-    {
-        // setup
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        var environmentId = Guid.CreateVersion7();
-        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
-        await _repository.TrySaveAsync(
-            organizationId,
-            applicationId,
-            environmentId,
-            "API_BASE_URL",
-            "https://staging.example.com",
-            false,
-            Guid.CreateVersion7()
-        );
-
-        // test
-        await _repository.DeleteAsync(organizationId, environmentId, "API_BASE_URL");
-        var result = await _repository.ListByEnvironmentAsync(organizationId, environmentId);
-
-        // verify
-        Assert.Empty(result);
-    }
-
-    [Fact]
     public async Task ListByEnvironmentAsync_WhenMultipleVariablesExist_ReturnsSortedByKeyScopedToEnvironment()
     {
         // setup

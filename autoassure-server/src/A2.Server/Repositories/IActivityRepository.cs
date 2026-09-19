@@ -25,14 +25,6 @@ public interface IActivityRepository
         ActivityUpdatableFields fields
     );
 
-    /// <summary>Deletes the Activity and atomically decrements its Scenario's Activity count. A
-    /// no-op if the Activity no longer exists.</summary>
-    Task DeleteAsync(Guid organizationId, Guid applicationId, Guid scenarioId, Guid activityId);
-
-    /// <summary>Deletes every Activity belonging to the given Scenario. Used when the Scenario
-    /// itself is deleted, so no orphaned Activity rows remain.</summary>
-    Task DeleteAllByScenarioAsync(Guid organizationId, Guid scenarioId);
-
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
     Task<Activity?> GetByIdAsync(Guid organizationId, Guid activityId);
 

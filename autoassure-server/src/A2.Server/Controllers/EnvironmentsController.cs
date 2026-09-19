@@ -169,27 +169,6 @@ public class EnvironmentsController(
         return NoContent();
     }
 
-    /// <response code="404">No Environment with the given environmentId exists in the caller's
-    /// Organization.</response>
-    [HttpDelete(
-        "environments/{environmentId:guid}/variables/{key}",
-        Name = "DeleteEnvironmentVariable"
-    )]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> DeleteVariable(Guid environmentId, string key)
-    {
-        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var environment = await environmentRepository.GetByIdAsync(organizationId, environmentId);
-        if (environment is null)
-        {
-            return NotFound();
-        }
-
-        await environmentVariableRepository.DeleteAsync(organizationId, environmentId, key);
-        return NoContent();
-    }
-
     private async Task<EnvironmentResponse> ToResponseAsync(Environment environment)
     {
         var variables = await environmentVariableRepository.ListByEnvironmentAsync(

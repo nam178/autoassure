@@ -17,8 +17,6 @@ public interface IEvidenceDefinitionRepository
         EvidenceDefinitionUpdatableFields fields
     );
 
-    Task DeleteAsync(Guid organizationId, Guid evidenceDefinitionId);
-
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
     Task<EvidenceDefinition?> GetByIdAsync(Guid organizationId, Guid evidenceDefinitionId);
 

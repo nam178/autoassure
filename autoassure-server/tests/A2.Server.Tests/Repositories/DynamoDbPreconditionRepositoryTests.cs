@@ -234,39 +234,6 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
     }
 
     [Fact]
-    public async Task DeleteAsync_WhenExists_RemovesPrecondition()
-    {
-        // setup
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        await PutApplicationAsync(organizationId, applicationId);
-        var precondition = CreatePrecondition(organizationId, applicationId);
-        await _repository.TrySaveAsync(precondition);
-
-        // test
-        await _repository.DeleteAsync(organizationId, precondition.Id);
-        var result = await _repository.GetByIdAsync(organizationId, precondition.Id);
-
-        // verify
-        Assert.Null(result);
-    }
-
-    [Fact]
-    public async Task DeleteAsync_WhenNotFound_DoesNothing()
-    {
-        // setup
-        var organizationId = Guid.CreateVersion7();
-
-        // test
-        var exception = await Record.ExceptionAsync(() =>
-            _repository.DeleteAsync(organizationId, Guid.CreateVersion7())
-        );
-
-        // verify
-        Assert.Null(exception);
-    }
-
-    [Fact]
     public async Task GetByIdAsync_WhenNotFound_ReturnsNull()
     {
         // setup

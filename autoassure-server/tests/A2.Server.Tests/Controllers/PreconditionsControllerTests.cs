@@ -246,7 +246,7 @@ public sealed class PreconditionsControllerTests
     }
 
     [Fact]
-    public async Task Create_WhenValidRequest_RoundTripsThroughGetUpdateDelete()
+    public async Task Create_WhenValidRequest_RoundTripsThroughUpdateAndList()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -287,17 +287,11 @@ public sealed class PreconditionsControllerTests
         Assert.Equal(PreconditionValueSource.AskAtRunTime, updated.ValueSource);
 
         // test
-        var deleteResponse = await client.DeleteAsync($"/preconditions/{created.Id}");
-
-        // verify
-        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
-
-        // test
         var listResponse = await client.GetAsync($"/applications/{appId}/preconditions");
 
         // verify
         var list = await listResponse.Content.ReadFromJsonAsync<List<PreconditionResponse>>();
-        Assert.Empty(list!);
+        Assert.Equal(updated.Name, Assert.Single(list!).Name);
     }
 
     [Fact]
@@ -532,18 +526,6 @@ public sealed class PreconditionsControllerTests
                     ExampleValue = "",
                 }
             );
-
-        // verify
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Delete_WhenNoAccessToken_ReturnsUnauthorized()
-    {
-        // test
-        var response = await _factory
-            .CreateClient()
-            .DeleteAsync($"/preconditions/{Guid.CreateVersion7()}");
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

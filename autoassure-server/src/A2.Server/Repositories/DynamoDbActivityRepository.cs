@@ -11,7 +11,6 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
     : IActivityRepository
 {
     private const string IdIndexName = "IdIndex";
-    private const int BatchWriteChunkSize = 25;
 
     private string TableName => options.Value.ActivityTableName;
     private string ScenarioTableName => options.Value.ScenarioTableName;
@@ -129,93 +128,6 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
             }
 
             throw;
-        }
-    }
-
-    public async Task DeleteAsync(
-        Guid organizationId,
-        Guid applicationId,
-        Guid scenarioId,
-        Guid activityId
-    )
-    {
-        var transactItems = new List<TransactWriteItem>
-        {
-            new()
-            {
-                Delete = new Delete
-                {
-                    TableName = TableName,
-                    Key = new Dictionary<string, AttributeValue>
-                    {
-                        ["OrganizationId_ScenarioId"] = new(
-                            DynamoDbMapper.ScenarioScopedPartitionKey(organizationId, scenarioId)
-                        ),
-                        ["Id"] = new(activityId.ToString()),
-                    },
-                    ConditionExpression = "attribute_exists(Id)",
-                },
-            },
-            DecrementScenarioActivityCount(organizationId, applicationId, scenarioId),
-        };
-
-        // When TransactWriteItemsAsync is cancelled due to the Activity ConditionCheck (index 0)
-        // failing, Then the Activity was already deleted (e.g. by a concurrent request) -- treat as
-        // a no-op, since Delete is idempotent; otherwise rethrow.
-        try
-        {
-            await client.TransactWriteItemsAsync(
-                new TransactWriteItemsRequest { TransactItems = transactItems }
-            );
-        }
-        catch (TransactionCanceledException ex)
-            when (ex.CancellationReasons is { Count: > 0 } reasons
-                && reasons[0].Code == "ConditionalCheckFailed"
-            ) { }
-    }
-
-    // BUG: this doesn't decrement the Scenario's ActivityCount. Harmless today since the only
-    // caller (ScenariosController.Delete) deletes the whole Scenario row right after, but a future
-    // caller that clears Activities without deleting the Scenario would leave ActivityCount stuck,
-    // permanently blocking new Activity creation via IncrementScenarioActivityCount's quota check.
-    public async Task DeleteAllByScenarioAsync(Guid organizationId, Guid scenarioId)
-    {
-        var activities = await ListByScenarioAsync(organizationId, scenarioId);
-        if (activities.Count == 0)
-        {
-            return;
-        }
-
-        var partitionKey = DynamoDbMapper.ScenarioScopedPartitionKey(organizationId, scenarioId);
-        foreach (var chunk in activities.Chunk(BatchWriteChunkSize))
-        {
-            var requestItems = new Dictionary<string, List<WriteRequest>>
-            {
-                [TableName] = chunk
-                    .Select(activity => new WriteRequest
-                    {
-                        DeleteRequest = new DeleteRequest
-                        {
-                            Key = new Dictionary<string, AttributeValue>
-                            {
-                                ["OrganizationId_ScenarioId"] = new(partitionKey),
-                                ["Id"] = new(activity.Id.ToString()),
-                            },
-                        },
-                    })
-                    .ToList(),
-            };
-
-            // When BatchWriteItemAsync is throttled, Then it returns the un-deleted items in
-            // UnprocessedItems instead of throwing -- retry those until none remain, otherwise
-            // some Activities would silently survive the Scenario's deletion.
-            while (requestItems.Count > 0)
-            {
-                var response = await client.BatchWriteItemAsync(
-                    new BatchWriteItemRequest { RequestItems = requestItems }
-                );
-                requestItems = response.UnprocessedItems;
-            }
         }
     }
 
@@ -379,36 +291,6 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                             CultureInfo.InvariantCulture
                         ),
                     },
-                },
-            },
-        };
-
-    private TransactWriteItem DecrementScenarioActivityCount(
-        Guid organizationId,
-        Guid applicationId,
-        Guid scenarioId
-    ) =>
-        new()
-        {
-            Update = new Update
-            {
-                TableName = ScenarioTableName,
-                Key = new Dictionary<string, AttributeValue>
-                {
-                    ["OrganizationId_ApplicationId"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
-                    ),
-                    ["Id"] = new(scenarioId.ToString()),
-                },
-                UpdateExpression = "ADD ActivityCount :minusOne",
-                // See IncrementScenarioActivityCount -- a missing ActivityCount is treated as 0, so
-                // deleting an Activity that predates the attribute can't drive it negative.
-                ConditionExpression =
-                    "attribute_exists(Id) AND (attribute_not_exists(ActivityCount) OR ActivityCount > :zero)",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
-                {
-                    [":minusOne"] = new() { N = "-1" },
-                    [":zero"] = new() { N = "0" },
                 },
             },
         };

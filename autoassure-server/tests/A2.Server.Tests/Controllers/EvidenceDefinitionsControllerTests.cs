@@ -246,7 +246,7 @@ public sealed class EvidenceDefinitionsControllerTests
     }
 
     [Fact]
-    public async Task Create_WhenValidRequest_RoundTripsThroughGetUpdateDelete()
+    public async Task Create_WhenValidRequest_RoundTripsThroughUpdateAndList()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -287,17 +287,11 @@ public sealed class EvidenceDefinitionsControllerTests
         Assert.Equal("Updated description", updated.Description);
 
         // test
-        var deleteResponse = await client.DeleteAsync($"/evidence-definitions/{created.Id}");
-
-        // verify
-        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
-
-        // test
         var listResponse = await client.GetAsync($"/applications/{appId}/evidence-definitions");
 
         // verify
         var list = await listResponse.Content.ReadFromJsonAsync<List<EvidenceDefinitionResponse>>();
-        Assert.Empty(list!);
+        Assert.Equal(updated.Name, Assert.Single(list!).Name);
     }
 
     [Fact]
@@ -538,18 +532,6 @@ public sealed class EvidenceDefinitionsControllerTests
                     ExampleValue = "",
                 }
             );
-
-        // verify
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Delete_WhenNoAccessToken_ReturnsUnauthorized()
-    {
-        // test
-        var response = await _factory
-            .CreateClient()
-            .DeleteAsync($"/evidence-definitions/{Guid.CreateVersion7()}");
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

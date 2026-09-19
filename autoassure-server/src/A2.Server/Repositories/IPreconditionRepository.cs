@@ -17,8 +17,6 @@ public interface IPreconditionRepository
         PreconditionUpdatableFields fields
     );
 
-    Task DeleteAsync(Guid organizationId, Guid preconditionId);
-
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
     Task<Precondition?> GetByIdAsync(Guid organizationId, Guid preconditionId);
 

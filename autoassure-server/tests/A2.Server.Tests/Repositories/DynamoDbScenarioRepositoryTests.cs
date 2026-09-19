@@ -267,27 +267,6 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
     }
 
     [Fact]
-    public async Task DeleteAsync_WhenScenarioExists_RemovesScenarioAndFolderTagMappings()
-    {
-        // setup
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        await SeedApplicationAsync(organizationId, applicationId);
-        var scenario = CreateScenario(organizationId, applicationId, "/Checkout", ["smoke"]);
-        await _repository.TrySaveAsync(scenario);
-
-        // test
-        await _repository.DeleteAsync(scenario);
-
-        // verify
-        Assert.Null(await _repository.GetByIdAsync(organizationId, scenario.Id));
-        Assert.Empty(
-            await _repository.ListByFolderAsync(organizationId, applicationId, "/Checkout")
-        );
-        Assert.Empty(await _repository.ListByTagAsync(organizationId, applicationId, "smoke"));
-    }
-
-    [Fact]
     public async Task GetByIdAsync_WhenNotFound_ReturnsNull()
     {
         // test

@@ -165,26 +165,6 @@ public class ActivitiesController(
         return Ok(updated.ToResponse());
     }
 
-    [HttpDelete("activities/{activityId:guid}", Name = "DeleteActivity")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<ActionResult> Delete(Guid activityId)
-    {
-        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var existing = await activityRepository.GetByIdAsync(organizationId, activityId);
-        if (existing is null)
-        {
-            return NoContent();
-        }
-
-        await activityRepository.DeleteAsync(
-            organizationId,
-            existing.ApplicationId,
-            existing.ScenarioId,
-            activityId
-        );
-        return NoContent();
-    }
-
     /// <response code="400">OrderedActivityIds is not exactly a permutation of the Scenario's
     /// current Activity ids.</response>
     /// <response code="404">No Scenario with the given scenarioId exists in the caller's

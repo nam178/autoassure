@@ -381,7 +381,7 @@ public sealed class ActivitiesControllerTests
     }
 
     [Fact]
-    public async Task Create_WhenValidRequest_RoundTripsThroughGetUpdateDelete()
+    public async Task Create_WhenValidRequest_RoundTripsThroughUpdateAndList()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -426,17 +426,11 @@ public sealed class ActivitiesControllerTests
         Assert.Empty(updated.PreconditionIds);
 
         // test
-        var deleteResponse = await client.DeleteAsync($"/activities/{created.Id}");
-
-        // verify
-        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
-
-        // test
         var listResponse = await client.GetAsync($"/scenarios/{scenarioId}/activities");
 
         // verify
         var list = await listResponse.Content.ReadFromJsonAsync<List<ActivityResponse>>();
-        Assert.Empty(list!);
+        Assert.Equal(updated.Description, Assert.Single(list!).Description);
     }
 
     [Fact]
@@ -570,19 +564,6 @@ public sealed class ActivitiesControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Delete_WhenActivityDoesNotExist_ReturnsNoContent()
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-
-        // test
-        var response = await client.DeleteAsync($"/activities/{Guid.CreateVersion7()}");
-
-        // verify
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
     [Fact]
@@ -763,18 +744,6 @@ public sealed class ActivitiesControllerTests
                 $"/activities/{Guid.CreateVersion7()}",
                 new UpdateActivityRequest { Description = "Step" }
             );
-
-        // verify
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Delete_WhenNoAccessToken_ReturnsUnauthorized()
-    {
-        // test
-        var response = await _factory
-            .CreateClient()
-            .DeleteAsync($"/activities/{Guid.CreateVersion7()}");
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

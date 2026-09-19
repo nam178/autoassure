@@ -686,44 +686,6 @@ public sealed class ScenariosControllerTests
     }
 
     [Fact]
-    public async Task Delete_WhenScenarioExists_RemovesScenarioAndItIsNoLongerListed()
-    {
-        // setup
-        var client = await CreateClientWithMembershipAsync();
-        var appId = await CreateApplicationAsync(client);
-        var createResponse = await client.PostAsJsonAsync(
-            $"/applications/{appId}/scenarios",
-            new CreateScenarioRequest
-            {
-                Title = "Title",
-                Description = "Description",
-                Folder = null,
-                Tags = ["tag1"],
-            }
-        );
-        var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
-
-        // test
-        var deleteResponse = await client.DeleteAsync($"/scenarios/{created.Id}");
-
-        // verify
-        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
-
-        // test
-        var getResponse = await client.GetAsync($"/scenarios/{created.Id}");
-
-        // verify
-        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
-
-        // test
-        var listResponse = await client.GetAsync($"/applications/{appId}/scenarios");
-
-        // verify
-        var list = await listResponse.Content.ReadFromJsonAsync<List<ScenarioResponse>>();
-        Assert.Empty(list!);
-    }
-
-    [Fact]
     public async Task List_WhenBothFolderAndTagGiven_ReturnsBadRequest()
     {
         // setup
@@ -997,18 +959,6 @@ public sealed class ScenariosControllerTests
                     Tags = null,
                 }
             );
-
-        // verify
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Delete_WhenNoAccessToken_ReturnsUnauthorized()
-    {
-        // test
-        var response = await _factory
-            .CreateClient()
-            .DeleteAsync($"/scenarios/{Guid.CreateVersion7()}");
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

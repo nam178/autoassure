@@ -108,34 +108,6 @@ public class DynamoDbPreconditionRepository(
         }
     }
 
-    public async Task DeleteAsync(Guid organizationId, Guid preconditionId)
-    {
-        // The main table's partition key is OrganizationId_ApplicationId, but callers only have the
-        // Precondition's Id -- resolve its ApplicationId via the IdIndex GSI first, same as GetByIdAsync.
-        var existing = await GetByIdAsync(organizationId, preconditionId);
-        if (existing is null)
-        {
-            return;
-        }
-
-        await client.DeleteItemAsync(
-            new DeleteItemRequest
-            {
-                TableName = TableName,
-                Key = new Dictionary<string, AttributeValue>
-                {
-                    ["OrganizationId_ApplicationId"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(
-                            organizationId,
-                            existing.ApplicationId
-                        )
-                    ),
-                    ["Id"] = new(preconditionId.ToString()),
-                },
-            }
-        );
-    }
-
     public async Task<Precondition?> GetByIdAsync(Guid organizationId, Guid preconditionId)
     {
         var response = await client.QueryAsync(

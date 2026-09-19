@@ -14,7 +14,6 @@ namespace A2.Server.Controllers;
 public class ScenariosController(
     IApplicationRepository applicationRepository,
     IScenarioRepository scenarioRepository,
-    IActivityRepository activityRepository,
     ICallerOrganizationService callerOrganizationService,
     IClock clock
 ) : ControllerBase
@@ -163,27 +162,6 @@ public class ScenariosController(
                 $"Unhandled {nameof(ScenarioUpdateResult)}: {result}"
             ),
         };
-    }
-
-    /// <response code="404">No Scenario with the given scenarioId exists in the caller's
-    /// Organization.</response>
-    [HttpDelete("scenarios/{scenarioId:guid}", Name = "DeleteScenario")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> Delete(Guid scenarioId)
-    {
-        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var scenario = await scenarioRepository.GetByIdAsync(organizationId, scenarioId);
-        if (scenario is null)
-        {
-            return NotFound();
-        }
-
-        // When a Scenario is deleted, then its Activities must be removed first -- otherwise deleted
-        // Scenarios would leave orphaned Activity rows behind.
-        await activityRepository.DeleteAllByScenarioAsync(organizationId, scenarioId);
-        await scenarioRepository.DeleteAsync(scenario);
-        return NoContent();
     }
 
     private static bool TryValidateTags(IReadOnlyList<string> tags, out string? error)

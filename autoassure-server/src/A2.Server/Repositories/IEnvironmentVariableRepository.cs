@@ -21,8 +21,6 @@ public interface IEnvironmentVariableRepository
         Guid updatedByUserId
     );
 
-    Task DeleteAsync(Guid organizationId, Guid environmentId, string key);
-
     /// <summary>All variables for this Environment. Ordering: alphabetically by Key — not the order
     /// variables were set, since variable names have no inherent creation-time ordering.</summary>
     Task<IReadOnlyList<EnvironmentVariable>> ListByEnvironmentAsync(

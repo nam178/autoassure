@@ -123,19 +123,6 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
             },
         };
 
-    public Task DeleteAsync(Scenario scenario) =>
-        client.TransactWriteItemsAsync(
-            new TransactWriteItemsRequest
-            {
-                TransactItems =
-                [
-                    DeleteScenario(scenario),
-                    DeleteFolderMapping(scenario, scenario.Folder),
-                    .. scenario.Tags.Select(tag => DeleteTagMapping(scenario, tag)),
-                ],
-            }
-        );
-
     public async Task<Scenario?> GetByIdAsync(Guid organizationId, Guid scenarioId)
     {
         var response = await client.QueryAsync(
@@ -358,25 +345,6 @@ public class DynamoDbScenarioRepository(IAmazonDynamoDB client, IOptions<DynamoD
                     },
                     [":updatedByUserId"] = new(scenario.UpdatedByUserId.ToString()),
                     [":updatedAt"] = new(scenario.UpdatedAt.ToString("O")),
-                },
-            },
-        };
-
-    private TransactWriteItem DeleteScenario(Scenario scenario) =>
-        new()
-        {
-            Delete = new Delete
-            {
-                TableName = ScenarioTableName,
-                Key = new Dictionary<string, AttributeValue>
-                {
-                    ["OrganizationId_ApplicationId"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(
-                            scenario.OrganizationId,
-                            scenario.ApplicationId
-                        )
-                    ),
-                    ["Id"] = new(scenario.Id.ToString()),
                 },
             },
         };

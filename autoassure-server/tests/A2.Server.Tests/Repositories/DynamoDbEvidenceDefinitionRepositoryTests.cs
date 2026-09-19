@@ -236,34 +236,6 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
     }
 
     [Fact]
-    public async Task DeleteAsync_WhenEvidenceDefinitionExists_RemovesIt()
-    {
-        // setup
-        var organizationId = Guid.CreateVersion7();
-        var applicationId = Guid.CreateVersion7();
-        await PutApplicationAsync(organizationId, applicationId);
-        var evidence = CreateEvidenceDefinition(organizationId, applicationId);
-        await _repository.TrySaveAsync(evidence);
-
-        // test
-        await _repository.DeleteAsync(organizationId, evidence.Id);
-        var result = await _repository.GetByIdAsync(organizationId, evidence.Id);
-
-        // verify
-        Assert.Null(result);
-    }
-
-    [Fact]
-    public async Task DeleteAsync_WhenEvidenceDefinitionDoesNotExist_DoesNothing()
-    {
-        // setup
-        var organizationId = Guid.CreateVersion7();
-
-        // test / verify — no exception expected.
-        await _repository.DeleteAsync(organizationId, Guid.CreateVersion7());
-    }
-
-    [Fact]
     public async Task GetByIdAsync_WhenNotFound_ReturnsNull()
     {
         // setup

@@ -1075,7 +1075,6 @@ public sealed class RunsControllerTests
                 "applicationId",
                 "trigger",
                 "status",
-                "statusReason",
                 "totalActivityCount",
                 "passedActivityCount",
                 "failedActivityCount",

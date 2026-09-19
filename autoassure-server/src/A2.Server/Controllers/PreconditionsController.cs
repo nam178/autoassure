@@ -107,13 +107,4 @@ public class PreconditionsController(
         };
         return Ok(updated.ToResponse());
     }
-
-    [HttpDelete("preconditions/{preconditionId:guid}", Name = "DeletePrecondition")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<ActionResult> Delete(Guid preconditionId)
-    {
-        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        await preconditionRepository.DeleteAsync(organizationId, preconditionId);
-        return NoContent();
-    }
 }
