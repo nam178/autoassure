@@ -98,7 +98,7 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
     }
 
     [Fact]
-    public async Task SaveAsync_WhenMembershipHasAllFields_RoundTripsThroughListByUser()
+    public async Task TryCreateAsync_WhenMembershipHasAllFields_RoundTripsThroughListByUser()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -106,7 +106,7 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
         var membership = CreateMembership(organizationId, userId);
 
         // test
-        await _repository.SaveAsync(membership);
+        await _repository.TryCreateAsync(membership);
         var result = await _repository.ListByUserAsync(userId);
 
         // verify
@@ -114,7 +114,7 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
     }
 
     [Fact]
-    public async Task SaveAsync_WhenMembershipIsMemberRole_RoundTripsRole()
+    public async Task TryCreateAsync_WhenMembershipIsMemberRole_RoundTripsRole()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -126,11 +126,114 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
         );
 
         // test
-        await _repository.SaveAsync(membership);
+        await _repository.TryCreateAsync(membership);
         var result = await _repository.ListByUserAsync(userId);
 
         // verify
         Assert.Equal([membership], result);
+    }
+
+    [Fact]
+    public async Task TryCreateAsync_WhenMembershipIsNew_ReturnsTrue()
+    {
+        // setup
+        var membership = CreateMembership(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7()
+        );
+
+        // test
+        var result = await _repository.TryCreateAsync(membership);
+
+        // verify
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task TryCreateAsync_WhenMembershipAlreadyExists_ReturnsFalseAndKeepsOriginal()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
+        var original = CreateMembership(organizationId, userId);
+        await _repository.TryCreateAsync(original);
+        var duplicate = CreateMembership(
+            organizationId,
+            userId,
+            OrganizationRole.Member
+        );
+
+        // test
+        var result = await _repository.TryCreateAsync(duplicate);
+        var memberships = await _repository.ListByUserAsync(userId);
+
+        // verify
+        Assert.False(result);
+        Assert.Equal([original], memberships);
+    }
+
+    [Fact]
+    public async Task TryUpdateAsync_WhenMembershipExists_UpdatesOnlyAllowedFields()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
+        var editorUserId = Guid.CreateVersion7();
+        var original = CreateMembership(organizationId, userId);
+        await _repository.TryCreateAsync(original);
+        var updatedAt = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero);
+
+        // test
+        var result = await _repository.TryUpdateAsync(
+            organizationId,
+            userId,
+            new OrganizationUserUpdatableFields
+            {
+                Role = OrganizationRole.Member,
+                UpdatedByUserId = editorUserId,
+                UpdatedAt = updatedAt,
+            }
+        );
+        var memberships = await _repository.ListByUserAsync(userId);
+
+        // verify
+        Assert.True(result);
+        Assert.Equal(
+            [
+                original with
+                {
+                    Role = OrganizationRole.Member,
+                    UpdatedByUserId = editorUserId,
+                    UpdatedAt = updatedAt,
+                },
+            ],
+            memberships
+        );
+    }
+
+    [Fact]
+    public async Task TryUpdateAsync_WhenMembershipDoesNotExist_ReturnsFalseAndCreatesNothing()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
+
+        // test
+        var result = await _repository.TryUpdateAsync(
+            organizationId,
+            userId,
+            new OrganizationUserUpdatableFields
+            {
+                Role = OrganizationRole.Member,
+                UpdatedByUserId = userId,
+                UpdatedAt = DateTimeOffset.UnixEpoch,
+            }
+        );
+        var memberships = await _repository.ListByUserAsync(userId);
+
+        // verify
+        Assert.False(result);
+        Assert.Empty(memberships);
     }
 
     [Fact]
@@ -140,8 +243,8 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
         var userId = Guid.CreateVersion7();
         var membership1 = CreateMembership(Guid.CreateVersion7(), userId);
         var membership2 = CreateMembership(Guid.CreateVersion7(), userId);
-        await _repository.SaveAsync(membership1);
-        await _repository.SaveAsync(membership2);
+        await _repository.TryCreateAsync(membership1);
+        await _repository.TryCreateAsync(membership2);
 
         // test
         var result = await _repository.ListByUserAsync(userId);
@@ -177,8 +280,8 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
         var otherUserId = Guid.CreateVersion7();
         var membership = CreateMembership(organizationId, userId);
         var otherMembership = CreateMembership(organizationId, otherUserId);
-        await _repository.SaveAsync(membership);
-        await _repository.SaveAsync(otherMembership);
+        await _repository.TryCreateAsync(membership);
+        await _repository.TryCreateAsync(otherMembership);
 
         // test
         var result = await _repository.ListByUserAsync(userId);

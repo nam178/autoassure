@@ -15,15 +15,71 @@ public class DynamoDbOrganizationUserRepository(
 
     private string TableName => options.Value.OrganizationUserTableName;
 
-    public Task SaveAsync(OrganizationUser membership)
+    public async Task<bool> TryCreateAsync(OrganizationUser membership)
     {
-        return client.PutItemAsync(
-            new PutItemRequest
-            {
-                TableName = TableName,
-                Item = membership.ToDynamoDbRow(),
-            }
-        );
+        try
+        {
+            await client.PutItemAsync(
+                new PutItemRequest
+                {
+                    TableName = TableName,
+                    Item = membership.ToDynamoDbRow(),
+                    ConditionExpression =
+                        "attribute_not_exists(OrganizationId) AND attribute_not_exists(UserId)",
+                }
+            );
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> TryUpdateAsync(
+        Guid organizationId,
+        Guid userId,
+        OrganizationUserUpdatableFields fields
+    )
+    {
+        try
+        {
+            await client.UpdateItemAsync(
+                new UpdateItemRequest
+                {
+                    TableName = TableName,
+                    Key = new Dictionary<string, AttributeValue>
+                    {
+                        ["OrganizationId"] = new(organizationId.ToString()),
+                        ["UserId"] = new(userId.ToString()),
+                    },
+                    UpdateExpression =
+                        "SET #role = :role, UpdatedByUserId = :updatedByUserId, UpdatedAt = :updatedAt",
+                    ConditionExpression =
+                        "attribute_exists(OrganizationId) AND attribute_exists(UserId)",
+                    ExpressionAttributeNames = new Dictionary<string, string>
+                    {
+                        ["#role"] = "Role",
+                    },
+                    ExpressionAttributeValues = new Dictionary<
+                        string,
+                        AttributeValue
+                    >
+                    {
+                        [":role"] = new(fields.Role.ToString()),
+                        [":updatedByUserId"] = new(
+                            fields.UpdatedByUserId.ToString()
+                        ),
+                        [":updatedAt"] = new(fields.UpdatedAt.ToString("O")),
+                    },
+                }
+            );
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
     }
 
     public async Task<IReadOnlyList<OrganizationUser>> ListByUserAsync(
