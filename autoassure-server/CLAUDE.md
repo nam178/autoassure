@@ -20,13 +20,11 @@ As AutoAssure is a multi-tenant SaaS. MUST include the tenant (OrganizationId) i
 
 Run verifications and fix errors:
 
-1. `dotnet build A2.Server.slnx`
-2. `dotnet format A2.Server.slnx`
-3. `dotnet jb inspectcode A2.Server.slnx -o=inspect.sarif.json --no-build --severity=WARNING`
+1. dotnet build A2.Server.slnx
+2. dotnet format A2.Server.slnx
+3. dotnet jb inspectcode A2.Server.slnx -o=inspect.sarif.json --no-build --severity=WARNING
 4. Unit tests (A2.Server.UnitTests)
 5. Integration Tests (A2.Server.Tests)
-
-(no need to format — `dotnet csharpier format .` runs automatically as a Claude Code hook)
 
 Fix all errors/warnings from build and format. For `inspectcode` findings: fix real issues; for intentional not-yet-used
 members, suppress.

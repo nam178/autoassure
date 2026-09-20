@@ -22,6 +22,7 @@ public class OrganizationsController(
     ///     deleted, or is a personal organization.
     /// </response>
     /// <response code="403">The caller is not an Owner of the Organization.</response>
+    /// <response code="404">The Organization does not exist.</response>
     [HttpPost("{id:guid}/archive", Name = "ArchiveOrganization")]
     [AllowArchivedOrganization]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -33,6 +34,7 @@ public class OrganizationsController(
         typeof(ErrorResponse),
         StatusCodes.Status403Forbidden
     )]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Archive(Guid id)
     {
         var callerOrganization =
@@ -68,12 +70,12 @@ public class OrganizationsController(
             );
 
         // Archive the organization (idempotent)
-        await organizationRepository.TrySetLifecycleStateAsync(
+        var updated = await organizationRepository.TrySetLifecycleStateAsync(
             organizationId,
             LifecycleState.Archived
         );
 
-        return NoContent();
+        return updated ? NoContent() : NotFound();
     }
 
     /// <response code="400">
@@ -81,6 +83,7 @@ public class OrganizationsController(
     ///     deleted.
     /// </response>
     /// <response code="403">The caller is not an Owner of the Organization.</response>
+    /// <response code="404">The Organization does not exist.</response>
     [HttpPost("{id:guid}/unarchive", Name = "UnarchiveOrganization")]
     [AllowArchivedOrganization]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -92,6 +95,7 @@ public class OrganizationsController(
         typeof(ErrorResponse),
         StatusCodes.Status403Forbidden
     )]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Unarchive(Guid id)
     {
         var callerOrganization =
@@ -123,12 +127,12 @@ public class OrganizationsController(
             );
 
         // Unarchive the organization (idempotent)
-        await organizationRepository.TrySetLifecycleStateAsync(
+        var updated = await organizationRepository.TrySetLifecycleStateAsync(
             organizationId,
             LifecycleState.Active
         );
 
-        return NoContent();
+        return updated ? NoContent() : NotFound();
     }
 
     /// <summary>Returns the caller's active Organizations.</summary>
