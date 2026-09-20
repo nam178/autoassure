@@ -1,8 +1,12 @@
 namespace A2.Server.Models;
 
-/// <summary>A membership linking a User to an Organization. Supports multi-org membership from day
-/// one, even though the current sign-in flow only ever creates one row per user (for their personal
-/// Organization).</summary>
+/// <summary>
+///     A membership linking a User to an Organization. Supports multi-org
+///     membership from day
+///     one, even though the current sign-in flow only ever creates one row per
+///     user (for their personal
+///     Organization).
+/// </summary>
 public record OrganizationUser
 {
     public required Guid OrganizationId { get; init; }

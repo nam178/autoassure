@@ -8,22 +8,31 @@ using Microsoft.Extensions.Options;
 
 namespace A2.Server.Tests;
 
-/// <summary>Integration tests for <see cref="GoogleUserSyncService"/> against DynamoDB Local, covering how
-/// it syncs a <see cref="User"/> from a <see cref="GoogleIdentity"/> through the real
-/// <see cref="DynamoDbUserRepository"/>, and how it provisions a personal <see cref="Organization"/> on
-/// first sign-in.</summary>
+/// <summary>
+///     Integration tests for <see cref="GoogleUserSyncService" /> against DynamoDB
+///     Local, covering how
+///     it syncs a <see cref="User" /> from a <see cref="GoogleIdentity" /> through
+///     the real
+///     <see cref="DynamoDbUserRepository" />, and how it provisions a personal
+///     <see cref="Organization" /> on
+///     first sign-in.
+/// </summary>
 [Collection("DynamoDbLocal")]
-public sealed class GoogleUserSyncServiceTests(DynamoDbLocalFixture dynamoDbLocalFixture)
-    : IAsyncLifetime
+public sealed class GoogleUserSyncServiceTests(
+    DynamoDbLocalFixture dynamoDbLocalFixture
+) : IAsyncLifetime
 {
     private const string UserTableName = "Users";
     private const string OrganizationTableName = "Organizations";
     private const string OrganizationUserTableName = "OrganizationUsers";
 
     private AmazonDynamoDBClient _client = null!;
-    private GoogleUserSyncService _service = null!;
     private DynamoDbOrganizationRepository _organizationRepository = null!;
-    private DynamoDbOrganizationUserRepository _organizationUserRepository = null!;
+
+    private DynamoDbOrganizationUserRepository _organizationUserRepository =
+        null!;
+
+    private GoogleUserSyncService _service = null!;
 
     public async Task InitializeAsync()
     {
@@ -36,8 +45,14 @@ public sealed class GoogleUserSyncServiceTests(DynamoDbLocalFixture dynamoDbLoca
                 OrganizationUserTableName = OrganizationUserTableName,
             }
         );
-        _organizationRepository = new DynamoDbOrganizationRepository(_client, options);
-        _organizationUserRepository = new DynamoDbOrganizationUserRepository(_client, options);
+        _organizationRepository = new DynamoDbOrganizationRepository(
+            _client,
+            options
+        );
+        _organizationUserRepository = new DynamoDbOrganizationUserRepository(
+            _client,
+            options
+        );
         _service = new GoogleUserSyncService(
             new DynamoDbUserRepository(_client, options),
             _organizationUserRepository,
@@ -52,15 +67,24 @@ public sealed class GoogleUserSyncServiceTests(DynamoDbLocalFixture dynamoDbLoca
                 AttributeDefinitions =
                 [
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("GoogleUserId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "GoogleUserId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
                     new GlobalSecondaryIndex
                     {
                         IndexName = "GoogleUserIdIndex",
-                        KeySchema = [new KeySchemaElement("GoogleUserId", KeyType.HASH)],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        KeySchema =
+                        [
+                            new KeySchemaElement("GoogleUserId", KeyType.HASH),
+                        ],
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -72,7 +96,10 @@ public sealed class GoogleUserSyncServiceTests(DynamoDbLocalFixture dynamoDbLoca
             {
                 TableName = OrganizationTableName,
                 KeySchema = [new KeySchemaElement("Id", KeyType.HASH)],
-                AttributeDefinitions = [new AttributeDefinition("Id", ScalarAttributeType.S)],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
@@ -88,7 +115,10 @@ public sealed class GoogleUserSyncServiceTests(DynamoDbLocalFixture dynamoDbLoca
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("UserId", ScalarAttributeType.S),
                 ],
                 GlobalSecondaryIndexes =
@@ -99,9 +129,15 @@ public sealed class GoogleUserSyncServiceTests(DynamoDbLocalFixture dynamoDbLoca
                         KeySchema =
                         [
                             new KeySchemaElement("UserId", KeyType.HASH),
-                            new KeySchemaElement("OrganizationId", KeyType.RANGE),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.RANGE
+                            ),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -119,9 +155,7 @@ public sealed class GoogleUserSyncServiceTests(DynamoDbLocalFixture dynamoDbLoca
                 OrganizationUserTableName,
             }
         )
-        {
             await _client.DeleteTableAsync(tableName);
-        }
         _client.Dispose();
     }
 
@@ -172,27 +206,40 @@ public sealed class GoogleUserSyncServiceTests(DynamoDbLocalFixture dynamoDbLoca
     }
 
     [Fact]
-    public async Task SyncAsync_WhenFirstSignIn_CreatesExactlyOnePersonalOrganizationAndOwnerMembership()
+    public async Task
+        SyncAsync_WhenFirstSignIn_CreatesExactlyOnePersonalOrganizationAndOwnerMembership()
     {
         // setup
-        var identity = new GoogleIdentity("google-3", "bob@gmail.com", true, "Bob", "Baker", null);
+        var identity = new GoogleIdentity(
+            "google-3",
+            "bob@gmail.com",
+            true,
+            "Bob",
+            "Baker",
+            null
+        );
 
         // test
         var user = await _service.SyncAsync(identity);
 
         // verify
-        var memberships = await _organizationUserRepository.ListByUserAsync(user.Id);
+        var memberships = await _organizationUserRepository.ListByUserAsync(
+            user.Id
+        );
         var membership = Assert.Single(memberships);
         Assert.Equal(OrganizationRole.Owner, membership.Role);
         Assert.Equal(user.Id, membership.CreatedByUserId);
 
-        var organization = await _organizationRepository.GetByIdAsync(membership.OrganizationId);
+        var organization = await _organizationRepository.GetByIdAsync(
+            membership.OrganizationId
+        );
         Assert.NotNull(organization);
         Assert.True(organization.IsPersonal);
     }
 
     [Fact]
-    public async Task SyncAsync_WhenSignInTwice_DoesNotCreateDuplicatePersonalOrganization()
+    public async Task
+        SyncAsync_WhenSignInTwice_DoesNotCreateDuplicatePersonalOrganization()
     {
         // setup
         var identity = new GoogleIdentity(
@@ -209,16 +256,26 @@ public sealed class GoogleUserSyncServiceTests(DynamoDbLocalFixture dynamoDbLoca
         await _service.SyncAsync(identity);
 
         // verify
-        var memberships = await _organizationUserRepository.ListByUserAsync(user.Id);
+        var memberships = await _organizationUserRepository.ListByUserAsync(
+            user.Id
+        );
         Assert.Single(memberships);
     }
 
     [Fact]
-    public async Task SyncAsync_WhenUserExistsWithoutPersonalOrganization_BackfillsOne()
+    public async Task
+        SyncAsync_WhenUserExistsWithoutPersonalOrganization_BackfillsOne()
     {
         // setup: simulate a User who was created but whose personal Organization creation never
         // completed (e.g. a crash between the two steps).
-        var identity = new GoogleIdentity("google-5", "dave@gmail.com", true, "Dave", "Diaz", null);
+        var identity = new GoogleIdentity(
+            "google-5",
+            "dave@gmail.com",
+            true,
+            "Dave",
+            "Diaz",
+            null
+        );
         var userRepository = new DynamoDbUserRepository(
             _client,
             Options.Create(
@@ -246,7 +303,9 @@ public sealed class GoogleUserSyncServiceTests(DynamoDbLocalFixture dynamoDbLoca
 
         // verify
         Assert.Equal(orphanedUser.Id, user.Id);
-        var memberships = await _organizationUserRepository.ListByUserAsync(user.Id);
+        var memberships = await _organizationUserRepository.ListByUserAsync(
+            user.Id
+        );
         var membership = Assert.Single(memberships);
         Assert.Equal(OrganizationRole.Owner, membership.Role);
     }

@@ -2,12 +2,16 @@ using A2.Server.Models;
 
 namespace A2.Server.UnitTests;
 
-/// <summary>Unit tests for <see cref="RunEnvironmentVariableSnapshot.FromEnvironmentVariable"/> and
-/// <see cref="RunEnvironmentVariableSnapshot.Masked"/>.</summary>
+/// <summary>
+///     Unit tests for
+///     <see cref="RunEnvironmentVariableSnapshot.FromEnvironmentVariable" /> and
+///     <see cref="RunEnvironmentVariableSnapshot.Masked" />.
+/// </summary>
 public sealed class RunEnvironmentVariableSnapshotTests
 {
     [Fact]
-    public void FromEnvironmentVariable_WhenVariableIsNotSensitive_CopiesTheValueWhole()
+    public void
+        FromEnvironmentVariable_WhenVariableIsNotSensitive_CopiesTheValueWhole()
     {
         // setup
         var variable = new EnvironmentVariable
@@ -24,7 +28,9 @@ public sealed class RunEnvironmentVariableSnapshotTests
         };
 
         // test
-        var snapshot = RunEnvironmentVariableSnapshot.FromEnvironmentVariable(variable);
+        var snapshot = RunEnvironmentVariableSnapshot.FromEnvironmentVariable(
+            variable
+        );
 
         // verify: an ordinary value is carried across unmasked, unlike a sensitive one.
         Assert.Equal(variable.Value, snapshot.Value);
@@ -37,7 +43,8 @@ public sealed class RunEnvironmentVariableSnapshotTests
     }
 
     [Fact]
-    public void FromEnvironmentVariable_WhenVariableIsSensitive_StoresTheRealValueUnmasked()
+    public void
+        FromEnvironmentVariable_WhenVariableIsSensitive_StoresTheRealValueUnmasked()
     {
         // setup
         var variable = new EnvironmentVariable
@@ -54,7 +61,9 @@ public sealed class RunEnvironmentVariableSnapshotTests
         };
 
         // test
-        var snapshot = RunEnvironmentVariableSnapshot.FromEnvironmentVariable(variable);
+        var snapshot = RunEnvironmentVariableSnapshot.FromEnvironmentVariable(
+            variable
+        );
 
         // verify: a future execution agent needs the real credential from this snapshot, so Create no
         // longer masks it -- only Masked() does, and only from Start Run onward.

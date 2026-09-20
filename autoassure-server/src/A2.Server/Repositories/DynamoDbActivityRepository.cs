@@ -7,15 +7,19 @@ using Microsoft.Extensions.Options;
 
 namespace A2.Server.Repositories;
 
-public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoDbOptions> options)
-    : IActivityRepository
+public class DynamoDbActivityRepository(
+    IAmazonDynamoDB client,
+    IOptions<DynamoDbOptions> options
+) : IActivityRepository
 {
     private const string IdIndexName = "IdIndex";
 
     private string TableName => options.Value.ActivityTableName;
     private string ScenarioTableName => options.Value.ScenarioTableName;
     private string PreconditionTableName => options.Value.PreconditionTableName;
-    private string EvidenceDefinitionTableName => options.Value.EvidenceDefinitionTableName;
+
+    private string EvidenceDefinitionTableName =>
+        options.Value.EvidenceDefinitionTableName;
 
     public async Task<ActivitySaveResult> TrySaveAsync(Activity activity)
     {
@@ -41,7 +45,11 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
         transactItems.Add(
             new TransactWriteItem
             {
-                Put = new Put { TableName = TableName, Item = activity.ToDynamoDbRow() },
+                Put = new Put
+                {
+                    TableName = TableName,
+                    Item = activity.ToDynamoDbRow(),
+                },
             }
         );
 
@@ -58,7 +66,8 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
             );
             return ActivitySaveResult.Success;
         }
-        catch (TransactionCanceledException ex) when (ex.CancellationReasons is { Count: > 0 })
+        catch (TransactionCanceledException ex)
+            when (ex.CancellationReasons is { Count: > 0 })
         {
             var reasons = ex.CancellationReasons;
             if (reasons[0].Code == "ConditionalCheckFailed")
@@ -73,10 +82,12 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                     : ActivitySaveResult.ScenarioNotFound;
             }
 
-            if (reasons.Skip(1).Any(reason => reason.Code == "ConditionalCheckFailed"))
-            {
+            if (
+                reasons
+                .Skip(1)
+                .Any(reason => reason.Code == "ConditionalCheckFailed")
+            )
                 return ActivitySaveResult.PreconditionOrEvidenceNotFound;
-            }
 
             throw;
         }
@@ -114,32 +125,40 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
             );
             return ActivityUpdateResult.Success;
         }
-        catch (TransactionCanceledException ex) when (ex.CancellationReasons is { Count: > 0 })
+        catch (TransactionCanceledException ex)
+            when (ex.CancellationReasons is { Count: > 0 })
         {
             var reasons = ex.CancellationReasons;
             if (reasons[0].Code == "ConditionalCheckFailed")
-            {
                 return ActivityUpdateResult.ActivityNotFound;
-            }
 
-            if (reasons.Skip(1).Any(reason => reason.Code == "ConditionalCheckFailed"))
-            {
+            if (
+                reasons
+                .Skip(1)
+                .Any(reason => reason.Code == "ConditionalCheckFailed")
+            )
                 return ActivityUpdateResult.PreconditionOrEvidenceNotFound;
-            }
 
             throw;
         }
     }
 
-    public async Task<Activity?> GetByIdAsync(Guid organizationId, Guid activityId)
+    public async Task<Activity?> GetByIdAsync(
+        Guid organizationId,
+        Guid activityId
+    )
     {
         var response = await client.QueryAsync(
             new QueryRequest
             {
                 TableName = TableName,
                 IndexName = IdIndexName,
-                KeyConditionExpression = "OrganizationId = :organizationId AND Id = :id",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                KeyConditionExpression =
+                    "OrganizationId = :organizationId AND Id = :id",
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":organizationId"] = new(organizationId.ToString()),
                     [":id"] = new(activityId.ToString()),
@@ -160,11 +179,18 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
             new QueryRequest
             {
                 TableName = TableName,
-                KeyConditionExpression = "OrganizationId_ScenarioId = :partitionKey",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                KeyConditionExpression =
+                    "OrganizationId_ScenarioId = :partitionKey",
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":partitionKey"] = new(
-                        DynamoDbMapper.ScenarioScopedPartitionKey(organizationId, scenarioId)
+                        DynamoDbMapper.ScenarioScopedPartitionKey(
+                            organizationId,
+                            scenarioId
+                        )
                     ),
                 },
                 ConsistentRead = true,
@@ -185,10 +211,12 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
         IReadOnlyList<Guid> orderedActivityIds
     )
     {
-        var partitionKey = DynamoDbMapper.ScenarioScopedPartitionKey(organizationId, scenarioId);
+        var partitionKey = DynamoDbMapper.ScenarioScopedPartitionKey(
+            organizationId,
+            scenarioId
+        );
         var transactItems = new List<TransactWriteItem>();
         for (var index = 0; index < orderedActivityIds.Count; index++)
-        {
             transactItems.Add(
                 new TransactWriteItem
                 {
@@ -202,18 +230,28 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                         },
                         UpdateExpression = "SET #order = :order",
                         ConditionExpression = "attribute_exists(Id)",
-                        ExpressionAttributeNames = new Dictionary<string, string>
+                        ExpressionAttributeNames = new Dictionary<
+                            string,
+                            string
+                        >
                         {
                             ["#order"] = "Order",
                         },
-                        ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                        ExpressionAttributeValues = new Dictionary<
+                            string,
+                            AttributeValue
+                        >
                         {
-                            [":order"] = new() { N = index.ToString(CultureInfo.InvariantCulture) },
+                            [":order"] = new()
+                            {
+                                N = index.ToString(
+                                    CultureInfo.InvariantCulture
+                                ),
+                            },
                         },
                     },
                 }
             );
-        }
 
         // When TransactWriteItemsAsync is cancelled due to an Activity ConditionCheck failing, Then
         // return ActivityNotFound; otherwise rethrow, since the cancellation isn't caused by a
@@ -227,8 +265,10 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
-                && reasons.Any(reason => reason.Code == "ConditionalCheckFailed")
-            )
+                  && reasons.Any(reason =>
+                      reason.Code == "ConditionalCheckFailed"
+                  )
+                 )
         {
             return false;
         }
@@ -249,7 +289,10 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                 Key = new Dictionary<string, AttributeValue>
                 {
                     ["OrganizationId_ApplicationId"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            applicationId
+                        )
                     ),
                     ["Id"] = new(scenarioId.ToString()),
                 },
@@ -263,8 +306,9 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
         Guid organizationId,
         Guid applicationId,
         Guid scenarioId
-    ) =>
-        new()
+    )
+    {
+        return new TransactWriteItem
         {
             Update = new Update
             {
@@ -272,7 +316,10 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                 Key = new Dictionary<string, AttributeValue>
                 {
                     ["OrganizationId_ApplicationId"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            applicationId
+                        )
                     ),
                     ["Id"] = new(scenarioId.ToString()),
                 },
@@ -282,7 +329,10 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                 // numeric comparison DynamoDB would otherwise reject against a missing attribute.
                 ConditionExpression =
                     "attribute_exists(Id) AND (attribute_not_exists(ActivityCount) OR ActivityCount < :max)",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":one"] = new() { N = "1" },
                     [":max"] = new()
@@ -294,14 +344,16 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                 },
             },
         };
+    }
 
     private TransactWriteItem UpdateActivity(
         Guid organizationId,
         Guid scenarioId,
         Guid activityId,
         ActivityUpdatableFields fields
-    ) =>
-        new()
+    )
+    {
+        return new TransactWriteItem
         {
             Update = new Update
             {
@@ -309,7 +361,10 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                 Key = new Dictionary<string, AttributeValue>
                 {
                     ["OrganizationId_ScenarioId"] = new(
-                        DynamoDbMapper.ScenarioScopedPartitionKey(organizationId, scenarioId)
+                        DynamoDbMapper.ScenarioScopedPartitionKey(
+                            organizationId,
+                            scenarioId
+                        )
                     ),
                     ["Id"] = new(activityId.ToString()),
                 },
@@ -318,26 +373,36 @@ public class DynamoDbActivityRepository(IAmazonDynamoDB client, IOptions<DynamoD
                     + "EvidenceIds = :evidenceIds, UpdatedByUserId = :updatedByUserId, "
                     + "UpdatedAt = :updatedAt",
                 ConditionExpression = "attribute_exists(Id)",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":description"] = new(fields.Description),
                     [":preconditionIds"] = new()
                     {
                         L = fields
-                            .PreconditionIds.Select(pid => new AttributeValue(pid.ToString()))
+                            .PreconditionIds.Select(pid => new AttributeValue(
+                                pid.ToString()
+                            ))
                             .ToList(),
                     },
                     [":evidenceIds"] = new()
                     {
                         L = fields
-                            .EvidenceIds.Select(eid => new AttributeValue(eid.ToString()))
+                            .EvidenceIds.Select(eid => new AttributeValue(
+                                eid.ToString()
+                            ))
                             .ToList(),
                     },
-                    [":updatedByUserId"] = new(fields.UpdatedByUserId.ToString()),
+                    [":updatedByUserId"] = new(
+                        fields.UpdatedByUserId.ToString()
+                    ),
                     [":updatedAt"] = new(fields.UpdatedAt.ToString("O")),
                 },
             },
         };
+    }
 
     // One ConditionCheck per unique Precondition/EvidenceDefinition referenced by the Activity --
     // deduped, since a DynamoDB transaction rejects two operations targeting the same item.

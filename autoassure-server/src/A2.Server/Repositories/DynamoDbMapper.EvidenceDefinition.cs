@@ -19,11 +19,19 @@ public static partial class DynamoDbMapper
                 )
             ),
             ["Id"] = new(evidenceDefinition.Id.ToString()),
-            ["OrganizationId"] = new(evidenceDefinition.OrganizationId.ToString()),
-            ["ApplicationId"] = new(evidenceDefinition.ApplicationId.ToString()),
+            ["OrganizationId"] = new(
+                evidenceDefinition.OrganizationId.ToString()
+            ),
+            ["ApplicationId"] = new(
+                evidenceDefinition.ApplicationId.ToString()
+            ),
             ["Name"] = new(evidenceDefinition.Name),
-            ["CreatedByUserId"] = new(evidenceDefinition.CreatedByUserId.ToString()),
-            ["UpdatedByUserId"] = new(evidenceDefinition.UpdatedByUserId.ToString()),
+            ["CreatedByUserId"] = new(
+                evidenceDefinition.CreatedByUserId.ToString()
+            ),
+            ["UpdatedByUserId"] = new(
+                evidenceDefinition.UpdatedByUserId.ToString()
+            ),
             ["CreatedAt"] = new(evidenceDefinition.CreatedAt.ToString("O")),
             ["UpdatedAt"] = new(evidenceDefinition.UpdatedAt.ToString("O")),
             ["Description"] = new(evidenceDefinition.Description),
@@ -35,8 +43,9 @@ public static partial class DynamoDbMapper
 
     public static EvidenceDefinition ToEvidenceDefinition(
         this Dictionary<string, AttributeValue> row
-    ) =>
-        new()
+    )
+    {
+        return new EvidenceDefinition
         {
             Id = Guid.Parse(row["Id"].S),
             OrganizationId = Guid.Parse(row["OrganizationId"].S),
@@ -46,7 +55,14 @@ public static partial class DynamoDbMapper
             ExampleValue = row["ExampleValue"].S,
             CreatedByUserId = Guid.Parse(row["CreatedByUserId"].S),
             UpdatedByUserId = Guid.Parse(row["UpdatedByUserId"].S),
-            CreatedAt = DateTimeOffset.Parse(row["CreatedAt"].S, CultureInfo.InvariantCulture),
-            UpdatedAt = DateTimeOffset.Parse(row["UpdatedAt"].S, CultureInfo.InvariantCulture),
+            CreatedAt = DateTimeOffset.Parse(
+                row["CreatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
+            UpdatedAt = DateTimeOffset.Parse(
+                row["UpdatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
         };
+    }
 }

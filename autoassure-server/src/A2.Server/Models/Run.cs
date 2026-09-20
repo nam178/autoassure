@@ -9,26 +9,38 @@ public record Run
     public required RunEnvironmentSnapshot Environment { get; init; }
     public required IReadOnlyList<RunScenarioSnapshot> Scenarios { get; init; }
 
-    /// <summary>Running does not by itself mean the owning worker is still alive -- it may have crashed
-    /// or been killed without anything having noticed yet. Treat Running as "not yet terminal," and
-    /// check <see cref="LastHeartbeatAt"/> to tell whether it is actually making progress.</summary>
+    /// <summary>
+    ///     Running does not by itself mean the owning worker is still alive -- it may
+    ///     have crashed
+    ///     or been killed without anything having noticed yet. Treat Running as "not
+    ///     yet terminal," and
+    ///     check <see cref="LastHeartbeatAt" /> to tell whether it is actually making
+    ///     progress.
+    /// </summary>
     public required RunStatus Status { get; init; }
+
     public int TotalActivityCount { get; init; }
     public int PassedActivityCount { get; init; }
     public int FailedActivityCount { get; init; }
     public int SkippedActivityCount { get; init; }
     public long LastStatusUpdateSequenceNumber { get; init; }
 
-    /// <summary>Who triggered this Run. A person triggers a Manual run. Null means a system timer
-    /// triggered it.</summary>
+    /// <summary>
+    ///     Who triggered this Run. A person triggers a Manual run. Null means a system
+    ///     timer
+    ///     triggered it.
+    /// </summary>
     public Guid? TriggeredByUserId { get; init; }
 
     public required DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset? StartedAt { get; init; }
     public DateTimeOffset? CompletedAt { get; init; }
 
-    /// <summary>When the owning worker last proved it was alive. Null while the Run is Pending, since it
-    /// has no owner yet.</summary>
+    /// <summary>
+    ///     When the owning worker last proved it was alive. Null while the Run is
+    ///     Pending, since it
+    ///     has no owner yet.
+    /// </summary>
     public DateTimeOffset? LastHeartbeatAt { get; init; }
 }
 

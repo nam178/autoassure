@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using A2.Server.Common;
 using A2.Server.Contracts;
+using A2.Server.Models;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -14,12 +15,23 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
+using ActivityResult = A2.Server.Contracts.ActivityResult;
+using ActivityResultStatus = A2.Server.Contracts.ActivityResultStatus;
+using EnvironmentClassification = A2.Server.Contracts.EnvironmentClassification;
+using PreconditionValueSource = A2.Server.Contracts.PreconditionValueSource;
+using RunStatus = A2.Server.Contracts.RunStatus;
+using RunTrigger = A2.Server.Contracts.RunTrigger;
 
 namespace A2.Server.Tests.Controllers;
 
-/// <summary>Integration tests for <see cref="A2.Server.Controllers.RunsController"/> over real HTTP,
-/// against DynamoDB Local: Create Run (Manual), Get Run, List Runs, Start Run and End Run, plus the
-/// nested route's read-after-write fix, snapshot immutability, and the 404/409 rules.</summary>
+/// <summary>
+///     Integration tests for <see cref="A2.Server.Controllers.RunsController" />
+///     over real HTTP,
+///     against DynamoDB Local: Create Run (Manual), Get Run, List Runs, Start Run
+///     and End Run, plus the
+///     nested route's read-after-write fix, snapshot immutability, and the 404/409
+///     rules.
+/// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class RunsControllerTests
     : IClassFixture<WebApplicationFactory<Program>>,
@@ -39,32 +51,40 @@ public sealed class RunsControllerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration(
-                (_, config) =>
-                    config.AddInMemoryCollection(
-                        new Dictionary<string, string?>
-                        {
-                            ["Auth:SigningKey"] = SigningKey,
-                            ["DynamoDb:ApplicationTableName"] = "Applications",
-                            ["DynamoDb:EnvironmentTableName"] = "Environments",
-                            ["DynamoDb:EnvironmentVariableTableName"] = "EnvironmentVariables",
-                            ["DynamoDb:PreconditionTableName"] = "Preconditions",
-                            ["DynamoDb:EvidenceDefinitionTableName"] = "EvidenceDefinitions",
-                            ["DynamoDb:ScenarioTableName"] = "Scenarios",
-                            ["DynamoDb:ScenariosByFolderTableName"] = "ScenariosByFolder",
-                            ["DynamoDb:ScenariosByTagTableName"] = "ScenariosByTag",
-                            ["DynamoDb:ActivityTableName"] = "Activities",
-                            ["DynamoDb:RunTableName"] = "Runs",
-                            ["DynamoDb:RunningRunTableName"] = "RunningRuns",
-                            ["DynamoDb:OrganizationTableName"] = "Organizations",
-                            ["DynamoDb:OrganizationUserTableName"] = "OrganizationUsers",
-                        }
-                    )
+            builder.ConfigureAppConfiguration((_, config) =>
+                config.AddInMemoryCollection(
+                    new Dictionary<string, string?>
+                    {
+                        ["Auth:SigningKey"] = SigningKey,
+                        ["DynamoDb:ApplicationTableName"] = "Applications",
+                        ["DynamoDb:EnvironmentTableName"] = "Environments",
+                        ["DynamoDb:EnvironmentVariableTableName"] =
+                            "EnvironmentVariables",
+                        ["DynamoDb:PreconditionTableName"] =
+                            "Preconditions",
+                        ["DynamoDb:EvidenceDefinitionTableName"] =
+                            "EvidenceDefinitions",
+                        ["DynamoDb:ScenarioTableName"] = "Scenarios",
+                        ["DynamoDb:ScenariosByFolderTableName"] =
+                            "ScenariosByFolder",
+                        ["DynamoDb:ScenariosByTagTableName"] =
+                            "ScenariosByTag",
+                        ["DynamoDb:ActivityTableName"] = "Activities",
+                        ["DynamoDb:RunTableName"] = "Runs",
+                        ["DynamoDb:RunningRunTableName"] = "RunningRuns",
+                        ["DynamoDb:OrganizationTableName"] =
+                            "Organizations",
+                        ["DynamoDb:OrganizationUserTableName"] =
+                            "OrganizationUsers",
+                    }
+                )
             );
             builder.ConfigureServices(services =>
             {
                 _client = dynamoDbLocalFixture.CreateClient();
-                services.Replace(ServiceDescriptor.Singleton<IAmazonDynamoDB>(_client));
+                services.Replace(
+                    ServiceDescriptor.Singleton<IAmazonDynamoDB>(_client)
+                );
             });
         });
     }
@@ -84,7 +104,10 @@ public sealed class RunsControllerTests
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -97,14 +120,23 @@ public sealed class RunsControllerTests
                 TableName = "Environments",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -113,10 +145,16 @@ public sealed class RunsControllerTests
                         IndexName = "IdIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("Id", KeyType.RANGE),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -129,12 +167,18 @@ public sealed class RunsControllerTests
                 TableName = "EnvironmentVariables",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_EnvironmentId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_EnvironmentId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Key", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_EnvironmentId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_EnvironmentId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Key", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -150,14 +194,23 @@ public sealed class RunsControllerTests
                 TableName = "Scenarios",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -166,18 +219,30 @@ public sealed class RunsControllerTests
                         IndexName = "IdIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("Id", KeyType.RANGE),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
 
-        await CreateMappingTableAsync("ScenariosByFolder", "OrganizationId_ApplicationId_Folder");
-        await CreateMappingTableAsync("ScenariosByTag", "OrganizationId_ApplicationId_Tag");
+        await CreateMappingTableAsync(
+            "ScenariosByFolder",
+            "OrganizationId_ApplicationId_Folder"
+        );
+        await CreateMappingTableAsync(
+            "ScenariosByTag",
+            "OrganizationId_ApplicationId_Tag"
+        );
 
         await _client.CreateTableAsync(
             new CreateTableRequest
@@ -185,14 +250,23 @@ public sealed class RunsControllerTests
                 TableName = "Activities",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ScenarioId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ScenarioId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ScenarioId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ScenarioId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -201,10 +275,16 @@ public sealed class RunsControllerTests
                         IndexName = "IdIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("Id", KeyType.RANGE),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -219,12 +299,18 @@ public sealed class RunsControllerTests
                 TableName = "Runs",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("RowKey", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("RowKey", ScalarAttributeType.S),
                     new AttributeDefinition("HeaderId", ScalarAttributeType.S),
                 ],
@@ -235,7 +321,10 @@ public sealed class RunsControllerTests
                         IndexName = "RunHeaderIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId_ApplicationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("HeaderId", KeyType.RANGE),
                         ],
                         Projection = new Projection
@@ -268,12 +357,18 @@ public sealed class RunsControllerTests
                 TableName = "RunningRuns",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("RunId", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("RunId", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -285,7 +380,10 @@ public sealed class RunsControllerTests
             {
                 TableName = "Organizations",
                 KeySchema = [new KeySchemaElement("Id", KeyType.HASH)],
-                AttributeDefinitions = [new AttributeDefinition("Id", ScalarAttributeType.S)],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
@@ -301,7 +399,10 @@ public sealed class RunsControllerTests
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("UserId", ScalarAttributeType.S),
                 ],
                 GlobalSecondaryIndexes =
@@ -312,66 +413,16 @@ public sealed class RunsControllerTests
                         KeySchema =
                         [
                             new KeySchemaElement("UserId", KeyType.HASH),
-                            new KeySchemaElement("OrganizationId", KeyType.RANGE),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.RANGE
+                            ),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
-                ],
-                BillingMode = BillingMode.PAY_PER_REQUEST,
-            }
-        );
-    }
-
-    private async Task CreateLibraryTableAsync(string tableName)
-    {
-        await _client.CreateTableAsync(
-            new CreateTableRequest
-            {
-                TableName = tableName,
-                KeySchema =
-                [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
-                    new KeySchemaElement("Id", KeyType.RANGE),
-                ],
-                AttributeDefinitions =
-                [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
-                    new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
-                    },
-                ],
-                BillingMode = BillingMode.PAY_PER_REQUEST,
-            }
-        );
-    }
-
-    private async Task CreateMappingTableAsync(string tableName, string partitionKeyName)
-    {
-        await _client.CreateTableAsync(
-            new CreateTableRequest
-            {
-                TableName = tableName,
-                KeySchema =
-                [
-                    new KeySchemaElement(partitionKeyName, KeyType.HASH),
-                    new KeySchemaElement("ScenarioId", KeyType.RANGE),
-                ],
-                AttributeDefinitions =
-                [
-                    new AttributeDefinition(partitionKeyName, ScalarAttributeType.S),
-                    new AttributeDefinition("ScenarioId", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -398,15 +449,94 @@ public sealed class RunsControllerTests
                 "OrganizationUsers",
             }
         )
-        {
             await _client.DeleteTableAsync(tableName);
-        }
         _client.Dispose();
+    }
+
+    private async Task CreateLibraryTableAsync(string tableName)
+    {
+        await _client.CreateTableAsync(
+            new CreateTableRequest
+            {
+                TableName = tableName,
+                KeySchema =
+                [
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
+                    new KeySchemaElement("Id", KeyType.RANGE),
+                ],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
+                ],
+                GlobalSecondaryIndexes =
+                [
+                    new GlobalSecondaryIndex
+                    {
+                        IndexName = "IdIndex",
+                        KeySchema =
+                        [
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
+                            new KeySchemaElement("Id", KeyType.RANGE),
+                        ],
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
+                    },
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+            }
+        );
+    }
+
+    private async Task CreateMappingTableAsync(
+        string tableName,
+        string partitionKeyName
+    )
+    {
+        await _client.CreateTableAsync(
+            new CreateTableRequest
+            {
+                TableName = tableName,
+                KeySchema =
+                [
+                    new KeySchemaElement(partitionKeyName, KeyType.HASH),
+                    new KeySchemaElement("ScenarioId", KeyType.RANGE),
+                ],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition(
+                        partitionKeyName,
+                        ScalarAttributeType.S
+                    ),
+                    new AttributeDefinition(
+                        "ScenarioId",
+                        ScalarAttributeType.S
+                    ),
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+            }
+        );
     }
 
     private async Task SeedOrganizationMembershipAsync(Guid userId)
     {
         var organizationId = Guid.CreateVersion7();
+        var now = DateTimeOffset.UtcNow;
         await _client.PutItemAsync(
             new PutItemRequest
             {
@@ -414,6 +544,15 @@ public sealed class RunsControllerTests
                 Item = new Dictionary<string, AttributeValue>
                 {
                     ["Id"] = new(organizationId.ToString()),
+                    ["Name"] = new("Test Organization"),
+                    ["IsPersonal"] = new() { BOOL = true },
+                    ["CreatedByUserId"] = new(userId.ToString()),
+                    ["UpdatedByUserId"] = new(userId.ToString()),
+                    ["CreatedAt"] = new(now.ToString("O")),
+                    ["UpdatedAt"] = new(now.ToString("O")),
+                    ["LifecycleState"] = new(
+                        LifecycleState.Active.ToString()
+                    ),
                 },
             }
         );
@@ -425,7 +564,7 @@ public sealed class RunsControllerTests
                 {
                     ["OrganizationId"] = new(organizationId.ToString()),
                     ["UserId"] = new(userId.ToString()),
-                    ["Role"] = new(Models.OrganizationRole.Owner.ToString()),
+                    ["Role"] = new(OrganizationRole.Owner.ToString()),
                     ["CreatedByUserId"] = new(userId.ToString()),
                     ["UpdatedByUserId"] = new(userId.ToString()),
                     ["CreatedAt"] = new(DateTimeOffset.UtcNow.ToString("O")),
@@ -441,11 +580,14 @@ public sealed class RunsControllerTests
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey)),
             SecurityAlgorithms.HmacSha256
         );
-        var claims = new[] { new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()) };
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+        };
         var token = new JwtSecurityToken(
-            issuer: Issuer,
-            audience: Audience,
-            claims: claims,
+            Issuer,
+            Audience,
+            claims,
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: credentials
         );
@@ -455,10 +597,8 @@ public sealed class RunsControllerTests
     private HttpClient CreateAuthenticatedClient(Guid userId)
     {
         var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            CreateAccessToken(userId)
-        );
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", CreateAccessToken(userId));
         return client;
     }
 
@@ -475,11 +615,15 @@ public sealed class RunsControllerTests
             "/applications",
             new CreateApplicationRequest { Name = "Test App", Description = "" }
         );
-        var application = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
+        var application =
+            await response.Content.ReadFromJsonAsync<ApplicationResponse>();
         return application!.Id;
     }
 
-    private static async Task<Guid> CreateEnvironmentAsync(HttpClient client, Guid appId)
+    private static async Task<Guid> CreateEnvironmentAsync(
+        HttpClient client,
+        Guid appId
+    )
     {
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/environments",
@@ -489,7 +633,8 @@ public sealed class RunsControllerTests
                 Classification = EnvironmentClassification.NonProduction,
             }
         );
-        var environment = await response.Content.ReadFromJsonAsync<EnvironmentResponse>();
+        var environment =
+            await response.Content.ReadFromJsonAsync<EnvironmentResponse>();
         return environment!.Id;
     }
 
@@ -503,7 +648,11 @@ public sealed class RunsControllerTests
     {
         var response = await client.PutAsJsonAsync(
             $"/environments/{environmentId}/variables/{key}",
-            new SetEnvironmentVariableRequest { Value = value, IsSensitive = isSensitive }
+            new SetEnvironmentVariableRequest
+            {
+                Value = value,
+                IsSensitive = isSensitive,
+            }
         );
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
@@ -524,7 +673,8 @@ public sealed class RunsControllerTests
                 Tags = null,
             }
         );
-        var scenario = await response.Content.ReadFromJsonAsync<ScenarioResponse>();
+        var scenario =
+            await response.Content.ReadFromJsonAsync<ScenarioResponse>();
         return scenario!.Id;
     }
 
@@ -544,7 +694,8 @@ public sealed class RunsControllerTests
                 EvidenceIds = evidenceIds,
             }
         );
-        var activity = await response.Content.ReadFromJsonAsync<ActivityResponse>();
+        var activity =
+            await response.Content.ReadFromJsonAsync<ActivityResponse>();
         return activity!.Id;
     }
 
@@ -554,11 +705,18 @@ public sealed class RunsControllerTests
         Guid AppId,
         Guid EnvironmentId,
         Guid ScenarioId
-    )> SeedRunnableAppAsync(HttpClient client, string scenarioTitle = "Checkout completes")
+        )> SeedRunnableAppAsync(
+        HttpClient client,
+        string scenarioTitle = "Checkout completes"
+    )
     {
         var appId = await CreateApplicationAsync(client);
         var environmentId = await CreateEnvironmentAsync(client, appId);
-        var scenarioId = await CreateScenarioAsync(client, appId, scenarioTitle);
+        var scenarioId = await CreateScenarioAsync(
+            client,
+            appId,
+            scenarioTitle
+        );
         await CreateActivityAsync(client, scenarioId);
         return (appId, environmentId, scenarioId);
     }
@@ -572,21 +730,33 @@ public sealed class RunsControllerTests
     {
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",
-            new CreateRunRequest { ScenarioIds = scenarioIds, EnvironmentId = environmentId }
+            new CreateRunRequest
+            {
+                ScenarioIds = scenarioIds,
+                EnvironmentId = environmentId,
+            }
         );
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<RunResponse>())!;
     }
 
     [Fact]
-    public async Task Create_WhenValidRequest_CreatesPendingRunWithSnapshotAndCountedActivities()
+    public async Task
+        Create_WhenValidRequest_CreatesPendingRunWithSnapshotAndCountedActivities()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
 
         // test
-        var run = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        var run = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
 
         // verify
         Assert.Equal(appId, run.ApplicationId);
@@ -600,47 +770,66 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task Create_WhenEnvironmentHasSensitiveVariable_MasksItInTheResponse()
+    public async Task
+        Create_WhenEnvironmentHasSensitiveVariable_MasksItInTheResponse()
     {
         // setup -- storage now holds the real value at Create time (this change removed masking there),
         // but the response must still mask it by default -- Create is not the one caller that gets the
         // real value back (only Start Run's winning claim is).
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
         const string secret = "abcdefghijklmnopqrstuvwxyz";
         await SetEnvironmentVariableAsync(
             client,
             environmentId,
             "API_KEY",
             secret,
-            isSensitive: true
+            true
         );
 
         // test
-        var run = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        var run = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
 
         // verify
-        var variable = Assert.Single(run.Environment.Variables, v => v.Key == "API_KEY");
-        Assert.Equal(Models.SensitiveValueMasker.Mask(secret), variable.Value);
+        var variable = Assert.Single(
+            run.Environment.Variables,
+            v => v.Key == "API_KEY"
+        );
+        Assert.Equal(SensitiveValueMasker.Mask(secret), variable.Value);
         Assert.NotEqual(secret, variable.Value);
     }
 
     [Fact]
-    public async Task GetById_WhenRunIsStillPendingWithSensitiveVariable_MasksItInTheResponse()
+    public async Task
+        GetById_WhenRunIsStillPendingWithSensitiveVariable_MasksItInTheResponse()
     {
         // setup -- a Pending Run's storage still holds the real value (Start Run has not run yet, so
         // nothing has overwritten it), but Get Run must mask it regardless of what storage holds.
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
         const string secret = "abcdefghijklmnopqrstuvwxyz";
         await SetEnvironmentVariableAsync(
             client,
             environmentId,
             "API_KEY",
             secret,
-            isSensitive: true
+            true
         );
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
 
         // test
         var fetched = await (
@@ -648,8 +837,11 @@ public sealed class RunsControllerTests
         ).Content.ReadFromJsonAsync<RunResponse>();
 
         // verify
-        var variable = Assert.Single(fetched!.Environment.Variables, v => v.Key == "API_KEY");
-        Assert.Equal(Models.SensitiveValueMasker.Mask(secret), variable.Value);
+        var variable = Assert.Single(
+            fetched!.Environment.Variables,
+            v => v.Key == "API_KEY"
+        );
+        Assert.Equal(SensitiveValueMasker.Mask(secret), variable.Value);
     }
 
     [Fact]
@@ -657,29 +849,49 @@ public sealed class RunsControllerTests
     {
         // setup -- this is the read-after-write 404 the nested route + ConsistentRead fixes.
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
 
         // test
-        var getResponse = await client.GetAsync($"/applications/{appId}/runs/{created.Id}");
+        var getResponse = await client.GetAsync(
+            $"/applications/{appId}/runs/{created.Id}"
+        );
 
         // verify
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
-        var fetched = await getResponse.Content.ReadFromJsonAsync<RunResponse>();
+        var fetched =
+            await getResponse.Content.ReadFromJsonAsync<RunResponse>();
         Assert.Equal(created.Id, fetched!.Id);
     }
 
     [Fact]
-    public async Task GetById_WhenRunBelongsToAnotherApplication_ReturnsNotFound()
+    public async Task
+        GetById_WhenRunBelongsToAnotherApplication_ReturnsNotFound()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
         var otherAppId = await CreateApplicationAsync(client);
 
         // test
-        var response = await client.GetAsync($"/applications/{otherAppId}/runs/{created.Id}");
+        var response = await client.GetAsync(
+            $"/applications/{otherAppId}/runs/{created.Id}"
+        );
 
         // verify
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -693,7 +905,9 @@ public sealed class RunsControllerTests
         var appId = await CreateApplicationAsync(client);
 
         // test
-        var response = await client.GetAsync($"/applications/{appId}/runs/{Guid.CreateVersion7()}");
+        var response = await client.GetAsync(
+            $"/applications/{appId}/runs/{Guid.CreateVersion7()}"
+        );
 
         // verify
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -708,7 +922,12 @@ public sealed class RunsControllerTests
             client,
             "Original Title"
         );
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
 
         // test -- edit the live Scenario after the Run was created
         var patchResponse = await client.PatchAsJsonAsync(
@@ -724,14 +943,18 @@ public sealed class RunsControllerTests
         Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
 
         // verify -- the Run's own snapshot is untouched
-        var getResponse = await client.GetAsync($"/applications/{appId}/runs/{created.Id}");
-        var fetched = await getResponse.Content.ReadFromJsonAsync<RunResponse>();
+        var getResponse = await client.GetAsync(
+            $"/applications/{appId}/runs/{created.Id}"
+        );
+        var fetched =
+            await getResponse.Content.ReadFromJsonAsync<RunResponse>();
         var scenario = Assert.Single(fetched!.Scenarios);
         Assert.Equal("Original Title", scenario.Title);
     }
 
     [Fact]
-    public async Task Create_CopiesReferencedPreconditionsAndEvidenceDefinitionsWhole()
+    public async Task
+        Create_CopiesReferencedPreconditionsAndEvidenceDefinitionsWhole()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -749,7 +972,8 @@ public sealed class RunsControllerTests
             }
         );
         var precondition = (
-            await preconditionResponse.Content.ReadFromJsonAsync<PreconditionResponse>()
+            await preconditionResponse.Content
+                .ReadFromJsonAsync<PreconditionResponse>()
         )!;
 
         var evidenceResponse = await client.PostAsJsonAsync(
@@ -762,7 +986,8 @@ public sealed class RunsControllerTests
             }
         );
         var evidence = (
-            await evidenceResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>()
+            await evidenceResponse.Content
+                .ReadFromJsonAsync<EvidenceDefinitionResponse>()
         )!;
 
         var activityId = await CreateActivityAsync(
@@ -773,7 +998,12 @@ public sealed class RunsControllerTests
         );
 
         // test
-        var run = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        var run = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
 
         // verify
         var activity = Assert.Single(Assert.Single(run.Scenarios).Activities);
@@ -789,14 +1019,23 @@ public sealed class RunsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var run = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var run = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
 
         // test
         var listResponse = await client.GetAsync($"/applications/{appId}/runs");
 
         // verify
-        var summaries = await listResponse.Content.ReadFromJsonAsync<List<RunSummaryResponse>>();
+        var summaries = await listResponse.Content.ReadFromJsonAsync<
+            List<RunSummaryResponse>
+        >();
         var summary = Assert.Single(summaries!);
         Assert.Equal(run.Id, summary.Id);
     }
@@ -806,19 +1045,31 @@ public sealed class RunsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
         var startResponse = await client.PostAsync(
             $"/applications/{appId}/runs/{created.Id}/start",
             null
         );
-        var started = await startResponse.Content.ReadFromJsonAsync<RunResponse>();
+        var started =
+            await startResponse.Content.ReadFromJsonAsync<RunResponse>();
 
         // test
-        var listResponse = await client.GetAsync($"/applications/{appId}/runs/running");
+        var listResponse = await client.GetAsync(
+            $"/applications/{appId}/runs/running"
+        );
 
         // verify
-        var running = await listResponse.Content.ReadFromJsonAsync<List<RunningRunResponse>>();
+        var running = await listResponse.Content.ReadFromJsonAsync<
+            List<RunningRunResponse>
+        >();
         var runningRun = Assert.Single(running!);
         Assert.Equal(created.Id, runningRun.Id);
         Assert.Equal(started!.StartedAt, runningRun.StartedAt);
@@ -829,14 +1080,20 @@ public sealed class RunsControllerTests
     {
         // setup -- a Run exists but was never started, so it never has a RunningRuns row.
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
         await CreateRunAsync(client, appId, [scenarioId], environmentId);
 
         // test
-        var listResponse = await client.GetAsync($"/applications/{appId}/runs/running");
+        var listResponse = await client.GetAsync(
+            $"/applications/{appId}/runs/running"
+        );
 
         // verify
-        var running = await listResponse.Content.ReadFromJsonAsync<List<RunningRunResponse>>();
+        var running = await listResponse.Content.ReadFromJsonAsync<
+            List<RunningRunResponse>
+        >();
         Assert.Empty(running!);
     }
 
@@ -845,8 +1102,15 @@ public sealed class RunsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
 
         // test
         var startResponse = await client.PostAsync(
@@ -856,7 +1120,8 @@ public sealed class RunsControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
-        var started = await startResponse.Content.ReadFromJsonAsync<RunResponse>();
+        var started =
+            await startResponse.Content.ReadFromJsonAsync<RunResponse>();
         Assert.Equal(RunStatus.Running, started!.Status);
         Assert.NotNull(started.StartedAt);
         Assert.NotNull(started.LastHeartbeatAt);
@@ -867,21 +1132,29 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task Start_WhenEnvironmentHasSensitiveVariable_ReturnsTheRealValueUnmasked()
+    public async Task
+        Start_WhenEnvironmentHasSensitiveVariable_ReturnsTheRealValueUnmasked()
     {
         // setup -- a sensitive variable set before the Run is created, so Create's own snapshot
         // (unmasked as of this change) carries the real value into storage.
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
         const string secret = "abcdefghijklmnopqrstuvwxyz";
         await SetEnvironmentVariableAsync(
             client,
             environmentId,
             "API_KEY",
             secret,
-            isSensitive: true
+            true
         );
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
 
         // test
         var startResponse = await client.PostAsync(
@@ -891,8 +1164,12 @@ public sealed class RunsControllerTests
 
         // verify -- the winning claim's own response is the one place the real secret comes back.
         Assert.Equal(HttpStatusCode.OK, startResponse.StatusCode);
-        var started = await startResponse.Content.ReadFromJsonAsync<RunResponse>();
-        var variable = Assert.Single(started!.Environment.Variables, v => v.Key == "API_KEY");
+        var started =
+            await startResponse.Content.ReadFromJsonAsync<RunResponse>();
+        var variable = Assert.Single(
+            started!.Environment.Variables,
+            v => v.Key == "API_KEY"
+        );
         Assert.Equal(secret, variable.Value);
 
         // verify -- every later read masks it again, since storage was overwritten with the masked
@@ -904,7 +1181,10 @@ public sealed class RunsControllerTests
             fetched!.Environment.Variables,
             v => v.Key == "API_KEY"
         );
-        Assert.Equal(Models.SensitiveValueMasker.Mask(secret), fetchedVariable.Value);
+        Assert.Equal(
+            SensitiveValueMasker.Mask(secret),
+            fetchedVariable.Value
+        );
     }
 
     [Fact]
@@ -912,9 +1192,19 @@ public sealed class RunsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
-        await client.PostAsync($"/applications/{appId}/runs/{created.Id}/start", null);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
+        await client.PostAsync(
+            $"/applications/{appId}/runs/{created.Id}/start",
+            null
+        );
 
         // test
         var response = await client.PostAsync(
@@ -948,9 +1238,19 @@ public sealed class RunsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
-        await client.PostAsync($"/applications/{appId}/runs/{created.Id}/start", null);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
+        await client.PostAsync(
+            $"/applications/{appId}/runs/{created.Id}/start",
+            null
+        );
 
         // test
         var endResponse = await client.PostAsJsonAsync(
@@ -971,10 +1271,23 @@ public sealed class RunsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
-        await client.PostAsync($"/applications/{appId}/runs/{created.Id}/start", null);
-        var endRequest = new EndRunRequest { TerminalStatus = RunStatus.Completed };
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
+        await client.PostAsync(
+            $"/applications/{appId}/runs/{created.Id}/start",
+            null
+        );
+        var endRequest = new EndRunRequest
+        {
+            TerminalStatus = RunStatus.Completed,
+        };
         var firstEnd = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs/{created.Id}/end",
             endRequest
@@ -996,8 +1309,15 @@ public sealed class RunsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
 
         // test
         var response = await client.PostAsJsonAsync(
@@ -1012,13 +1332,25 @@ public sealed class RunsControllerTests
     [Theory]
     [InlineData(RunStatus.Pending)]
     [InlineData(RunStatus.Running)]
-    public async Task End_WhenTerminalStatusIsNotTerminal_ReturnsBadRequest(RunStatus notTerminal)
+    public async Task End_WhenTerminalStatusIsNotTerminal_ReturnsBadRequest(
+        RunStatus notTerminal
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
-        await client.PostAsync($"/applications/{appId}/runs/{created.Id}/start", null);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
+        await client.PostAsync(
+            $"/applications/{appId}/runs/{created.Id}/start",
+            null
+        );
 
         // test
         var response = await client.PostAsJsonAsync(
@@ -1035,9 +1367,19 @@ public sealed class RunsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
-        await client.PostAsync($"/applications/{appId}/runs/{created.Id}/start", null);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
+        await client.PostAsync(
+            $"/applications/{appId}/runs/{created.Id}/start",
+            null
+        );
         var activityId = created.Scenarios[0].Activities[0].Source.Id;
         for (var seq = 1; seq <= 2; seq++)
         {
@@ -1058,7 +1400,9 @@ public sealed class RunsControllerTests
         }
 
         // test
-        var getResponse = await client.GetAsync($"/applications/{appId}/runs/{created.Id}");
+        var getResponse = await client.GetAsync(
+            $"/applications/{appId}/runs/{created.Id}"
+        );
 
         // verify -- LastSeq reflects the appended updates, but the response's own top-level shape
         // carries nothing from the log itself: no per-update field exists on it at all.
@@ -1090,27 +1434,36 @@ public sealed class RunsControllerTests
             },
             topLevelPropertyNames
         );
-        var fetched = await getResponse.Content.ReadFromJsonAsync<RunResponse>();
+        var fetched =
+            await getResponse.Content.ReadFromJsonAsync<RunResponse>();
         Assert.Equal(2, fetched!.LastSeq);
     }
 
     [Theory]
     [InlineData(0, HttpStatusCode.BadRequest)]
     [InlineData(1, HttpStatusCode.OK)]
-    public async Task Create_WhenScenarioIdsCountAtLowerBoundary_EnforcesMinCount(
-        int scenarioCount,
-        HttpStatusCode expectedStatus
-    )
+    public async Task
+        Create_WhenScenarioIdsCountAtLowerBoundary_EnforcesMinCount(
+            int scenarioCount,
+            HttpStatusCode expectedStatus
+        )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var scenarioIds = scenarioCount == 0 ? [] : new List<Guid> { scenarioId };
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var scenarioIds =
+            scenarioCount == 0 ? [] : new List<Guid> { scenarioId };
 
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",
-            new CreateRunRequest { ScenarioIds = scenarioIds, EnvironmentId = environmentId }
+            new CreateRunRequest
+            {
+                ScenarioIds = scenarioIds,
+                EnvironmentId = environmentId,
+            }
         );
 
         // verify
@@ -1128,14 +1481,18 @@ public sealed class RunsControllerTests
         var environmentId = await CreateEnvironmentAsync(client, appId);
         var scenarioIds = new List<Guid>();
         for (var i = 0; i < Quota.MaxScenariosPerRun; i++)
-        {
-            scenarioIds.Add(await CreateScenarioAsync(client, appId, $"Scenario {i}"));
-        }
+            scenarioIds.Add(
+                await CreateScenarioAsync(client, appId, $"Scenario {i}")
+            );
 
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",
-            new CreateRunRequest { ScenarioIds = scenarioIds, EnvironmentId = environmentId }
+            new CreateRunRequest
+            {
+                ScenarioIds = scenarioIds,
+                EnvironmentId = environmentId,
+            }
         );
 
         // verify
@@ -1143,7 +1500,8 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task Create_WhenScenarioIdsCountExceedsUpperBoundary_ReturnsBadRequest()
+    public async Task
+        Create_WhenScenarioIdsCountExceedsUpperBoundary_ReturnsBadRequest()
     {
         // setup -- one past Quota.MaxScenariosPerRun, so [MaxLength] rejects this before any id is looked
         // up -- the ids need not reference real Scenarios.
@@ -1158,7 +1516,11 @@ public sealed class RunsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",
-            new CreateRunRequest { ScenarioIds = scenarioIds, EnvironmentId = environmentId }
+            new CreateRunRequest
+            {
+                ScenarioIds = scenarioIds,
+                EnvironmentId = environmentId,
+            }
         );
 
         // verify
@@ -1170,7 +1532,9 @@ public sealed class RunsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
 
         // test
         var response = await client.PostAsJsonAsync(
@@ -1187,7 +1551,8 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task Create_WhenScenarioIdBelongsToAnotherApplication_ReturnsBadRequest()
+    public async Task
+        Create_WhenScenarioIdBelongsToAnotherApplication_ReturnsBadRequest()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -1198,7 +1563,11 @@ public sealed class RunsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",
-            new CreateRunRequest { ScenarioIds = [otherScenarioId], EnvironmentId = environmentId }
+            new CreateRunRequest
+            {
+                ScenarioIds = [otherScenarioId],
+                EnvironmentId = environmentId,
+            }
         );
 
         // verify
@@ -1206,18 +1575,26 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task Create_WhenEnvironmentBelongsToAnotherApplication_ReturnsBadRequest()
+    public async Task
+        Create_WhenEnvironmentBelongsToAnotherApplication_ReturnsBadRequest()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
         var (appId, _, scenarioId) = await SeedRunnableAppAsync(client);
         var otherAppId = await CreateApplicationAsync(client);
-        var otherEnvironmentId = await CreateEnvironmentAsync(client, otherAppId);
+        var otherEnvironmentId = await CreateEnvironmentAsync(
+            client,
+            otherAppId
+        );
 
         // test
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",
-            new CreateRunRequest { ScenarioIds = [scenarioId], EnvironmentId = otherEnvironmentId }
+            new CreateRunRequest
+            {
+                ScenarioIds = [scenarioId],
+                EnvironmentId = otherEnvironmentId,
+            }
         );
 
         // verify
@@ -1245,9 +1622,13 @@ public sealed class RunsControllerTests
     }
 
     [Theory]
-    [InlineData("""{"environmentId":"11111111-1111-1111-1111-111111111111"}""")] // scenarioIds missing
-    [InlineData("""{"scenarioIds":["11111111-1111-1111-1111-111111111111"]}""")] // environmentId missing
-    public async Task Create_WhenRequestHasInvalidShape_ReturnsBadRequest(string rawJson)
+    [InlineData(
+        """{"environmentId":"11111111-1111-1111-1111-111111111111"}""")] // scenarioIds missing
+    [InlineData(
+        """{"scenarioIds":["11111111-1111-1111-1111-111111111111"]}""")] // environmentId missing
+    public async Task Create_WhenRequestHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -1268,9 +1649,19 @@ public sealed class RunsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
-        await client.PostAsync($"/applications/{appId}/runs/{created.Id}/start", null);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
+        await client.PostAsync(
+            $"/applications/{appId}/runs/{created.Id}/start",
+            null
+        );
 
         // test
         var response = await client.PostAsJsonAsync(
@@ -1294,9 +1685,19 @@ public sealed class RunsControllerTests
         // setup -- exactly Quota.MaxActivityCountPerRun, read from the constant so this boundary
         // follows it rather than drifting.
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
-        await client.PostAsync($"/applications/{appId}/runs/{created.Id}/start", null);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
+        await client.PostAsync(
+            $"/applications/{appId}/runs/{created.Id}/start",
+            null
+        );
 
         // test
         var response = await client.PostAsJsonAsync(
@@ -1315,13 +1716,24 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task UpdateStats_WhenCountExceedsUpperBoundary_ReturnsBadRequest()
+    public async Task
+        UpdateStats_WhenCountExceedsUpperBoundary_ReturnsBadRequest()
     {
         // setup -- one past Quota.MaxActivityCountPerRun, more activities than a Run can ever contain.
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
-        await client.PostAsync($"/applications/{appId}/runs/{created.Id}/start", null);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
+        await client.PostAsync(
+            $"/applications/{appId}/runs/{created.Id}/start",
+            null
+        );
 
         // test
         var response = await client.PostAsJsonAsync(
@@ -1344,9 +1756,19 @@ public sealed class RunsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
-        await client.PostAsync($"/applications/{appId}/runs/{created.Id}/start", null);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
+        await client.PostAsync(
+            $"/applications/{appId}/runs/{created.Id}/start",
+            null
+        );
 
         // test
         var response = await client.PostAsJsonAsync(
@@ -1363,7 +1785,8 @@ public sealed class RunsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         var fetched = await (
-            await client.GetAsync($"/applications/{appId}/runs/{created.Id}")
+            await client.GetAsync(
+                $"/applications/{appId}/runs/{created.Id}")
         ).Content.ReadFromJsonAsync<RunResponse>();
         Assert.Equal(1, fetched!.PassedActivityCount);
     }
@@ -1373,9 +1796,19 @@ public sealed class RunsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
-        await client.PostAsync($"/applications/{appId}/runs/{created.Id}/start", null);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
+        await client.PostAsync(
+            $"/applications/{appId}/runs/{created.Id}/start",
+            null
+        );
 
         // test
         var response = await client.PostAsync(
@@ -1392,8 +1825,15 @@ public sealed class RunsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(client);
-        var created = await CreateRunAsync(client, appId, [scenarioId], environmentId);
+        var (appId, environmentId, scenarioId) = await SeedRunnableAppAsync(
+            client
+        );
+        var created = await CreateRunAsync(
+            client,
+            appId,
+            [scenarioId],
+            environmentId
+        );
 
         // test
         var response = await client.PostAsync(
@@ -1430,7 +1870,9 @@ public sealed class RunsControllerTests
         // test
         var response = await _factory
             .CreateClient()
-            .GetAsync($"/applications/{Guid.CreateVersion7()}/runs/{Guid.CreateVersion7()}");
+            .GetAsync(
+                $"/applications/{Guid.CreateVersion7()}/runs/{Guid.CreateVersion7()}"
+            );
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -1454,7 +1896,8 @@ public sealed class RunsControllerTests
         // test
         var response = await _factory
             .CreateClient()
-            .GetAsync($"/applications/{Guid.CreateVersion7()}/runs/running");
+            .GetAsync(
+                $"/applications/{Guid.CreateVersion7()}/runs/running");
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

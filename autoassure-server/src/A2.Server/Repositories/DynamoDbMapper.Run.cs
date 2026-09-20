@@ -9,24 +9,41 @@ public static partial class DynamoDbMapper
     // 1000/2000/3000/4000 fix the sort order of a Run's row kinds explicitly, rather than leaving it to
     // however their names happen to compare alphabetically. The gaps of 1000 leave room to insert a new
     // row kind later without renumbering the ones above.
-    public static string RunHeaderRowKey(Guid runId) => $"{runId}#1000";
+    public static string RunHeaderRowKey(Guid runId)
+    {
+        return $"{runId}#1000";
+    }
 
-    public static string RunEnvironmentRowKey(Guid runId) => $"{runId}#2000";
+    public static string RunEnvironmentRowKey(Guid runId)
+    {
+        return $"{runId}#2000";
+    }
 
-    public static string RunScenarioRowKey(Guid runId, Guid scenarioId) =>
-        $"{runId}#3000#{scenarioId}";
+    public static string RunScenarioRowKey(Guid runId, Guid scenarioId)
+    {
+        return $"{runId}#3000#{scenarioId}";
+    }
 
-    public static string RunStatusUpdateRowKey(Guid runId, long seq) =>
-        $"{runId}#4000#{seq.ToString("D12", CultureInfo.InvariantCulture)}";
+    public static string RunStatusUpdateRowKey(Guid runId, long seq)
+    {
+        return
+            $"{runId}#4000#{seq.ToString("D12", CultureInfo.InvariantCulture)}";
+    }
 
-    public static string RunStatusUpdateRowKeyPrefix(Guid runId) => $"{runId}#4000#";
+    public static string RunStatusUpdateRowKeyPrefix(Guid runId)
+    {
+        return $"{runId}#4000#";
+    }
 
     public static Dictionary<string, AttributeValue> ToDynamoDbRow(this Run run)
     {
         var row = new Dictionary<string, AttributeValue>
         {
             ["OrganizationId_ApplicationId"] = new(
-                ApplicationScopedPartitionKey(run.OrganizationId, run.ApplicationId)
+                ApplicationScopedPartitionKey(
+                    run.OrganizationId,
+                    run.ApplicationId
+                )
             ),
             ["RowKey"] = new(RunHeaderRowKey(run.Id)),
             ["Id"] = new(run.Id.ToString()),
@@ -36,23 +53,33 @@ public static partial class DynamoDbMapper
             ["Status"] = new(run.Status.ToString()),
             ["TotalActivityCount"] = new()
             {
-                N = run.TotalActivityCount.ToString(CultureInfo.InvariantCulture),
+                N = run.TotalActivityCount.ToString(
+                    CultureInfo.InvariantCulture
+                ),
             },
             ["PassedActivityCount"] = new()
             {
-                N = run.PassedActivityCount.ToString(CultureInfo.InvariantCulture),
+                N = run.PassedActivityCount.ToString(
+                    CultureInfo.InvariantCulture
+                ),
             },
             ["FailedActivityCount"] = new()
             {
-                N = run.FailedActivityCount.ToString(CultureInfo.InvariantCulture),
+                N = run.FailedActivityCount.ToString(
+                    CultureInfo.InvariantCulture
+                ),
             },
             ["SkippedActivityCount"] = new()
             {
-                N = run.SkippedActivityCount.ToString(CultureInfo.InvariantCulture),
+                N = run.SkippedActivityCount.ToString(
+                    CultureInfo.InvariantCulture
+                ),
             },
             ["LastSeq"] = new()
             {
-                N = run.LastStatusUpdateSequenceNumber.ToString(CultureInfo.InvariantCulture),
+                N = run.LastStatusUpdateSequenceNumber.ToString(
+                    CultureInfo.InvariantCulture
+                ),
             },
             ["CreatedAt"] = new(run.CreatedAt.ToString("O")),
             // Only a header row carries HeaderId. The sparse RunHeaderIndex uses its presence to answer
@@ -61,24 +88,18 @@ public static partial class DynamoDbMapper
         };
 
         if (run.TriggeredByUserId is { } triggeredByUserId)
-        {
-            row["TriggeredByUserId"] = new(triggeredByUserId.ToString());
-        }
+            row["TriggeredByUserId"] =
+                new AttributeValue(triggeredByUserId.ToString());
 
         if (run.StartedAt is { } startedAt)
-        {
-            row["StartedAt"] = new(startedAt.ToString("O"));
-        }
+            row["StartedAt"] = new AttributeValue(startedAt.ToString("O"));
 
         if (run.CompletedAt is { } completedAt)
-        {
-            row["CompletedAt"] = new(completedAt.ToString("O"));
-        }
+            row["CompletedAt"] = new AttributeValue(completedAt.ToString("O"));
 
         if (run.LastHeartbeatAt is { } lastHeartbeatAt)
-        {
-            row["LastHeartbeatAt"] = new(lastHeartbeatAt.ToString("O"));
-        }
+            row["LastHeartbeatAt"] =
+                new AttributeValue(lastHeartbeatAt.ToString("O"));
 
         return row;
     }
@@ -87,8 +108,9 @@ public static partial class DynamoDbMapper
         this Dictionary<string, AttributeValue> row,
         RunEnvironmentSnapshot environment,
         IReadOnlyList<RunScenarioSnapshot> scenarios
-    ) =>
-        new()
+    )
+    {
+        return new Run
         {
             Id = Guid.Parse(row["Id"].S),
             Environment = environment,
@@ -117,31 +139,60 @@ public static partial class DynamoDbMapper
                 row["LastSeq"].N,
                 CultureInfo.InvariantCulture
             ),
-            TriggeredByUserId = row.TryGetValue("TriggeredByUserId", out var triggeredByUserId)
+            TriggeredByUserId = row.TryGetValue(
+                "TriggeredByUserId",
+                out var triggeredByUserId
+            )
                 ? Guid.Parse(triggeredByUserId.S)
                 : null,
-            CreatedAt = DateTimeOffset.Parse(row["CreatedAt"].S, CultureInfo.InvariantCulture),
+            CreatedAt = DateTimeOffset.Parse(
+                row["CreatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
             StartedAt = row.TryGetValue("StartedAt", out var startedAt)
-                ? DateTimeOffset.Parse(startedAt.S, CultureInfo.InvariantCulture)
+                ? DateTimeOffset.Parse(
+                    startedAt.S,
+                    CultureInfo.InvariantCulture
+                )
                 : null,
             CompletedAt = row.TryGetValue("CompletedAt", out var completedAt)
-                ? DateTimeOffset.Parse(completedAt.S, CultureInfo.InvariantCulture)
+                ? DateTimeOffset.Parse(
+                    completedAt.S,
+                    CultureInfo.InvariantCulture
+                )
                 : null,
-            LastHeartbeatAt = row.TryGetValue("LastHeartbeatAt", out var lastHeartbeatAt)
-                ? DateTimeOffset.Parse(lastHeartbeatAt.S, CultureInfo.InvariantCulture)
+            LastHeartbeatAt = row.TryGetValue(
+                "LastHeartbeatAt",
+                out var lastHeartbeatAt
+            )
+                ? DateTimeOffset.Parse(
+                    lastHeartbeatAt.S,
+                    CultureInfo.InvariantCulture
+                )
                 : null,
         };
+    }
 
     // ----- Header summary (RunHeaderIndex projection) -----
 
-    /// <summary>Builds a <see cref="RunInfo"/> from a <c>RunHeaderIndex</c> query result. Reads only
-    /// the attributes that index projects (see the GSI's <c>non_key_attributes</c> in dynamodb.tf) --
-    /// unlike <see cref="ToRun"/>, this never touches OrganizationId, ApplicationId, LastSeq or
-    /// TriggeredByUserId, none of which the index carries. The Environment snapshot is not a header-row
-    /// attribute at all -- it lives on its own row -- so it was never something this index could have
-    /// projected either.</summary>
-    public static RunInfo ToRunInfo(this Dictionary<string, AttributeValue> row) =>
-        new()
+    /// <summary>
+    ///     Builds a <see cref="RunInfo" /> from a <c>RunHeaderIndex</c> query result.
+    ///     Reads only
+    ///     the attributes that index projects (see the GSI's <c>non_key_attributes</c>
+    ///     in dynamodb.tf) --
+    ///     unlike <see cref="ToRun" />, this never touches OrganizationId,
+    ///     ApplicationId, LastSeq or
+    ///     TriggeredByUserId, none of which the index carries. The Environment
+    ///     snapshot is not a header-row
+    ///     attribute at all -- it lives on its own row -- so it was never something
+    ///     this index could have
+    ///     projected either.
+    /// </summary>
+    public static RunInfo ToRunInfo(
+        this Dictionary<string, AttributeValue> row
+    )
+    {
+        return new RunInfo
         {
             Id = Guid.Parse(row["Id"].S),
             Trigger = Enum.Parse<RunTrigger>(row["Trigger"].S),
@@ -162,24 +213,41 @@ public static partial class DynamoDbMapper
                 row["SkippedActivityCount"].N,
                 CultureInfo.InvariantCulture
             ),
-            CreatedAt = DateTimeOffset.Parse(row["CreatedAt"].S, CultureInfo.InvariantCulture),
+            CreatedAt = DateTimeOffset.Parse(
+                row["CreatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
             StartedAt = row.TryGetValue("StartedAt", out var startedAt)
-                ? DateTimeOffset.Parse(startedAt.S, CultureInfo.InvariantCulture)
+                ? DateTimeOffset.Parse(
+                    startedAt.S,
+                    CultureInfo.InvariantCulture
+                )
                 : null,
             CompletedAt = row.TryGetValue("CompletedAt", out var completedAt)
-                ? DateTimeOffset.Parse(completedAt.S, CultureInfo.InvariantCulture)
+                ? DateTimeOffset.Parse(
+                    completedAt.S,
+                    CultureInfo.InvariantCulture
+                )
                 : null,
-            LastHeartbeatAt = row.TryGetValue("LastHeartbeatAt", out var lastHeartbeatAt)
-                ? DateTimeOffset.Parse(lastHeartbeatAt.S, CultureInfo.InvariantCulture)
+            LastHeartbeatAt = row.TryGetValue(
+                "LastHeartbeatAt",
+                out var lastHeartbeatAt
+            )
+                ? DateTimeOffset.Parse(
+                    lastHeartbeatAt.S,
+                    CultureInfo.InvariantCulture
+                )
                 : null,
         };
+    }
 
     public static Dictionary<string, AttributeValue> ToDynamoDbRow(
         this RunningRun runningRun,
         Guid organizationId,
         Guid applicationId
-    ) =>
-        new()
+    )
+    {
+        return new Dictionary<string, AttributeValue>
         {
             ["OrganizationId_ApplicationId"] = new(
                 ApplicationScopedPartitionKey(organizationId, applicationId)
@@ -187,21 +255,30 @@ public static partial class DynamoDbMapper
             ["RunId"] = new(runningRun.Id.ToString()),
             ["StartedAt"] = new(runningRun.StartedAt.ToString("O")),
         };
+    }
 
-    public static RunningRun ToRunningRun(this Dictionary<string, AttributeValue> row) =>
-        new()
+    public static RunningRun ToRunningRun(
+        this Dictionary<string, AttributeValue> row
+    )
+    {
+        return new RunningRun
         {
             Id = Guid.Parse(row["RunId"].S),
-            StartedAt = DateTimeOffset.Parse(row["StartedAt"].S, CultureInfo.InvariantCulture),
+            StartedAt = DateTimeOffset.Parse(
+                row["StartedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
         };
+    }
 
     public static Dictionary<string, AttributeValue> ToDynamoDbRow(
         this RunEnvironmentSnapshot snapshot,
         Guid runId,
         Guid organizationId,
         Guid applicationId
-    ) =>
-        new()
+    )
+    {
+        return new Dictionary<string, AttributeValue>
         {
             ["OrganizationId_ApplicationId"] = new(
                 ApplicationScopedPartitionKey(organizationId, applicationId)
@@ -215,27 +292,35 @@ public static partial class DynamoDbMapper
             ["Classification"] = new(snapshot.Classification.ToString()),
             ["Variables"] = snapshot.ToVariablesAttributeValue(),
         };
+    }
 
     public static RunEnvironmentSnapshot ToRunEnvironmentSnapshot(
         this Dictionary<string, AttributeValue> row
-    ) =>
-        new()
+    )
+    {
+        return new RunEnvironmentSnapshot
         {
             Source = row["Source"].ToSnapshotSource(),
             Name = row["Name"].S,
-            Classification = Enum.Parse<EnvironmentClassification>(row["Classification"].S),
+            Classification = Enum.Parse<EnvironmentClassification>(
+                row["Classification"].S
+            ),
             Variables = row["Variables"]
-                .L.Select(variable => variable.ToRunEnvironmentVariableSnapshot())
+                .L.Select(variable =>
+                    variable.ToRunEnvironmentVariableSnapshot()
+                )
                 .ToList(),
         };
+    }
 
     public static Dictionary<string, AttributeValue> ToDynamoDbRow(
         this RunScenarioSnapshot snapshot,
         Guid runId,
         Guid organizationId,
         Guid applicationId
-    ) =>
-        new()
+    )
+    {
+        return new Dictionary<string, AttributeValue>
         {
             ["OrganizationId_ApplicationId"] = new(
                 ApplicationScopedPartitionKey(organizationId, applicationId)
@@ -249,17 +334,26 @@ public static partial class DynamoDbMapper
             ["Title"] = new(snapshot.Title),
             ["Description"] = new(snapshot.Description),
             ["Folder"] = new(snapshot.Folder),
-            ["Tags"] = new() { L = snapshot.Tags.Select(tag => new AttributeValue(tag)).ToList() },
+            ["Tags"] = new()
+            {
+                L = snapshot
+                    .Tags.Select(tag => new AttributeValue(tag))
+                    .ToList(),
+            },
             ["Activities"] = new()
             {
-                L = snapshot.Activities.Select(activity => activity.ToAttributeValue()).ToList(),
+                L = snapshot
+                    .Activities.Select(activity => activity.ToAttributeValue())
+                    .ToList(),
             },
         };
+    }
 
     public static RunScenarioSnapshot ToRunScenarioSnapshot(
         this Dictionary<string, AttributeValue> row
-    ) =>
-        new()
+    )
+    {
+        return new RunScenarioSnapshot
         {
             Source = row["Source"].ToSnapshotSource(),
             Title = row["Title"].S,
@@ -270,6 +364,7 @@ public static partial class DynamoDbMapper
                 .L.Select(activity => activity.ToRunActivitySnapshot())
                 .ToList(),
         };
+    }
 
     public static Dictionary<string, AttributeValue> ToDynamoDbRow(
         this RunStatusUpdate update,
@@ -287,32 +382,46 @@ public static partial class DynamoDbMapper
             ["RunId"] = new(runId.ToString()),
             ["OrganizationId"] = new(organizationId.ToString()),
             ["ApplicationId"] = new(applicationId.ToString()),
-            ["Seq"] = new() { N = update.Seq.ToString(CultureInfo.InvariantCulture) },
+            ["Seq"] = new()
+            {
+                N = update.Seq.ToString(CultureInfo.InvariantCulture),
+            },
             ["Kind"] = new(update.Kind.ToString()),
             ["CreatedAt"] = new(update.CreatedAt.ToString("O")),
         };
 
         if (update.ActivityResult is { } activityResult)
-        {
             row["ActivityResult"] = activityResult.ToAttributeValue();
-        }
 
         return row;
     }
 
-    public static RunStatusUpdate ToRunStatusUpdate(this Dictionary<string, AttributeValue> row) =>
-        new()
+    public static RunStatusUpdate ToRunStatusUpdate(
+        this Dictionary<string, AttributeValue> row
+    )
+    {
+        return new RunStatusUpdate
         {
             Seq = long.Parse(row["Seq"].N, CultureInfo.InvariantCulture),
             Kind = Enum.Parse<RunStatusUpdateKind>(row["Kind"].S),
-            CreatedAt = DateTimeOffset.Parse(row["CreatedAt"].S, CultureInfo.InvariantCulture),
-            ActivityResult = row.TryGetValue("ActivityResult", out var activityResult)
+            CreatedAt = DateTimeOffset.Parse(
+                row["CreatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
+            ActivityResult = row.TryGetValue(
+                "ActivityResult",
+                out var activityResult
+            )
                 ? activityResult.ToActivityResult()
                 : null,
         };
+    }
 
-    private static AttributeValue ToAttributeValue(this RunSnapshotSource source) =>
-        new()
+    private static AttributeValue ToAttributeValue(
+        this RunSnapshotSource source
+    )
+    {
+        return new AttributeValue
         {
             M = new Dictionary<string, AttributeValue>
             {
@@ -323,23 +432,45 @@ public static partial class DynamoDbMapper
                 ["UpdatedAt"] = new(source.UpdatedAt.ToString("O")),
             },
         };
+    }
 
-    private static RunSnapshotSource ToSnapshotSource(this AttributeValue value) =>
-        new()
+    private static RunSnapshotSource ToSnapshotSource(
+        this AttributeValue value
+    )
+    {
+        return new RunSnapshotSource
         {
             Id = Guid.Parse(value.M["Id"].S),
             CreatedByUserId = Guid.Parse(value.M["CreatedByUserId"].S),
             UpdatedByUserId = Guid.Parse(value.M["UpdatedByUserId"].S),
-            CreatedAt = DateTimeOffset.Parse(value.M["CreatedAt"].S, CultureInfo.InvariantCulture),
-            UpdatedAt = DateTimeOffset.Parse(value.M["UpdatedAt"].S, CultureInfo.InvariantCulture),
+            CreatedAt = DateTimeOffset.Parse(
+                value.M["CreatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
+            UpdatedAt = DateTimeOffset.Parse(
+                value.M["UpdatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
         };
+    }
 
     internal static AttributeValue ToVariablesAttributeValue(
         this RunEnvironmentSnapshot snapshot
-    ) => new() { L = snapshot.Variables.Select(variable => variable.ToAttributeValue()).ToList() };
+    )
+    {
+        return new AttributeValue
+        {
+            L = snapshot
+                .Variables.Select(variable => variable.ToAttributeValue())
+                .ToList(),
+        };
+    }
 
-    private static AttributeValue ToAttributeValue(this RunEnvironmentVariableSnapshot variable) =>
-        new()
+    private static AttributeValue ToAttributeValue(
+        this RunEnvironmentVariableSnapshot variable
+    )
+    {
+        return new AttributeValue
         {
             M = new Dictionary<string, AttributeValue>
             {
@@ -352,23 +483,36 @@ public static partial class DynamoDbMapper
                 ["UpdatedAt"] = new(variable.UpdatedAt.ToString("O")),
             },
         };
+    }
 
-    private static RunEnvironmentVariableSnapshot ToRunEnvironmentVariableSnapshot(
-        this AttributeValue value
-    ) =>
-        new()
+    private static RunEnvironmentVariableSnapshot
+        ToRunEnvironmentVariableSnapshot(
+            this AttributeValue value
+        )
+    {
+        return new RunEnvironmentVariableSnapshot
         {
             Key = value.M["Key"].S,
             Value = value.M["Value"].S,
             IsSensitive = value.M["IsSensitive"].RequireBool("IsSensitive"),
             CreatedByUserId = Guid.Parse(value.M["CreatedByUserId"].S),
             UpdatedByUserId = Guid.Parse(value.M["UpdatedByUserId"].S),
-            CreatedAt = DateTimeOffset.Parse(value.M["CreatedAt"].S, CultureInfo.InvariantCulture),
-            UpdatedAt = DateTimeOffset.Parse(value.M["UpdatedAt"].S, CultureInfo.InvariantCulture),
+            CreatedAt = DateTimeOffset.Parse(
+                value.M["CreatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
+            UpdatedAt = DateTimeOffset.Parse(
+                value.M["UpdatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
         };
+    }
 
-    private static AttributeValue ToAttributeValue(this RunPreconditionSnapshot snapshot) =>
-        new()
+    private static AttributeValue ToAttributeValue(
+        this RunPreconditionSnapshot snapshot
+    )
+    {
+        return new AttributeValue
         {
             M = new Dictionary<string, AttributeValue>
             {
@@ -378,18 +522,28 @@ public static partial class DynamoDbMapper
                 ["ExampleValue"] = new(snapshot.ExampleValue),
             },
         };
+    }
 
-    private static RunPreconditionSnapshot ToRunPreconditionSnapshot(this AttributeValue value) =>
-        new()
+    private static RunPreconditionSnapshot ToRunPreconditionSnapshot(
+        this AttributeValue value
+    )
+    {
+        return new RunPreconditionSnapshot
         {
             Source = value.M["Source"].ToSnapshotSource(),
             Name = value.M["Name"].S,
-            ValueSource = Enum.Parse<PreconditionValueSource>(value.M["ValueSource"].S),
+            ValueSource = Enum.Parse<PreconditionValueSource>(
+                value.M["ValueSource"].S
+            ),
             ExampleValue = value.M["ExampleValue"].S,
         };
+    }
 
-    private static AttributeValue ToAttributeValue(this RunEvidenceDefinitionSnapshot snapshot) =>
-        new()
+    private static AttributeValue ToAttributeValue(
+        this RunEvidenceDefinitionSnapshot snapshot
+    )
+    {
+        return new AttributeValue
         {
             M = new Dictionary<string, AttributeValue>
             {
@@ -399,30 +553,42 @@ public static partial class DynamoDbMapper
                 ["ExampleValue"] = new(snapshot.ExampleValue),
             },
         };
+    }
 
-    private static RunEvidenceDefinitionSnapshot ToRunEvidenceDefinitionSnapshot(
-        this AttributeValue value
-    ) =>
-        new()
+    private static RunEvidenceDefinitionSnapshot
+        ToRunEvidenceDefinitionSnapshot(
+            this AttributeValue value
+        )
+    {
+        return new RunEvidenceDefinitionSnapshot
         {
             Source = value.M["Source"].ToSnapshotSource(),
             Name = value.M["Name"].S,
             Description = value.M["Description"].S,
             ExampleValue = value.M["ExampleValue"].S,
         };
+    }
 
-    private static AttributeValue ToAttributeValue(this RunActivitySnapshot snapshot) =>
-        new()
+    private static AttributeValue ToAttributeValue(
+        this RunActivitySnapshot snapshot
+    )
+    {
+        return new AttributeValue
         {
             M = new Dictionary<string, AttributeValue>
             {
                 ["Source"] = snapshot.Source.ToAttributeValue(),
-                ["Order"] = new() { N = snapshot.Order.ToString(CultureInfo.InvariantCulture) },
+                ["Order"] = new()
+                {
+                    N = snapshot.Order.ToString(CultureInfo.InvariantCulture),
+                },
                 ["Description"] = new(snapshot.Description),
                 ["Preconditions"] = new()
                 {
                     L = snapshot
-                        .Preconditions.Select(precondition => precondition.ToAttributeValue())
+                        .Preconditions.Select(precondition =>
+                            precondition.ToAttributeValue()
+                        )
                         .ToList(),
                 },
                 ["EvidenceDefinitions"] = new()
@@ -435,16 +601,22 @@ public static partial class DynamoDbMapper
                 },
             },
         };
+    }
 
-    private static RunActivitySnapshot ToRunActivitySnapshot(this AttributeValue value) =>
-        new()
+    private static RunActivitySnapshot ToRunActivitySnapshot(
+        this AttributeValue value
+    )
+    {
+        return new RunActivitySnapshot
         {
             Source = value.M["Source"].ToSnapshotSource(),
             Order = int.Parse(value.M["Order"].N, CultureInfo.InvariantCulture),
             Description = value.M["Description"].S,
             Preconditions = value
                 .M["Preconditions"]
-                .L.Select(precondition => precondition.ToRunPreconditionSnapshot())
+                .L.Select(precondition =>
+                    precondition.ToRunPreconditionSnapshot()
+                )
                 .ToList(),
             EvidenceDefinitions = value
                 .M["EvidenceDefinitions"]
@@ -453,8 +625,11 @@ public static partial class DynamoDbMapper
                 )
                 .ToList(),
         };
+    }
 
-    private static AttributeValue ToAttributeValue(this ActivityResult activityResult)
+    private static AttributeValue ToAttributeValue(
+        this ActivityResult activityResult
+    )
     {
         var map = new Dictionary<string, AttributeValue>
         {
@@ -478,15 +653,15 @@ public static partial class DynamoDbMapper
         };
 
         if (activityResult.ContinuationReasoning is { } continuationReasoning)
-        {
-            map["ContinuationReasoning"] = new(continuationReasoning);
-        }
+            map["ContinuationReasoning"] =
+                new AttributeValue(continuationReasoning);
 
         return new AttributeValue { M = map };
     }
 
-    private static ActivityResult ToActivityResult(this AttributeValue value) =>
-        new()
+    private static ActivityResult ToActivityResult(this AttributeValue value)
+    {
+        return new ActivityResult
         {
             ScenarioId = Guid.Parse(value.M["ScenarioId"].S),
             ActivityId = Guid.Parse(value.M["ActivityId"].S),
@@ -497,8 +672,12 @@ public static partial class DynamoDbMapper
             Evidence = value
                 .M["Evidence"]
                 .M.ToDictionary(kv => Guid.Parse(kv.Key), kv => kv.Value.S),
-            ContinuationReasoning = value.M.TryGetValue("ContinuationReasoning", out var reasoning)
+            ContinuationReasoning = value.M.TryGetValue(
+                "ContinuationReasoning",
+                out var reasoning
+            )
                 ? reasoning.S
                 : null,
         };
+    }
 }

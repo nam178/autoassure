@@ -7,8 +7,11 @@ using Microsoft.Extensions.Options;
 
 namespace A2.Server.Tests.Repositories;
 
-/// <summary>Integration tests for <see cref="DynamoDbOrganizationUserRepository"/> against DynamoDB
-/// Local, covering read/write mapping only.</summary>
+/// <summary>
+///     Integration tests for <see cref="DynamoDbOrganizationUserRepository" />
+///     against DynamoDB
+///     Local, covering read/write mapping only.
+/// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class DynamoDbOrganizationUserRepositoryTests(
     DynamoDbLocalFixture dynamoDbLocalFixture
@@ -24,7 +27,9 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
         _client = dynamoDbLocalFixture.CreateClient();
         _repository = new DynamoDbOrganizationUserRepository(
             _client,
-            Options.Create(new DynamoDbOptions { OrganizationUserTableName = TableName })
+            Options.Create(
+                new DynamoDbOptions { OrganizationUserTableName = TableName }
+            )
         );
 
         await _client.CreateTableAsync(
@@ -38,7 +43,10 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("UserId", ScalarAttributeType.S),
                 ],
                 GlobalSecondaryIndexes =
@@ -49,9 +57,15 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
                         KeySchema =
                         [
                             new KeySchemaElement("UserId", KeyType.HASH),
-                            new KeySchemaElement("OrganizationId", KeyType.RANGE),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.RANGE
+                            ),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -69,8 +83,9 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
         Guid organizationId,
         Guid userId,
         OrganizationRole role = OrganizationRole.Owner
-    ) =>
-        new()
+    )
+    {
+        return new OrganizationUser
         {
             OrganizationId = organizationId,
             UserId = userId,
@@ -80,9 +95,11 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
             CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             UpdatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
         };
+    }
 
     [Fact]
-    public async Task SaveAsync_WhenMembershipHasAllFields_RoundTripsThroughListByUser()
+    public async Task
+        SaveAsync_WhenMembershipHasAllFields_RoundTripsThroughListByUser()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -103,7 +120,11 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
         // setup
         var organizationId = Guid.CreateVersion7();
         var userId = Guid.CreateVersion7();
-        var membership = CreateMembership(organizationId, userId, OrganizationRole.Member);
+        var membership = CreateMembership(
+            organizationId,
+            userId,
+            OrganizationRole.Member
+        );
 
         // test
         await _repository.SaveAsync(membership);
@@ -114,7 +135,8 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
     }
 
     [Fact]
-    public async Task ListByUserAsync_WhenUserBelongsToMultipleOrganizations_ReturnsAllMemberships()
+    public async Task
+        ListByUserAsync_WhenUserBelongsToMultipleOrganizations_ReturnsAllMemberships()
     {
         // setup
         var userId = Guid.CreateVersion7();
@@ -128,8 +150,14 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
 
         // verify
         Assert.Equal(2, result.Count);
-        Assert.Contains(result, item => item.OrganizationId == membership1.OrganizationId);
-        Assert.Contains(result, item => item.OrganizationId == membership2.OrganizationId);
+        Assert.Contains(
+            result,
+            item => item.OrganizationId == membership1.OrganizationId
+        );
+        Assert.Contains(
+            result,
+            item => item.OrganizationId == membership2.OrganizationId
+        );
     }
 
     [Fact]
@@ -143,7 +171,8 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
     }
 
     [Fact]
-    public async Task ListByUserAsync_WhenAnotherUserHasMembershipInSameOrganization_ExcludesIt()
+    public async Task
+        ListByUserAsync_WhenAnotherUserHasMembershipInSameOrganization_ExcludesIt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();

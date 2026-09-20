@@ -2,14 +2,23 @@ using A2.Server.Models;
 
 namespace A2.Server.Repositories;
 
-/// <summary>Persists Preconditions. Storage-agnostic — callers only ever see the Precondition domain model.</summary>
+/// <summary>
+///     Persists Preconditions. Storage-agnostic — callers only ever see the
+///     Precondition domain model.
+/// </summary>
 public interface IPreconditionRepository
 {
-    /// <summary>Creates the Precondition. Returns false if its Application no longer exists.</summary>
+    /// <summary>
+    ///     Creates the Precondition. Returns false if its Application no longer
+    ///     exists.
+    /// </summary>
     Task<bool> TrySaveAsync(Precondition precondition);
 
-    /// <summary>Updates only Name, ValueSource, ExampleValue, UpdatedByUserId, and UpdatedAt on an
-    /// existing Precondition. Returns false if the Precondition no longer exists.</summary>
+    /// <summary>
+    ///     Updates only Name, ValueSource, ExampleValue, UpdatedByUserId, and
+    ///     UpdatedAt on an
+    ///     existing Precondition. Returns false if the Precondition no longer exists.
+    /// </summary>
     Task<bool> TryUpdateAsync(
         Guid organizationId,
         Guid applicationId,
@@ -20,7 +29,10 @@ public interface IPreconditionRepository
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
     Task<Precondition?> GetByIdAsync(Guid organizationId, Guid preconditionId);
 
-    /// <summary>All Preconditions in this Application's library. Ordering: newest first.</summary>
+    /// <summary>
+    ///     All Preconditions in this Application's library. Ordering: newest
+    ///     first.
+    /// </summary>
     Task<IReadOnlyList<Precondition>> ListByApplicationAsync(
         Guid organizationId,
         Guid applicationId

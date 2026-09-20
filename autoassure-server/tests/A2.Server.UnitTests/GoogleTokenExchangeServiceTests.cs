@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using System.Web;
 using A2.Server.Common;
 using A2.Server.Services;
 using Google.Apis.Auth;
@@ -10,77 +11,13 @@ namespace A2.Server.UnitTests;
 
 public class GoogleTokenExchangeServiceTests
 {
-    private sealed class FakeGoogleOAuthHandler(string validCode, string idToken)
-        : HttpMessageHandler
-    {
-        protected override async Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken
-        )
-        {
-            var form = await new StreamReader(
-                await request.Content!.ReadAsStreamAsync(cancellationToken)
-            ).ReadToEndAsync(cancellationToken);
-            var fields = System.Web.HttpUtility.ParseQueryString(form);
-
-            if (
-                fields["grant_type"] != "authorization_code"
-                || string.IsNullOrEmpty(fields["code_verifier"])
-                || string.IsNullOrEmpty(fields["client_id"])
-                || string.IsNullOrEmpty(fields["client_secret"])
-                || string.IsNullOrEmpty(fields["redirect_uri"])
-                || fields["code"] != validCode
-            )
-            {
-                return JsonResponse(
-                    HttpStatusCode.BadRequest,
-                    new { error = "invalid_grant", error_description = "Bad code" }
-                );
-            }
-
-            return JsonResponse(
-                HttpStatusCode.OK,
-                new
-                {
-                    id_token = idToken,
-                    expires_in = 3600,
-                    token_type = "Bearer",
-                    scope = "openid email",
-                }
-            );
-        }
-
-        private static HttpResponseMessage JsonResponse(HttpStatusCode statusCode, object body) =>
-            new(statusCode)
-            {
-                Content = new StringContent(
-                    JsonSerializer.Serialize(body),
-                    Encoding.UTF8,
-                    "application/json"
-                ),
-            };
-    }
-
-    private sealed class FakeGoogleIdTokenValidator(
-        string expectedIdToken,
-        GoogleJsonWebSignature.Payload payload
-    ) : IGoogleIdTokenValidator
-    {
-        public Task<GoogleJsonWebSignature.Payload> ValidateAsync(
-            string idToken,
-            string audience
-        ) =>
-            idToken == expectedIdToken
-                ? Task.FromResult(payload)
-                : throw new InvalidJwtException("Unexpected id_token.");
-    }
-
     private static GoogleTokenExchangeService CreateService(
         string validCode,
         string idToken,
         GoogleJsonWebSignature.Payload payload
-    ) =>
-        new(
+    )
+    {
+        return new GoogleTokenExchangeService(
             new HttpClient(new FakeGoogleOAuthHandler(validCode, idToken)),
             Options.Create(
                 new GoogleAuthOptions
@@ -92,9 +29,11 @@ public class GoogleTokenExchangeServiceTests
             ),
             new FakeGoogleIdTokenValidator(idToken, payload)
         );
+    }
 
     [Fact]
-    public async Task ExchangeCodeAsync_WhenGoogleReturnsValidToken_ReturnsIdentity()
+    public async Task
+        ExchangeCodeAsync_WhenGoogleReturnsValidToken_ReturnsIdentity()
     {
         // setup
         var payload = new GoogleJsonWebSignature.Payload
@@ -130,5 +69,81 @@ public class GoogleTokenExchangeServiceTests
 
         // verify
         await Assert.ThrowsAsync<GoogleTokenExchangeException>(exchange);
+    }
+
+    private sealed class FakeGoogleOAuthHandler(
+        string validCode,
+        string idToken
+    ) : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken
+        )
+        {
+            var form = await new StreamReader(
+                await request.Content!.ReadAsStreamAsync(cancellationToken)
+            ).ReadToEndAsync(cancellationToken);
+            var fields = HttpUtility.ParseQueryString(form);
+
+            if (
+                fields["grant_type"] != "authorization_code"
+                || string.IsNullOrEmpty(fields["code_verifier"])
+                || string.IsNullOrEmpty(fields["client_id"])
+                || string.IsNullOrEmpty(fields["client_secret"])
+                || string.IsNullOrEmpty(fields["redirect_uri"])
+                || fields["code"] != validCode
+            )
+                return JsonResponse(
+                    HttpStatusCode.BadRequest,
+                    new
+                    {
+                        error = "invalid_grant",
+                        error_description = "Bad code",
+                    }
+                );
+
+            return JsonResponse(
+                HttpStatusCode.OK,
+                new
+                {
+                    id_token = idToken,
+                    expires_in = 3600,
+                    token_type = "Bearer",
+                    scope = "openid email",
+                }
+            );
+        }
+
+        private static HttpResponseMessage JsonResponse(
+            HttpStatusCode statusCode,
+            object body
+        )
+        {
+            return new HttpResponseMessage(statusCode)
+            {
+                Content = new StringContent(
+                    JsonSerializer.Serialize(body),
+                    Encoding.UTF8,
+                    "application/json"
+                ),
+            };
+        }
+    }
+
+    private sealed class FakeGoogleIdTokenValidator(
+        string expectedIdToken,
+        GoogleJsonWebSignature.Payload payload
+    ) : IGoogleIdTokenValidator
+    {
+        public Task<GoogleJsonWebSignature.Payload> ValidateAsync(
+            string idToken,
+            string audience
+        )
+        {
+            return idToken == expectedIdToken
+                ? Task.FromResult(payload)
+                : throw new InvalidJwtException("Unexpected id_token.");
+        }
     }
 }

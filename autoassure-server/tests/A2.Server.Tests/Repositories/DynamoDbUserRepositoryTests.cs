@@ -7,12 +7,17 @@ using Microsoft.Extensions.Options;
 
 namespace A2.Server.Tests.Repositories;
 
-/// <summary>Integration tests for <see cref="DynamoDbUserRepository"/> against DynamoDB Local,
-/// covering read/write mapping only — the concurrent-first-sign-in and concurrent-personal-Organization
-/// races are covered elsewhere with fakes.</summary>
+/// <summary>
+///     Integration tests for <see cref="DynamoDbUserRepository" /> against
+///     DynamoDB Local,
+///     covering read/write mapping only — the concurrent-first-sign-in and
+///     concurrent-personal-Organization
+///     races are covered elsewhere with fakes.
+/// </summary>
 [Collection("DynamoDbLocal")]
-public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLocalFixture)
-    : IAsyncLifetime
+public sealed class DynamoDbUserRepositoryTests(
+    DynamoDbLocalFixture dynamoDbLocalFixture
+) : IAsyncLifetime
 {
     private const string UserTableName = "Users";
     private const string OrganizationTableName = "Organizations";
@@ -44,15 +49,24 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
                 AttributeDefinitions =
                 [
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("GoogleUserId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "GoogleUserId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
                     new GlobalSecondaryIndex
                     {
                         IndexName = "GoogleUserIdIndex",
-                        KeySchema = [new KeySchemaElement("GoogleUserId", KeyType.HASH)],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        KeySchema =
+                        [
+                            new KeySchemaElement("GoogleUserId", KeyType.HASH),
+                        ],
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -64,7 +78,10 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
             {
                 TableName = OrganizationTableName,
                 KeySchema = [new KeySchemaElement("Id", KeyType.HASH)],
-                AttributeDefinitions = [new AttributeDefinition("Id", ScalarAttributeType.S)],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
@@ -80,7 +97,10 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("UserId", ScalarAttributeType.S),
                 ],
                 GlobalSecondaryIndexes =
@@ -91,9 +111,15 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
                         KeySchema =
                         [
                             new KeySchemaElement("UserId", KeyType.HASH),
-                            new KeySchemaElement("OrganizationId", KeyType.RANGE),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.RANGE
+                            ),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -111,14 +137,13 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
                 OrganizationUserTableName,
             }
         )
-        {
             await _client.DeleteTableAsync(tableName);
-        }
         _client.Dispose();
     }
 
-    private static User CreateUser(string googleUserId = "google-1") =>
-        new()
+    private static User CreateUser(string googleUserId = "google-1")
+    {
+        return new User
         {
             Id = Guid.CreateVersion7(),
             GoogleUserId = googleUserId,
@@ -127,6 +152,7 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
             Email = "ada@example.com",
             EmailVerified = true,
         };
+    }
 
     [Fact]
     public async Task GetByGoogleUserIdAsync_WhenUserExists_ReturnsUser()
@@ -136,7 +162,9 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
         await _repository.TrySaveAsync(user);
 
         // test
-        var result = await _repository.GetByGoogleUserIdAsync(user.GoogleUserId);
+        var result = await _repository.GetByGoogleUserIdAsync(
+            user.GoogleUserId
+        );
 
         // verify
         Assert.Equal(user, result);
@@ -153,14 +181,17 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
     }
 
     [Fact]
-    public async Task TrySaveAsync_WhenGoogleUserIdIsNew_SavesUserAndReturnsTrue()
+    public async Task
+        TrySaveAsync_WhenGoogleUserIdIsNew_SavesUserAndReturnsTrue()
     {
         // setup
         var user = CreateUser();
 
         // test
         var result = await _repository.TrySaveAsync(user);
-        var fetched = await _repository.GetByGoogleUserIdAsync(user.GoogleUserId);
+        var fetched = await _repository.GetByGoogleUserIdAsync(
+            user.GoogleUserId
+        );
 
         // verify
         Assert.True(result);
@@ -168,7 +199,8 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
     }
 
     [Fact]
-    public async Task TrySaveAsync_WhenGoogleUserIdWasAlreadySynced_ReturnsFalse()
+    public async Task
+        TrySaveAsync_WhenGoogleUserIdWasAlreadySynced_ReturnsFalse()
     {
         // setup
         var user = CreateUser();
@@ -198,7 +230,9 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
 
         // test
         var succeeded = await _repository.TryUpdateAsync(user.Id, fields);
-        var fetched = await _repository.GetByGoogleUserIdAsync(user.GoogleUserId);
+        var fetched = await _repository.GetByGoogleUserIdAsync(
+            user.GoogleUserId
+        );
 
         // verify
         Assert.True(succeeded);
@@ -215,7 +249,8 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
     }
 
     [Fact]
-    public async Task TryUpdateAsync_WhenUserDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
+    public async Task
+        TryUpdateAsync_WhenUserDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
     {
         // setup
         var id = Guid.CreateVersion7();
@@ -235,7 +270,8 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
     }
 
     [Fact]
-    public async Task TryCreatePersonalOrganizationAsync_WhenNotYetCreated_SavesOrganizationAndMembershipAndReturnsTrue()
+    public async Task
+        TryCreatePersonalOrganizationAsync_WhenNotYetCreated_SavesOrganizationAndMembershipAndReturnsTrue()
     {
         // setup
         var user = CreateUser();
@@ -249,6 +285,7 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
             UpdatedByUserId = user.Id,
             CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             UpdatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            LifecycleState = LifecycleState.Active,
         };
         var membership = new OrganizationUser
         {
@@ -262,13 +299,19 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
         };
 
         // test
-        var result = await _repository.TryCreatePersonalOrganizationAsync(organization, membership);
+        var result = await _repository.TryCreatePersonalOrganizationAsync(
+            organization,
+            membership
+        );
 
         // verify
         Assert.True(result);
         var organizationItem = await _client.GetItemAsync(
             OrganizationTableName,
-            new Dictionary<string, AttributeValue> { ["Id"] = new(organization.Id.ToString()) }
+            new Dictionary<string, AttributeValue>
+            {
+                ["Id"] = new(organization.Id.ToString()),
+            }
         );
         Assert.Equal(organization, organizationItem.Item.ToOrganization());
         var membershipItem = await _client.GetItemAsync(
@@ -283,7 +326,8 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
     }
 
     [Fact]
-    public async Task TryCreatePersonalOrganizationAsync_WhenAlreadyCreatedForUser_ReturnsFalse()
+    public async Task
+        TryCreatePersonalOrganizationAsync_WhenAlreadyCreatedForUser_ReturnsFalse()
     {
         // setup
         var user = CreateUser();
@@ -297,6 +341,7 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
             UpdatedByUserId = user.Id,
             CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             UpdatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            LifecycleState = LifecycleState.Active,
         };
         var firstMembership = new OrganizationUser
         {
@@ -308,10 +353,19 @@ public sealed class DynamoDbUserRepositoryTests(DynamoDbLocalFixture dynamoDbLoc
             CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             UpdatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
         };
-        await _repository.TryCreatePersonalOrganizationAsync(firstOrganization, firstMembership);
+        await _repository.TryCreatePersonalOrganizationAsync(
+            firstOrganization,
+            firstMembership
+        );
 
-        var secondOrganization = firstOrganization with { Id = Guid.CreateVersion7() };
-        var secondMembership = firstMembership with { OrganizationId = secondOrganization.Id };
+        var secondOrganization = firstOrganization with
+        {
+            Id = Guid.CreateVersion7(),
+        };
+        var secondMembership = firstMembership with
+        {
+            OrganizationId = secondOrganization.Id,
+        };
 
         // test
         var result = await _repository.TryCreatePersonalOrganizationAsync(

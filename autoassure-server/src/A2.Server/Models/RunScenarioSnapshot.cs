@@ -12,8 +12,9 @@ public record RunScenarioSnapshot
     public static RunScenarioSnapshot FromScenario(
         Scenario scenario,
         IReadOnlyList<RunActivitySnapshot> activities
-    ) =>
-        new()
+    )
+    {
+        return new RunScenarioSnapshot
         {
             Source = new RunSnapshotSource
             {
@@ -29,4 +30,5 @@ public record RunScenarioSnapshot
             Tags = scenario.Tags,
             Activities = activities,
         };
+    }
 }

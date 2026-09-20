@@ -20,10 +20,7 @@ public partial class ConfigValidationHostedService(
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        if (DesignTimeBuild.IsActive)
-        {
-            return Task.CompletedTask;
-        }
+        if (DesignTimeBuild.IsActive) return Task.CompletedTask;
 
         var missingKeys = RequiredSecretKeys
             .Where(key => string.IsNullOrEmpty(configuration[key]))
@@ -38,24 +35,32 @@ public partial class ConfigValidationHostedService(
         }
 
         foreach (var key in RequiredSecretKeys)
-        {
             LogValidatedConfigurationKey(logger, key);
-        }
 
         return Task.CompletedTask;
     }
 
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        return Task.CompletedTask;
+    }
 
     [LoggerMessage(
         Level = LogLevel.Critical,
-        Message = "Startup aborted: required configuration values are missing or empty: {MissingKeys}"
+        Message =
+            "Startup aborted: required configuration values are missing or empty: {MissingKeys}"
     )]
-    private static partial void LogMissingConfigurationKeys(ILogger logger, string missingKeys);
+    private static partial void LogMissingConfigurationKeys(
+        ILogger logger,
+        string missingKeys
+    );
 
     [LoggerMessage(
         Level = LogLevel.Information,
         Message = "Validated configuration key {Key} is present"
     )]
-    private static partial void LogValidatedConfigurationKey(ILogger logger, string key);
+    private static partial void LogValidatedConfigurationKey(
+        ILogger logger,
+        string key
+    );
 }

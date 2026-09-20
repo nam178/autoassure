@@ -1,10 +1,16 @@
 namespace A2.Server.Models;
 
-/// <summary>Masks a sensitive text value for display: keeps a leading slice of the value's own real
-/// characters -- answering the only question a reader actually asks, "did I paste the right one?",
-/// without exposing enough of it to use -- and hides the rest behind stars. The output is always exactly
-/// <see cref="MaskedLength"/> characters, whatever the real value's length, so the masked text never
-/// hints at how long the secret is.</summary>
+/// <summary>
+///     Masks a sensitive text value for display: keeps a leading slice of the
+///     value's own real
+///     characters -- answering the only question a reader actually asks, "did I
+///     paste the right one?",
+///     without exposing enough of it to use -- and hides the rest behind stars.
+///     The output is always exactly
+///     <see cref="MaskedLength" /> characters, whatever the real value's length,
+///     so the masked text never
+///     hints at how long the secret is.
+/// </summary>
 public static class SensitiveValueMasker
 {
     // Every masked output is exactly this many characters, regardless of the real value's length, so
@@ -19,17 +25,28 @@ public static class SensitiveValueMasker
     // leaking it.
     private const int MinimumLengthToReveal = 8;
 
-    /// <summary>Keeps <paramref name="value"/>'s leading <see cref="VisibleLength"/> characters when it's
-    /// at least <see cref="MinimumLengthToReveal"/> characters long, and pads the remainder with stars up
-    /// to <see cref="MaskedLength"/>. A value shorter than the threshold is hidden completely, rather than
-    /// revealing any of it, so the output's shape never depends on the real value's length.
-    ///
-    /// Idempotent: masking an already-masked value returns it unchanged, since the masked output is
-    /// itself at least <see cref="MinimumLengthToReveal"/> characters and its own leading
-    /// <see cref="VisibleLength"/> characters are already whatever this call would reveal. Safe to call
-    /// on a value that may or may not already be masked.</summary>
-    public static string Mask(string value) =>
-        value.Length >= MinimumLengthToReveal
-            ? value[..VisibleLength] + new string('*', MaskedLength - VisibleLength)
+    /// <summary>
+    ///     Keeps <paramref name="value" />'s leading <see cref="VisibleLength" />
+    ///     characters when it's
+    ///     at least <see cref="MinimumLengthToReveal" /> characters long, and pads the
+    ///     remainder with stars up
+    ///     to <see cref="MaskedLength" />. A value shorter than the threshold is
+    ///     hidden completely, rather than
+    ///     revealing any of it, so the output's shape never depends on the real
+    ///     value's length.
+    ///     Idempotent: masking an already-masked value returns it unchanged, since the
+    ///     masked output is
+    ///     itself at least <see cref="MinimumLengthToReveal" /> characters and its own
+    ///     leading
+    ///     <see cref="VisibleLength" /> characters are already whatever this call
+    ///     would reveal. Safe to call
+    ///     on a value that may or may not already be masked.
+    /// </summary>
+    public static string Mask(string value)
+    {
+        return value.Length >= MinimumLengthToReveal
+            ? value[..VisibleLength]
+              + new string('*', MaskedLength - VisibleLength)
             : new string('*', MaskedLength);
+    }
 }

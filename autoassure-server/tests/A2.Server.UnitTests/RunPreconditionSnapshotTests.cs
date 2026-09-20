@@ -2,7 +2,10 @@ using A2.Server.Models;
 
 namespace A2.Server.UnitTests;
 
-/// <summary>Unit tests for <see cref="RunPreconditionSnapshot.FromPrecondition"/>.</summary>
+/// <summary>
+///     Unit tests for <see cref="RunPreconditionSnapshot.FromPrecondition" />
+///     .
+/// </summary>
 public sealed class RunPreconditionSnapshotTests
 {
     [Fact]
@@ -28,8 +31,14 @@ public sealed class RunPreconditionSnapshotTests
 
         // verify
         Assert.Equal(precondition.Id, snapshot.Source.Id);
-        Assert.Equal(precondition.CreatedByUserId, snapshot.Source.CreatedByUserId);
-        Assert.Equal(precondition.UpdatedByUserId, snapshot.Source.UpdatedByUserId);
+        Assert.Equal(
+            precondition.CreatedByUserId,
+            snapshot.Source.CreatedByUserId
+        );
+        Assert.Equal(
+            precondition.UpdatedByUserId,
+            snapshot.Source.UpdatedByUserId
+        );
         Assert.Equal(precondition.CreatedAt, snapshot.Source.CreatedAt);
         Assert.Equal(precondition.UpdatedAt, snapshot.Source.UpdatedAt);
         Assert.Equal(precondition.Name, snapshot.Name);

@@ -8,8 +8,9 @@ public static partial class DynamoDbMapper
 {
     public static Dictionary<string, AttributeValue> ToDynamoDbRow(
         this Precondition precondition
-    ) =>
-        new()
+    )
+    {
+        return new Dictionary<string, AttributeValue>
         {
             ["OrganizationId_ApplicationId"] = new(
                 ApplicationScopedPartitionKey(
@@ -28,19 +29,32 @@ public static partial class DynamoDbMapper
             ["CreatedAt"] = new(precondition.CreatedAt.ToString("O")),
             ["UpdatedAt"] = new(precondition.UpdatedAt.ToString("O")),
         };
+    }
 
-    public static Precondition ToPrecondition(this Dictionary<string, AttributeValue> row) =>
-        new()
+    public static Precondition ToPrecondition(
+        this Dictionary<string, AttributeValue> row
+    )
+    {
+        return new Precondition
         {
             Id = Guid.Parse(row["Id"].S),
             OrganizationId = Guid.Parse(row["OrganizationId"].S),
             ApplicationId = Guid.Parse(row["ApplicationId"].S),
             Name = row["Name"].S,
-            ValueSource = Enum.Parse<PreconditionValueSource>(row["ValueSource"].S),
+            ValueSource = Enum.Parse<PreconditionValueSource>(
+                row["ValueSource"].S
+            ),
             ExampleValue = row["ExampleValue"].S,
             CreatedByUserId = Guid.Parse(row["CreatedByUserId"].S),
             UpdatedByUserId = Guid.Parse(row["UpdatedByUserId"].S),
-            CreatedAt = DateTimeOffset.Parse(row["CreatedAt"].S, CultureInfo.InvariantCulture),
-            UpdatedAt = DateTimeOffset.Parse(row["UpdatedAt"].S, CultureInfo.InvariantCulture),
+            CreatedAt = DateTimeOffset.Parse(
+                row["CreatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
+            UpdatedAt = DateTimeOffset.Parse(
+                row["UpdatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
         };
+    }
 }

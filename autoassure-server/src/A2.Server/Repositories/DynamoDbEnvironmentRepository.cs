@@ -32,8 +32,12 @@ public class DynamoDbEnvironmentRepository(
                                 TableName = ApplicationTableName,
                                 Key = new Dictionary<string, AttributeValue>
                                 {
-                                    ["OrganizationId"] = new(environment.OrganizationId.ToString()),
-                                    ["Id"] = new(environment.ApplicationId.ToString()),
+                                    ["OrganizationId"] = new(
+                                        environment.OrganizationId.ToString()
+                                    ),
+                                    ["Id"] = new(
+                                        environment.ApplicationId.ToString()
+                                    ),
                                 },
                                 ConditionExpression = "attribute_exists(Id)",
                             },
@@ -88,11 +92,18 @@ public class DynamoDbEnvironmentRepository(
                     {
                         ["#name"] = "Name",
                     },
-                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    ExpressionAttributeValues = new Dictionary<
+                        string,
+                        AttributeValue
+                    >
                     {
                         [":name"] = new(fields.Name),
-                        [":classification"] = new(fields.Classification.ToString()),
-                        [":updatedByUserId"] = new(fields.UpdatedByUserId.ToString()),
+                        [":classification"] = new(
+                            fields.Classification.ToString()
+                        ),
+                        [":updatedByUserId"] = new(
+                            fields.UpdatedByUserId.ToString()
+                        ),
                         [":updatedAt"] = new(fields.UpdatedAt.ToString("O")),
                     },
                 }
@@ -105,15 +116,22 @@ public class DynamoDbEnvironmentRepository(
         }
     }
 
-    public async Task<Environment?> GetByIdAsync(Guid organizationId, Guid environmentId)
+    public async Task<Environment?> GetByIdAsync(
+        Guid organizationId,
+        Guid environmentId
+    )
     {
         var response = await client.QueryAsync(
             new QueryRequest
             {
                 TableName = TableName,
                 IndexName = IdIndexName,
-                KeyConditionExpression = "OrganizationId = :organizationId AND Id = :id",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                KeyConditionExpression =
+                    "OrganizationId = :organizationId AND Id = :id",
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":organizationId"] = new(organizationId.ToString()),
                     [":id"] = new(environmentId.ToString()),
@@ -122,7 +140,9 @@ public class DynamoDbEnvironmentRepository(
             }
         );
 
-        return response.Items.Count > 0 ? response.Items[0].ToEnvironment() : null;
+        return response.Items.Count > 0
+            ? response.Items[0].ToEnvironment()
+            : null;
     }
 
     public async Task<IReadOnlyList<Environment>> ListByApplicationAsync(
@@ -134,11 +154,18 @@ public class DynamoDbEnvironmentRepository(
             new QueryRequest
             {
                 TableName = TableName,
-                KeyConditionExpression = "OrganizationId_ApplicationId = :partitionKey",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                KeyConditionExpression =
+                    "OrganizationId_ApplicationId = :partitionKey",
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":partitionKey"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            applicationId
+                        )
                     ),
                 },
                 ConsistentRead = true,

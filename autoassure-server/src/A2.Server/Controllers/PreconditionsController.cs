@@ -16,8 +16,14 @@ public class PreconditionsController(
     IClock clock
 ) : ControllerBase
 {
-    /// <response code="404">No Application with the given applicationId exists in the caller's Organization.</response>
-    [HttpPost("applications/{applicationId:guid}/preconditions", Name = "CreatePrecondition")]
+    /// <response code="404">
+    ///     No Application with the given applicationId exists in the
+    ///     caller's Organization.
+    /// </response>
+    [HttpPost(
+        "applications/{applicationId:guid}/preconditions",
+        Name = "CreatePrecondition"
+    )]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PreconditionResponse>> Create(
@@ -25,7 +31,9 @@ public class PreconditionsController(
         CreatePreconditionRequest request
     )
     {
-        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
+        var callerOrganization =
+            await callerOrganizationService.GetCallerOrganizationAsync();
+        var organizationId = callerOrganization.Id;
         var userId = User.GetUserId();
         var now = clock.UtcNow;
         var precondition = new Precondition
@@ -45,16 +53,21 @@ public class PreconditionsController(
         // Application existence is checked here via the save's condition expression instead of a
         // separate lookup, so there's no gap for the app to be deleted in between.
         if (!await preconditionRepository.TrySaveAsync(precondition))
-        {
             return NotFound();
-        }
         return Ok(precondition.ToResponse());
     }
 
-    [HttpGet("applications/{applicationId:guid}/preconditions", Name = "ListPreconditions")]
-    public async Task<ActionResult<IReadOnlyList<PreconditionResponse>>> List(Guid applicationId)
+    [HttpGet(
+        "applications/{applicationId:guid}/preconditions",
+        Name = "ListPreconditions"
+    )]
+    public async Task<ActionResult<IReadOnlyList<PreconditionResponse>>> List(
+        Guid applicationId
+    )
     {
-        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
+        var callerOrganization =
+            await callerOrganizationService.GetCallerOrganizationAsync();
+        var organizationId = callerOrganization.Id;
         var preconditions = await preconditionRepository.ListByApplicationAsync(
             organizationId,
             applicationId
@@ -62,9 +75,14 @@ public class PreconditionsController(
         return Ok(preconditions.Select(p => p.ToResponse()).ToList());
     }
 
-    /// <response code="404">No Precondition with the given preconditionId exists in the caller's
-    /// Organization.</response>
-    [HttpPatch("preconditions/{preconditionId:guid}", Name = "UpdatePrecondition")]
+    /// <response code="404">
+    ///     No Precondition with the given preconditionId exists in the caller's
+    ///     Organization.
+    /// </response>
+    [HttpPatch(
+        "preconditions/{preconditionId:guid}",
+        Name = "UpdatePrecondition"
+    )]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PreconditionResponse>> Update(
@@ -72,12 +90,14 @@ public class PreconditionsController(
         UpdatePreconditionRequest request
     )
     {
-        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var existing = await preconditionRepository.GetByIdAsync(organizationId, preconditionId);
-        if (existing is null)
-        {
-            return NotFound();
-        }
+        var callerOrganization =
+            await callerOrganizationService.GetCallerOrganizationAsync();
+        var organizationId = callerOrganization.Id;
+        var existing = await preconditionRepository.GetByIdAsync(
+            organizationId,
+            preconditionId
+        );
+        if (existing is null) return NotFound();
 
         var fields = new PreconditionUpdatableFields
         {
@@ -93,10 +113,7 @@ public class PreconditionsController(
             preconditionId,
             fields
         );
-        if (!updateSucceeded)
-        {
-            return NotFound();
-        }
+        if (!updateSucceeded) return NotFound();
         var updated = existing with
         {
             Name = fields.Name,

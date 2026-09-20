@@ -7,7 +7,7 @@ public record RunStatusUpdate
     public required DateTimeOffset CreatedAt { get; init; }
 
     /// <summary>
-    /// Exists when Kind = RunStatusUpdateKind.AppendActivityResult
+    ///     Exists when Kind = RunStatusUpdateKind.AppendActivityResult
     /// </summary>
     public ActivityResult? ActivityResult { get; init; }
 }
@@ -24,17 +24,28 @@ public record ActivityResult
     public required Guid ActivityId { get; init; }
     public required ActivityResultStatus Status { get; init; }
 
-    /// <summary>Keyed by Precondition Id -- not Name, since two Preconditions can share a Name.</summary>
-    public IReadOnlyDictionary<Guid, string> ResolvedPreconditions { get; init; } =
-        new Dictionary<Guid, string>();
+    /// <summary>
+    ///     Keyed by Precondition Id -- not Name, since two Preconditions can
+    ///     share a Name.
+    /// </summary>
+    public IReadOnlyDictionary<
+        Guid,
+        string
+    > ResolvedPreconditions { get; init; } = new Dictionary<Guid, string>();
 
-    /// <summary>Keyed by EvidenceDefinition Id -- not Name, since two EvidenceDefinitions can share a
-    /// Name.</summary>
+    /// <summary>
+    ///     Keyed by EvidenceDefinition Id -- not Name, since two EvidenceDefinitions
+    ///     can share a
+    ///     Name.
+    /// </summary>
     public IReadOnlyDictionary<Guid, string> Evidence { get; init; } =
         new Dictionary<Guid, string>();
 
-    /// <summary>Why this Activity was chosen for execution despite an earlier Activity failing, so a
-    /// reader can understand the execution agent's behavior.</summary>
+    /// <summary>
+    ///     Why this Activity was chosen for execution despite an earlier Activity
+    ///     failing, so a
+    ///     reader can understand the execution agent's behavior.
+    /// </summary>
     public string? ContinuationReasoning { get; init; }
 }
 

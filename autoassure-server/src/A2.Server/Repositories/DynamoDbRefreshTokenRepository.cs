@@ -14,7 +14,9 @@ public class DynamoDbRefreshTokenRepository(
 {
     private string TableName => options.Value.RefreshTokenTableName;
 
-    public async Task<RefreshToken?> GetByHashAsync(string refreshTokenSecretHash)
+    public async Task<RefreshToken?> GetByHashAsync(
+        string refreshTokenSecretHash
+    )
     {
         var response = await client.GetItemAsync(
             new GetItemRequest
@@ -31,14 +33,17 @@ public class DynamoDbRefreshTokenRepository(
         return response.IsItemSet ? response.Item.ToRefreshToken() : null;
     }
 
-    public Task SaveAsync(RefreshToken token) =>
-        client.PutItemAsync(
+    public Task SaveAsync(RefreshToken token)
+    {
+        return client.PutItemAsync(
             new PutItemRequest
             {
                 TableName = TableName,
                 Item = new Dictionary<string, AttributeValue>
                 {
-                    ["RefreshTokenSecretHash"] = new(token.RefreshTokenSecretHash),
+                    ["RefreshTokenSecretHash"] = new(
+                        token.RefreshTokenSecretHash
+                    ),
                     ["UserId"] = new(token.UserId.ToString()),
                     ["Email"] = new(token.Email),
                     ["ExpiresAt"] = new()
@@ -51,8 +56,12 @@ public class DynamoDbRefreshTokenRepository(
                 },
             }
         );
+    }
 
-    public async Task<bool> TryUpdateAsync(string refreshTokenSecretHash, DateTimeOffset revokedAt)
+    public async Task<bool> TryUpdateAsync(
+        string refreshTokenSecretHash,
+        DateTimeOffset revokedAt
+    )
     {
         try
         {
@@ -62,12 +71,17 @@ public class DynamoDbRefreshTokenRepository(
                     TableName = TableName,
                     Key = new Dictionary<string, AttributeValue>
                     {
-                        ["RefreshTokenSecretHash"] = new(refreshTokenSecretHash),
+                        ["RefreshTokenSecretHash"] = new(
+                            refreshTokenSecretHash
+                        ),
                     },
                     UpdateExpression = "SET RevokedAt = :revokedAt",
                     ConditionExpression =
                         "attribute_exists(RefreshTokenSecretHash) AND attribute_not_exists(RevokedAt)",
-                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    ExpressionAttributeValues = new Dictionary<
+                        string,
+                        AttributeValue
+                    >
                     {
                         [":revokedAt"] = new(revokedAt.ToString("O")),
                     },

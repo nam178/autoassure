@@ -7,11 +7,15 @@ using Microsoft.Extensions.Options;
 
 namespace A2.Server.Tests.Repositories;
 
-/// <summary>Integration tests for <see cref="DynamoDbApplicationRepository"/> against DynamoDB Local,
-/// covering read/write mapping only.</summary>
+/// <summary>
+///     Integration tests for <see cref="DynamoDbApplicationRepository" /> against
+///     DynamoDB Local,
+///     covering read/write mapping only.
+/// </summary>
 [Collection("DynamoDbLocal")]
-public sealed class DynamoDbApplicationRepositoryTests(DynamoDbLocalFixture dynamoDbLocalFixture)
-    : IAsyncLifetime
+public sealed class DynamoDbApplicationRepositoryTests(
+    DynamoDbLocalFixture dynamoDbLocalFixture
+) : IAsyncLifetime
 {
     private const string ApplicationTableName = "Applications";
     private const string OrganizationTableName = "Organizations";
@@ -44,7 +48,10 @@ public sealed class DynamoDbApplicationRepositoryTests(DynamoDbLocalFixture dyna
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -56,7 +63,10 @@ public sealed class DynamoDbApplicationRepositoryTests(DynamoDbLocalFixture dyna
             {
                 TableName = OrganizationTableName,
                 KeySchema = [new KeySchemaElement("Id", KeyType.HASH)],
-                AttributeDefinitions = [new AttributeDefinition("Id", ScalarAttributeType.S)],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
@@ -71,8 +81,9 @@ public sealed class DynamoDbApplicationRepositoryTests(DynamoDbLocalFixture dyna
 
     // Puts a bare Organization row directly (bypassing the Organization repository/mapper) so the
     // Application repository's cross-entity ConditionCheck finds it.
-    private Task PutOrganizationAsync(Guid organizationId) =>
-        _client.PutItemAsync(
+    private Task PutOrganizationAsync(Guid organizationId)
+    {
+        return _client.PutItemAsync(
             new PutItemRequest
             {
                 TableName = OrganizationTableName,
@@ -82,9 +93,11 @@ public sealed class DynamoDbApplicationRepositoryTests(DynamoDbLocalFixture dyna
                 },
             }
         );
+    }
 
     [Fact]
-    public async Task TrySaveAsync_WhenOrganizationExists_ReturnsTrueAndPersists()
+    public async Task
+        TrySaveAsync_WhenOrganizationExists_ReturnsTrueAndPersists()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -103,7 +116,10 @@ public sealed class DynamoDbApplicationRepositoryTests(DynamoDbLocalFixture dyna
 
         // test
         var saved = await _repository.TrySaveAsync(application);
-        var result = await _repository.GetByIdAsync(organizationId, application.Id);
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            application.Id
+        );
 
         // verify
         Assert.True(saved);
@@ -138,14 +154,18 @@ public sealed class DynamoDbApplicationRepositoryTests(DynamoDbLocalFixture dyna
     public async Task GetByIdAsync_WhenNotFound_ReturnsNull()
     {
         // test
-        var result = await _repository.GetByIdAsync(Guid.CreateVersion7(), Guid.CreateVersion7());
+        var result = await _repository.GetByIdAsync(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7()
+        );
 
         // verify
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task ListByOrganizationAsync_WhenMultipleApplicationsExist_ReturnsOnlyThoseScopedToOrganization()
+    public async Task
+        ListByOrganizationAsync_WhenMultipleApplicationsExist_ReturnsOnlyThoseScopedToOrganization()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -194,6 +214,9 @@ public sealed class DynamoDbApplicationRepositoryTests(DynamoDbLocalFixture dyna
         var result = await _repository.ListByOrganizationAsync(organizationId);
 
         // verify
-        Assert.Equivalent(new[] { firstApplication, secondApplication }, result);
+        Assert.Equivalent(
+            new[] { firstApplication, secondApplication },
+            result
+        );
     }
 }

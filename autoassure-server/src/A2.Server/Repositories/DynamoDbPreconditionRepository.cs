@@ -35,7 +35,9 @@ public class DynamoDbPreconditionRepository(
                                     ["OrganizationId"] = new(
                                         precondition.OrganizationId.ToString()
                                     ),
-                                    ["Id"] = new(precondition.ApplicationId.ToString()),
+                                    ["Id"] = new(
+                                        precondition.ApplicationId.ToString()
+                                    ),
                                 },
                                 ConditionExpression = "attribute_exists(Id)",
                             },
@@ -90,12 +92,17 @@ public class DynamoDbPreconditionRepository(
                     {
                         ["#name"] = "Name",
                     },
-                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    ExpressionAttributeValues = new Dictionary<
+                        string,
+                        AttributeValue
+                    >
                     {
                         [":name"] = new(fields.Name),
                         [":valueSource"] = new(fields.ValueSource.ToString()),
                         [":exampleValue"] = new(fields.ExampleValue),
-                        [":updatedByUserId"] = new(fields.UpdatedByUserId.ToString()),
+                        [":updatedByUserId"] = new(
+                            fields.UpdatedByUserId.ToString()
+                        ),
                         [":updatedAt"] = new(fields.UpdatedAt.ToString("O")),
                     },
                 }
@@ -108,15 +115,22 @@ public class DynamoDbPreconditionRepository(
         }
     }
 
-    public async Task<Precondition?> GetByIdAsync(Guid organizationId, Guid preconditionId)
+    public async Task<Precondition?> GetByIdAsync(
+        Guid organizationId,
+        Guid preconditionId
+    )
     {
         var response = await client.QueryAsync(
             new QueryRequest
             {
                 TableName = TableName,
                 IndexName = IdIndexName,
-                KeyConditionExpression = "OrganizationId = :organizationId AND Id = :id",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                KeyConditionExpression =
+                    "OrganizationId = :organizationId AND Id = :id",
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":organizationId"] = new(organizationId.ToString()),
                     [":id"] = new(preconditionId.ToString()),
@@ -125,7 +139,9 @@ public class DynamoDbPreconditionRepository(
             }
         );
 
-        return response.Items.Count > 0 ? response.Items[0].ToPrecondition() : null;
+        return response.Items.Count > 0
+            ? response.Items[0].ToPrecondition()
+            : null;
     }
 
     public async Task<IReadOnlyList<Precondition>> ListByApplicationAsync(
@@ -137,11 +153,18 @@ public class DynamoDbPreconditionRepository(
             new QueryRequest
             {
                 TableName = TableName,
-                KeyConditionExpression = "OrganizationId_ApplicationId = :partitionKey",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                KeyConditionExpression =
+                    "OrganizationId_ApplicationId = :partitionKey",
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":partitionKey"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            applicationId
+                        )
                     ),
                 },
                 ConsistentRead = true,

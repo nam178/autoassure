@@ -8,11 +8,15 @@ using Environment = A2.Server.Models.Environment;
 
 namespace A2.Server.Tests.Repositories;
 
-/// <summary>Integration tests for <see cref="DynamoDbEnvironmentRepository"/> against DynamoDB Local,
-/// covering read/write mapping only.</summary>
+/// <summary>
+///     Integration tests for <see cref="DynamoDbEnvironmentRepository" /> against
+///     DynamoDB Local,
+///     covering read/write mapping only.
+/// </summary>
 [Collection("DynamoDbLocal")]
-public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dynamoDbLocalFixture)
-    : IAsyncLifetime
+public sealed class DynamoDbEnvironmentRepositoryTests(
+    DynamoDbLocalFixture dynamoDbLocalFixture
+) : IAsyncLifetime
 {
     private const string EnvironmentTableName = "Environments";
     private const string ApplicationTableName = "Applications";
@@ -40,14 +44,23 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
                 TableName = EnvironmentTableName,
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -56,10 +69,16 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
                         IndexName = "IdIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("Id", KeyType.RANGE),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -77,7 +96,10 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -94,8 +116,9 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
 
     // Puts a bare Application row directly (bypassing the Application repository/mapper) so the
     // Environment repository's cross-entity ConditionCheck finds it.
-    private Task PutApplicationAsync(Guid organizationId, Guid applicationId) =>
-        _client.PutItemAsync(
+    private Task PutApplicationAsync(Guid organizationId, Guid applicationId)
+    {
+        return _client.PutItemAsync(
             new PutItemRequest
             {
                 TableName = ApplicationTableName,
@@ -106,9 +129,11 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
                 },
             }
         );
+    }
 
     [Fact]
-    public async Task TrySaveAsync_WhenApplicationExists_ReturnsTrueAndPersists()
+    public async Task
+        TrySaveAsync_WhenApplicationExists_ReturnsTrueAndPersists()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -129,7 +154,10 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
 
         // test
         var saved = await _repository.TrySaveAsync(environment);
-        var result = await _repository.GetByIdAsync(organizationId, environment.Id);
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            environment.Id
+        );
 
         // verify
         Assert.True(saved);
@@ -161,7 +189,8 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
     }
 
     [Fact]
-    public async Task TryUpdateAsync_WhenEnvironmentExists_UpdatesNameClassificationAndAuditFields()
+    public async Task
+        TryUpdateAsync_WhenEnvironmentExists_UpdatesNameClassificationAndAuditFields()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -196,7 +225,10 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
                 UpdatedAt = updatedAt,
             }
         );
-        var result = await _repository.GetByIdAsync(organizationId, environment.Id);
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            environment.Id
+        );
 
         // verify
         Assert.True(succeeded);
@@ -213,7 +245,8 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
     }
 
     [Fact]
-    public async Task TryUpdateAsync_WhenEnvironmentDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
+    public async Task
+        TryUpdateAsync_WhenEnvironmentDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -230,7 +263,15 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
                 Name = "Production",
                 Classification = EnvironmentClassification.Production,
                 UpdatedByUserId = Guid.CreateVersion7(),
-                UpdatedAt = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
+                UpdatedAt = new DateTimeOffset(
+                    2026,
+                    2,
+                    1,
+                    0,
+                    0,
+                    0,
+                    TimeSpan.Zero
+                ),
             }
         );
         var result = await _repository.GetByIdAsync(organizationId, id);
@@ -244,14 +285,18 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
     public async Task GetByIdAsync_WhenNotFound_ReturnsNull()
     {
         // test
-        var result = await _repository.GetByIdAsync(Guid.CreateVersion7(), Guid.CreateVersion7());
+        var result = await _repository.GetByIdAsync(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7()
+        );
 
         // verify
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task ListByApplicationAsync_WhenMultipleEnvironmentsExist_ReturnsOnlyThoseScopedToApplication()
+    public async Task
+        ListByApplicationAsync_WhenMultipleEnvironmentsExist_ReturnsOnlyThoseScopedToApplication()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -301,9 +346,15 @@ public sealed class DynamoDbEnvironmentRepositoryTests(DynamoDbLocalFixture dyna
         await _repository.TrySaveAsync(otherApplicationEnvironment);
 
         // test
-        var result = await _repository.ListByApplicationAsync(organizationId, applicationId);
+        var result = await _repository.ListByApplicationAsync(
+            organizationId,
+            applicationId
+        );
 
         // verify
-        Assert.Equivalent(new[] { firstEnvironment, secondEnvironment }, result);
+        Assert.Equivalent(
+            new[] { firstEnvironment, secondEnvironment },
+            result
+        );
     }
 }

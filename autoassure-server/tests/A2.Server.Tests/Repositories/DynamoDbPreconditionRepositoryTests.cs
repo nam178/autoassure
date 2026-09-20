@@ -7,11 +7,15 @@ using Microsoft.Extensions.Options;
 
 namespace A2.Server.Tests.Repositories;
 
-/// <summary>Integration tests for <see cref="DynamoDbPreconditionRepository"/> against DynamoDB Local,
-/// covering read/write mapping only.</summary>
+/// <summary>
+///     Integration tests for <see cref="DynamoDbPreconditionRepository" /> against
+///     DynamoDB Local,
+///     covering read/write mapping only.
+/// </summary>
 [Collection("DynamoDbLocal")]
-public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dynamoDbLocalFixture)
-    : IAsyncLifetime
+public sealed class DynamoDbPreconditionRepositoryTests(
+    DynamoDbLocalFixture dynamoDbLocalFixture
+) : IAsyncLifetime
 {
     private const string TableName = "Preconditions";
     private const string ApplicationTableName = "Applications";
@@ -44,7 +48,10 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -57,14 +64,23 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
                 TableName = TableName,
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -73,10 +89,16 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
                         IndexName = "IdIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("Id", KeyType.RANGE),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -92,7 +114,10 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
     }
 
     // Inserts a bare Application row so TrySaveAsync's ConditionCheck (attribute_exists(Id)) passes.
-    private async Task PutApplicationAsync(Guid organizationId, Guid applicationId)
+    private async Task PutApplicationAsync(
+        Guid organizationId,
+        Guid applicationId
+    )
     {
         await _client.PutItemAsync(
             new PutItemRequest
@@ -111,8 +136,9 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
         Guid organizationId,
         Guid applicationId,
         Guid? id = null
-    ) =>
-        new()
+    )
+    {
+        return new Precondition
         {
             Id = id ?? Guid.CreateVersion7(),
             OrganizationId = organizationId,
@@ -125,9 +151,11 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
             CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             UpdatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
         };
+    }
 
     [Fact]
-    public async Task TrySaveAsync_WhenApplicationExists_RoundTripsThroughGetById()
+    public async Task
+        TrySaveAsync_WhenApplicationExists_RoundTripsThroughGetById()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -137,7 +165,10 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
 
         // test
         var saved = await _repository.TrySaveAsync(precondition);
-        var result = await _repository.GetByIdAsync(organizationId, precondition.Id);
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            precondition.Id
+        );
 
         // verify
         Assert.True(saved);
@@ -187,7 +218,10 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
             precondition.Id,
             fields
         );
-        var result = await _repository.GetByIdAsync(organizationId, precondition.Id);
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            precondition.Id
+        );
 
         // verify
         Assert.True(succeeded);
@@ -205,7 +239,8 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
     }
 
     [Fact]
-    public async Task TryUpdateAsync_WhenPreconditionDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
+    public async Task
+        TryUpdateAsync_WhenPreconditionDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -223,7 +258,15 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
                 ValueSource = PreconditionValueSource.SpecificValue,
                 ExampleValue = "updated-value",
                 UpdatedByUserId = Guid.CreateVersion7(),
-                UpdatedAt = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
+                UpdatedAt = new DateTimeOffset(
+                    2026,
+                    2,
+                    1,
+                    0,
+                    0,
+                    0,
+                    TimeSpan.Zero
+                ),
             }
         );
         var result = await _repository.GetByIdAsync(organizationId, id);
@@ -240,14 +283,18 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
         var organizationId = Guid.CreateVersion7();
 
         // test
-        var result = await _repository.GetByIdAsync(organizationId, Guid.CreateVersion7());
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            Guid.CreateVersion7()
+        );
 
         // verify
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task ListByApplicationAsync_WhenMultiplePreconditionsExist_ReturnsAllScopedToOrganizationAndApplication()
+    public async Task
+        ListByApplicationAsync_WhenMultiplePreconditionsExist_ReturnsAllScopedToOrganizationAndApplication()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -262,24 +309,33 @@ public sealed class DynamoDbPreconditionRepositoryTests(DynamoDbLocalFixture dyn
         var otherOrganizationId = Guid.CreateVersion7();
         var otherApplicationId = Guid.CreateVersion7();
         await PutApplicationAsync(otherOrganizationId, otherApplicationId);
-        await _repository.TrySaveAsync(CreatePrecondition(otherOrganizationId, otherApplicationId));
+        await _repository.TrySaveAsync(
+            CreatePrecondition(otherOrganizationId, otherApplicationId)
+        );
 
         // test
-        var result = await _repository.ListByApplicationAsync(organizationId, applicationId);
+        var result = await _repository.ListByApplicationAsync(
+            organizationId,
+            applicationId
+        );
 
         // verify
         Assert.Equivalent(new[] { first, second }, result);
     }
 
     [Fact]
-    public async Task ListByApplicationAsync_WhenNoPreconditionsExist_ReturnsEmpty()
+    public async Task
+        ListByApplicationAsync_WhenNoPreconditionsExist_ReturnsEmpty()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
 
         // test
-        var result = await _repository.ListByApplicationAsync(organizationId, applicationId);
+        var result = await _repository.ListByApplicationAsync(
+            organizationId,
+            applicationId
+        );
 
         // verify
         Assert.Empty(result);

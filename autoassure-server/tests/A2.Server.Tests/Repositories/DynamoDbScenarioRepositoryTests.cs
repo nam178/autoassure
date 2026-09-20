@@ -7,12 +7,17 @@ using Microsoft.Extensions.Options;
 
 namespace A2.Server.Tests.Repositories;
 
-/// <summary>Integration tests for <see cref="DynamoDbScenarioRepository"/> against DynamoDB Local,
-/// covering read/write mapping correctness only — concurrency/races are covered elsewhere with
-/// fakes.</summary>
+/// <summary>
+///     Integration tests for <see cref="DynamoDbScenarioRepository" /> against
+///     DynamoDB Local,
+///     covering read/write mapping correctness only — concurrency/races are
+///     covered elsewhere with
+///     fakes.
+/// </summary>
 [Collection("DynamoDbLocal")]
-public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoDbLocalFixture)
-    : IAsyncLifetime
+public sealed class DynamoDbScenarioRepositoryTests(
+    DynamoDbLocalFixture dynamoDbLocalFixture
+) : IAsyncLifetime
 {
     private const string ScenarioTableName = "Scenarios";
     private const string ScenariosByFolderTableName = "ScenariosByFolder";
@@ -49,7 +54,10 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -62,14 +70,23 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
                 TableName = ScenarioTableName,
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -78,10 +95,16 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
                         IndexName = "IdIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("Id", KeyType.RANGE),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -92,27 +115,11 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
             ScenariosByFolderTableName,
             "OrganizationId_ApplicationId_Folder"
         );
-        await CreateMappingTableAsync(ScenariosByTagTableName, "OrganizationId_ApplicationId_Tag");
-    }
-
-    private async Task CreateMappingTableAsync(string tableName, string partitionKeyName) =>
-        await _client.CreateTableAsync(
-            new CreateTableRequest
-            {
-                TableName = tableName,
-                KeySchema =
-                [
-                    new KeySchemaElement(partitionKeyName, KeyType.HASH),
-                    new KeySchemaElement("ScenarioId", KeyType.RANGE),
-                ],
-                AttributeDefinitions =
-                [
-                    new AttributeDefinition(partitionKeyName, ScalarAttributeType.S),
-                    new AttributeDefinition("ScenarioId", ScalarAttributeType.S),
-                ],
-                BillingMode = BillingMode.PAY_PER_REQUEST,
-            }
+        await CreateMappingTableAsync(
+            ScenariosByTagTableName,
+            "OrganizationId_ApplicationId_Tag"
         );
+    }
 
     public async Task DisposeAsync()
     {
@@ -125,13 +132,45 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
                 ScenariosByTagTableName,
             }
         )
-        {
             await _client.DeleteTableAsync(tableName);
-        }
         _client.Dispose();
     }
 
-    private async Task SeedApplicationAsync(Guid organizationId, Guid applicationId) =>
+    private async Task CreateMappingTableAsync(
+        string tableName,
+        string partitionKeyName
+    )
+    {
+        await _client.CreateTableAsync(
+            new CreateTableRequest
+            {
+                TableName = tableName,
+                KeySchema =
+                [
+                    new KeySchemaElement(partitionKeyName, KeyType.HASH),
+                    new KeySchemaElement("ScenarioId", KeyType.RANGE),
+                ],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition(
+                        partitionKeyName,
+                        ScalarAttributeType.S
+                    ),
+                    new AttributeDefinition(
+                        "ScenarioId",
+                        ScalarAttributeType.S
+                    ),
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+            }
+        );
+    }
+
+    private async Task SeedApplicationAsync(
+        Guid organizationId,
+        Guid applicationId
+    )
+    {
         await _client.PutItemAsync(
             new PutItemRequest
             {
@@ -143,6 +182,7 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
                 },
             }
         );
+    }
 
     private static Scenario CreateScenario(
         Guid organizationId,
@@ -169,17 +209,26 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
     }
 
     [Fact]
-    public async Task TrySaveAsync_WhenApplicationExists_RoundTripsThroughGetById()
+    public async Task
+        TrySaveAsync_WhenApplicationExists_RoundTripsThroughGetById()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         await SeedApplicationAsync(organizationId, applicationId);
-        var scenario = CreateScenario(organizationId, applicationId, "/Checkout", ["smoke"]);
+        var scenario = CreateScenario(
+            organizationId,
+            applicationId,
+            "/Checkout",
+            ["smoke"]
+        );
 
         // test
         var result = await _repository.TrySaveAsync(scenario);
-        var fetched = await _repository.GetByIdAsync(organizationId, scenario.Id);
+        var fetched = await _repository.GetByIdAsync(
+            organizationId,
+            scenario.Id
+        );
 
         // verify
         Assert.True(result);
@@ -202,16 +251,25 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
     }
 
     [Fact]
-    public async Task TryUpdateAsync_WhenFolderChanges_MovesScenarioBetweenFolderMappings()
+    public async Task
+        TryUpdateAsync_WhenFolderChanges_MovesScenarioBetweenFolderMappings()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         await SeedApplicationAsync(organizationId, applicationId);
-        var scenario = CreateScenario(organizationId, applicationId, "/OldFolder");
+        var scenario = CreateScenario(
+            organizationId,
+            applicationId,
+            "/OldFolder"
+        );
         await _repository.TrySaveAsync(scenario);
 
-        var updated = scenario with { Folder = "/NewFolder", UpdatedAt = DateTimeOffset.UtcNow };
+        var updated = scenario with
+        {
+            Folder = "/NewFolder",
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
 
         // test
         var result = await _repository.TryUpdateAsync(updated, scenario);
@@ -234,7 +292,8 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
     }
 
     [Fact]
-    public async Task TryUpdateAsync_WhenApplicationDoesNotExist_ReturnsApplicationNotFound()
+    public async Task
+        TryUpdateAsync_WhenApplicationDoesNotExist_ReturnsApplicationNotFound()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -249,7 +308,8 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
     }
 
     [Fact]
-    public async Task TryUpdateAsync_WhenScenarioDoesNotExist_ReturnsScenarioNotFoundAndDoesNotCreateIt()
+    public async Task
+        TryUpdateAsync_WhenScenarioDoesNotExist_ReturnsScenarioNotFoundAndDoesNotCreateIt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -259,7 +319,10 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
 
         // test
         var result = await _repository.TryUpdateAsync(scenario, scenario);
-        var fetched = await _repository.GetByIdAsync(organizationId, scenario.Id);
+        var fetched = await _repository.GetByIdAsync(
+            organizationId,
+            scenario.Id
+        );
 
         // verify
         Assert.Equal(ScenarioUpdateResult.ScenarioNotFound, result);
@@ -270,14 +333,18 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
     public async Task GetByIdAsync_WhenNotFound_ReturnsNull()
     {
         // test
-        var result = await _repository.GetByIdAsync(Guid.CreateVersion7(), Guid.CreateVersion7());
+        var result = await _repository.GetByIdAsync(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7()
+        );
 
         // verify
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task ListByApplicationAsync_WhenMultipleScenariosExist_ReturnsAllForThatApplication()
+    public async Task
+        ListByApplicationAsync_WhenMultipleScenariosExist_ReturnsAllForThatApplication()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -293,7 +360,10 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
         await _repository.TrySaveAsync(otherScenario);
 
         // test
-        var result = await _repository.ListByApplicationAsync(organizationId, applicationId);
+        var result = await _repository.ListByApplicationAsync(
+            organizationId,
+            applicationId
+        );
 
         // verify
         Assert.Equal(2, result.Count);
@@ -302,14 +372,23 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
     }
 
     [Fact]
-    public async Task ListByFolderAsync_WhenScenariosInFolder_ReturnsOnlyMatchingScenarios()
+    public async Task
+        ListByFolderAsync_WhenScenariosInFolder_ReturnsOnlyMatchingScenarios()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         await SeedApplicationAsync(organizationId, applicationId);
-        var inFolder = CreateScenario(organizationId, applicationId, "/Checkout");
-        var otherFolder = CreateScenario(organizationId, applicationId, "/Other");
+        var inFolder = CreateScenario(
+            organizationId,
+            applicationId,
+            "/Checkout"
+        );
+        var otherFolder = CreateScenario(
+            organizationId,
+            applicationId,
+            "/Other"
+        );
         await _repository.TrySaveAsync(inFolder);
         await _repository.TrySaveAsync(otherFolder);
 
@@ -326,19 +405,32 @@ public sealed class DynamoDbScenarioRepositoryTests(DynamoDbLocalFixture dynamoD
     }
 
     [Fact]
-    public async Task ListByTagAsync_WhenScenariosCarryTag_ReturnsOnlyMatchingScenarios()
+    public async Task
+        ListByTagAsync_WhenScenariosCarryTag_ReturnsOnlyMatchingScenarios()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         await SeedApplicationAsync(organizationId, applicationId);
-        var tagged = CreateScenario(organizationId, applicationId, tags: ["smoke"]);
-        var untagged = CreateScenario(organizationId, applicationId, tags: ["regression"]);
+        var tagged = CreateScenario(
+            organizationId,
+            applicationId,
+            tags: ["smoke"]
+        );
+        var untagged = CreateScenario(
+            organizationId,
+            applicationId,
+            tags: ["regression"]
+        );
         await _repository.TrySaveAsync(tagged);
         await _repository.TrySaveAsync(untagged);
 
         // test
-        var result = await _repository.ListByTagAsync(organizationId, applicationId, "smoke");
+        var result = await _repository.ListByTagAsync(
+            organizationId,
+            applicationId,
+            "smoke"
+        );
 
         // verify
         var found = Assert.Single(result);

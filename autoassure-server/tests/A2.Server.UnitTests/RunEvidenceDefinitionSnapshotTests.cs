@@ -2,11 +2,15 @@ using A2.Server.Models;
 
 namespace A2.Server.UnitTests;
 
-/// <summary>Unit tests for <see cref="RunEvidenceDefinitionSnapshot.FromEvidenceDefinition"/>.</summary>
+/// <summary>
+///     Unit tests for
+///     <see cref="RunEvidenceDefinitionSnapshot.FromEvidenceDefinition" />.
+/// </summary>
 public sealed class RunEvidenceDefinitionSnapshotTests
 {
     [Fact]
-    public void FromEvidenceDefinition_WhenGivenALiveEvidenceDefinition_CopiesEveryField()
+    public void
+        FromEvidenceDefinition_WhenGivenALiveEvidenceDefinition_CopiesEveryField()
     {
         // setup
         var evidenceDefinition = new EvidenceDefinition
@@ -15,7 +19,8 @@ public sealed class RunEvidenceDefinitionSnapshotTests
             OrganizationId = Guid.NewGuid(),
             ApplicationId = Guid.NewGuid(),
             Name = "Order Confirmation ID",
-            Description = "The order confirmation id returned by the checkout API.",
+            Description =
+                "The order confirmation id returned by the checkout API.",
             ExampleValue = "ORD-12345",
             CreatedByUserId = Guid.NewGuid(),
             UpdatedByUserId = Guid.NewGuid(),
@@ -24,12 +29,20 @@ public sealed class RunEvidenceDefinitionSnapshotTests
         };
 
         // test
-        var snapshot = RunEvidenceDefinitionSnapshot.FromEvidenceDefinition(evidenceDefinition);
+        var snapshot = RunEvidenceDefinitionSnapshot.FromEvidenceDefinition(
+            evidenceDefinition
+        );
 
         // verify
         Assert.Equal(evidenceDefinition.Id, snapshot.Source.Id);
-        Assert.Equal(evidenceDefinition.CreatedByUserId, snapshot.Source.CreatedByUserId);
-        Assert.Equal(evidenceDefinition.UpdatedByUserId, snapshot.Source.UpdatedByUserId);
+        Assert.Equal(
+            evidenceDefinition.CreatedByUserId,
+            snapshot.Source.CreatedByUserId
+        );
+        Assert.Equal(
+            evidenceDefinition.UpdatedByUserId,
+            snapshot.Source.UpdatedByUserId
+        );
         Assert.Equal(evidenceDefinition.CreatedAt, snapshot.Source.CreatedAt);
         Assert.Equal(evidenceDefinition.UpdatedAt, snapshot.Source.UpdatedAt);
         Assert.Equal(evidenceDefinition.Name, snapshot.Name);

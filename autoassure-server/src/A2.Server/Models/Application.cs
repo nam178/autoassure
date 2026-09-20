@@ -1,7 +1,10 @@
 namespace A2.Server.Models;
 
-/// <summary>A system under test that Scenarios, Environments, and libraries (Preconditions,
-/// EvidenceDefinitions) attach to, owned by an Organization.</summary>
+/// <summary>
+///     A system under test that Scenarios, Environments, and libraries
+///     (Preconditions,
+///     EvidenceDefinitions) attach to, owned by an Organization.
+/// </summary>
 public record Application
 {
     public required Guid Id { get; init; }

@@ -7,11 +7,15 @@ using Microsoft.Extensions.Options;
 
 namespace A2.Server.Tests.Repositories;
 
-/// <summary>Integration tests for <see cref="DynamoDbOrganizationRepository"/> against DynamoDB Local,
-/// covering read/write mapping only.</summary>
+/// <summary>
+///     Integration tests for <see cref="DynamoDbOrganizationRepository" /> against
+///     DynamoDB Local,
+///     covering read/write mapping only.
+/// </summary>
 [Collection("DynamoDbLocal")]
-public sealed class DynamoDbOrganizationRepositoryTests(DynamoDbLocalFixture dynamoDbLocalFixture)
-    : IAsyncLifetime
+public sealed class DynamoDbOrganizationRepositoryTests(
+    DynamoDbLocalFixture dynamoDbLocalFixture
+) : IAsyncLifetime
 {
     private const string TableName = "Organizations";
 
@@ -23,7 +27,9 @@ public sealed class DynamoDbOrganizationRepositoryTests(DynamoDbLocalFixture dyn
         _client = dynamoDbLocalFixture.CreateClient();
         _repository = new DynamoDbOrganizationRepository(
             _client,
-            Options.Create(new DynamoDbOptions { OrganizationTableName = TableName })
+            Options.Create(
+                new DynamoDbOptions { OrganizationTableName = TableName }
+            )
         );
 
         await _client.CreateTableAsync(
@@ -31,7 +37,10 @@ public sealed class DynamoDbOrganizationRepositoryTests(DynamoDbLocalFixture dyn
             {
                 TableName = TableName,
                 KeySchema = [new KeySchemaElement("Id", KeyType.HASH)],
-                AttributeDefinitions = [new AttributeDefinition("Id", ScalarAttributeType.S)],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
@@ -56,9 +65,14 @@ public sealed class DynamoDbOrganizationRepositoryTests(DynamoDbLocalFixture dyn
             UpdatedByUserId = Guid.CreateVersion7(),
             CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             UpdatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            LifecycleState = LifecycleState.Active,
         };
         await _client.PutItemAsync(
-            new PutItemRequest { TableName = TableName, Item = organization.ToDynamoDbRow() }
+            new PutItemRequest
+            {
+                TableName = TableName,
+                Item = organization.ToDynamoDbRow(),
+            }
         );
 
         // test
@@ -69,7 +83,8 @@ public sealed class DynamoDbOrganizationRepositoryTests(DynamoDbLocalFixture dyn
     }
 
     [Fact]
-    public async Task GetByIdAsync_WhenOrganizationIsPersonal_RoundTripsIsPersonal()
+    public async Task
+        GetByIdAsync_WhenOrganizationIsPersonal_RoundTripsIsPersonal()
     {
         // setup
         var organization = new Organization
@@ -81,9 +96,14 @@ public sealed class DynamoDbOrganizationRepositoryTests(DynamoDbLocalFixture dyn
             UpdatedByUserId = Guid.CreateVersion7(),
             CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             UpdatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            LifecycleState = LifecycleState.Active,
         };
         await _client.PutItemAsync(
-            new PutItemRequest { TableName = TableName, Item = organization.ToDynamoDbRow() }
+            new PutItemRequest
+            {
+                TableName = TableName,
+                Item = organization.ToDynamoDbRow(),
+            }
         );
 
         // test

@@ -3,8 +3,10 @@ using Environment = A2.Server.Models.Environment;
 
 namespace A2.Server.UnitTests;
 
-/// <summary>Unit tests for <see cref="RunEnvironmentSnapshot.FromEnvironment"/> and
-/// <see cref="RunEnvironmentSnapshot.Masked"/>.</summary>
+/// <summary>
+///     Unit tests for <see cref="RunEnvironmentSnapshot.FromEnvironment" /> and
+///     <see cref="RunEnvironmentSnapshot.Masked" />.
+/// </summary>
 public sealed class RunEnvironmentSnapshotTests
 {
     [Fact]
@@ -42,12 +44,21 @@ public sealed class RunEnvironmentSnapshotTests
         ];
 
         // test
-        var snapshot = RunEnvironmentSnapshot.FromEnvironment(environment, variables);
+        var snapshot = RunEnvironmentSnapshot.FromEnvironment(
+            environment,
+            variables
+        );
 
         // verify
         Assert.Equal(environment.Id, snapshot.Source.Id);
-        Assert.Equal(environment.CreatedByUserId, snapshot.Source.CreatedByUserId);
-        Assert.Equal(environment.UpdatedByUserId, snapshot.Source.UpdatedByUserId);
+        Assert.Equal(
+            environment.CreatedByUserId,
+            snapshot.Source.CreatedByUserId
+        );
+        Assert.Equal(
+            environment.UpdatedByUserId,
+            snapshot.Source.UpdatedByUserId
+        );
         Assert.Equal(environment.CreatedAt, snapshot.Source.CreatedAt);
         Assert.Equal(environment.UpdatedAt, snapshot.Source.UpdatedAt);
         Assert.Equal(environment.Name, snapshot.Name);
@@ -59,8 +70,9 @@ public sealed class RunEnvironmentSnapshotTests
         Guid environmentId,
         string sensitiveValue,
         string plainValue
-    ) =>
-        RunEnvironmentSnapshot.FromEnvironment(
+    )
+    {
+        return RunEnvironmentSnapshot.FromEnvironment(
             new Environment
             {
                 Id = environmentId,
@@ -104,27 +116,35 @@ public sealed class RunEnvironmentSnapshotTests
                 ),
             ]
         );
+    }
 
     [Fact]
-    public void Masked_WhenVariablesMixSensitiveAndPlain_MasksOnlyTheSensitiveOne()
+    public void
+        Masked_WhenVariablesMixSensitiveAndPlain_MasksOnlyTheSensitiveOne()
     {
         // setup
         var snapshot = CreateSnapshotWithVariables(
             Guid.NewGuid(),
-            sensitiveValue: "abcdefghijklmnopqrstuvwxyz",
-            plainValue: "https://staging.example.com"
+            "abcdefghijklmnopqrstuvwxyz",
+            "https://staging.example.com"
         );
 
         // test
         var masked = snapshot.Masked();
 
         // verify
-        var maskedSensitive = Assert.Single(masked.Variables, v => v.Key == "API_KEY");
+        var maskedSensitive = Assert.Single(
+            masked.Variables,
+            v => v.Key == "API_KEY"
+        );
         Assert.Equal(
             SensitiveValueMasker.Mask("abcdefghijklmnopqrstuvwxyz"),
             maskedSensitive.Value
         );
-        var untouchedPlain = Assert.Single(masked.Variables, v => v.Key == "BASE_URL");
+        var untouchedPlain = Assert.Single(
+            masked.Variables,
+            v => v.Key == "BASE_URL"
+        );
         Assert.Equal("https://staging.example.com", untouchedPlain.Value);
     }
 
@@ -134,8 +154,8 @@ public sealed class RunEnvironmentSnapshotTests
         // setup
         var snapshot = CreateSnapshotWithVariables(
             Guid.NewGuid(),
-            sensitiveValue: "abcdefghijklmnopqrstuvwxyz",
-            plainValue: "https://staging.example.com"
+            "abcdefghijklmnopqrstuvwxyz",
+            "https://staging.example.com"
         );
 
         // test

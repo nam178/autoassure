@@ -9,50 +9,14 @@ namespace A2.Server.UnitTests;
 
 public class AuthTokenServiceTests
 {
-    private sealed class FakeClock(DateTimeOffset now) : IClock
-    {
-        public DateTimeOffset UtcNow => now;
-    }
-
-    private sealed class FakeRefreshTokenRepository : IRefreshTokenRepository
-    {
-        public RefreshToken? Stored { get; private set; }
-        public string? RevokedHash { get; private set; }
-
-        public Task<RefreshToken?> GetByHashAsync(string refreshTokenSecretHash) =>
-            Task.FromResult(
-                Stored?.RefreshTokenSecretHash == refreshTokenSecretHash ? Stored : null
-            );
-
-        public Task SaveAsync(RefreshToken token)
-        {
-            Stored = token;
-            return Task.CompletedTask;
-        }
-
-        public Task<bool> TryUpdateAsync(string refreshTokenSecretHash, DateTimeOffset revokedAt)
-        {
-            if (
-                Stored?.RefreshTokenSecretHash != refreshTokenSecretHash
-                || Stored.RevokedAt is not null
-            )
-            {
-                return Task.FromResult(false);
-            }
-
-            RevokedHash = refreshTokenSecretHash;
-            Stored = Stored with { RevokedAt = revokedAt };
-            return Task.FromResult(true);
-        }
-    }
-
     private static AuthTokenService CreateService(
         FakeRefreshTokenRepository repository,
         DateTimeOffset now,
         int expiryDays = 30,
         int jwtExpiryMinutes = 15
-    ) =>
-        new(
+    )
+    {
+        return new AuthTokenService(
             repository,
             Options.Create(
                 new AuthTokenOptions
@@ -66,13 +30,19 @@ public class AuthTokenServiceTests
             ),
             new FakeClock(now)
         );
+    }
 
     [Fact]
-    public async Task IssueAsync_WhenCalled_ProducesJwtWithExpectedClaimsAndExpiry()
+    public async Task
+        IssueAsync_WhenCalled_ProducesJwtWithExpectedClaimsAndExpiry()
     {
         // setup
         var now = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        var service = CreateService(new FakeRefreshTokenRepository(), now, jwtExpiryMinutes: 5);
+        var service = CreateService(
+            new FakeRefreshTokenRepository(),
+            now,
+            jwtExpiryMinutes: 5
+        );
         var userId = Guid.CreateVersion7();
         var user = new User
         {
@@ -88,11 +58,15 @@ public class AuthTokenServiceTests
         var tokens = await service.IssueAsync(user);
 
         // verify
-        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(tokens.AccessToken.Value);
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(
+            tokens.AccessToken.Value
+        );
         Assert.Equal(userId.ToString(), jwt.Subject);
         Assert.Equal(
             "user@example.com",
-            jwt.Claims.Single(c => c.Type == JwtRegisteredClaimNames.Email).Value
+            jwt.Claims.Single(c =>
+                c.Type == JwtRegisteredClaimNames.Email
+            ).Value
         );
         Assert.Equal("test-issuer", jwt.Issuer);
         Assert.Equal("test-audience", jwt.Audiences.Single());
@@ -104,7 +78,10 @@ public class AuthTokenServiceTests
     public async Task RefreshAsync_WhenTokenNotFound_ReturnsNull()
     {
         // setup
-        var service = CreateService(new FakeRefreshTokenRepository(), DateTimeOffset.UtcNow);
+        var service = CreateService(
+            new FakeRefreshTokenRepository(),
+            DateTimeOffset.UtcNow
+        );
 
         // test
         var result = await service.RefreshAsync("unknown-token");
@@ -120,10 +97,13 @@ public class AuthTokenServiceTests
         var now = DateTimeOffset.UtcNow;
         var repository = new FakeRefreshTokenRepository();
         var issueService = CreateService(repository, now.AddDays(-31));
-        var refreshTokenSecret = await IssueRefreshTokenSecretAsync(issueService);
+        var refreshTokenSecret = await IssueRefreshTokenSecretAsync(
+            issueService
+        );
 
         // test
-        var result = await CreateService(repository, now).RefreshAsync(refreshTokenSecret);
+        var result = await CreateService(repository, now)
+            .RefreshAsync(refreshTokenSecret);
 
         // verify
         Assert.Null(result);
@@ -142,13 +122,15 @@ public class AuthTokenServiceTests
         var repository = new FakeRefreshTokenRepository();
         var issueService = CreateService(
             repository,
-            now.AddDays(-30).AddSeconds(secondsBeforeExpiryCutoff),
-            expiryDays: 30
+            now.AddDays(-30).AddSeconds(secondsBeforeExpiryCutoff)
         );
-        var refreshTokenSecret = await IssueRefreshTokenSecretAsync(issueService);
+        var refreshTokenSecret = await IssueRefreshTokenSecretAsync(
+            issueService
+        );
 
         // test
-        var result = await CreateService(repository, now).RefreshAsync(refreshTokenSecret);
+        var result = await CreateService(repository, now)
+            .RefreshAsync(refreshTokenSecret);
 
         // verify
         Assert.Equal(expectValid, result is not null);
@@ -162,7 +144,10 @@ public class AuthTokenServiceTests
         var repository = new FakeRefreshTokenRepository();
         var service = CreateService(repository, now);
         var refreshTokenSecret = await IssueRefreshTokenSecretAsync(service);
-        await repository.TryUpdateAsync(repository.Stored!.RefreshTokenSecretHash, now);
+        await repository.TryUpdateAsync(
+            repository.Stored!.RefreshTokenSecretHash,
+            now
+        );
 
         // test
         var result = await service.RefreshAsync(refreshTokenSecret);
@@ -204,7 +189,9 @@ public class AuthTokenServiceTests
         Assert.NotNull(repository.RevokedHash);
     }
 
-    private static async Task<string> IssueRefreshTokenSecretAsync(AuthTokenService service)
+    private static async Task<string> IssueRefreshTokenSecretAsync(
+        AuthTokenService service
+    )
     {
         var user = new User
         {
@@ -217,5 +204,49 @@ public class AuthTokenServiceTests
         };
         var tokens = await service.IssueAsync(user);
         return tokens.RefreshTokenSecret;
+    }
+
+    private sealed class FakeClock(DateTimeOffset now) : IClock
+    {
+        public DateTimeOffset UtcNow => now;
+    }
+
+    private sealed class FakeRefreshTokenRepository : IRefreshTokenRepository
+    {
+        public RefreshToken? Stored { get; private set; }
+        public string? RevokedHash { get; private set; }
+
+        public Task<RefreshToken?> GetByHashAsync(
+            string refreshTokenSecretHash
+        )
+        {
+            return Task.FromResult(
+                Stored?.RefreshTokenSecretHash == refreshTokenSecretHash
+                    ? Stored
+                    : null
+            );
+        }
+
+        public Task SaveAsync(RefreshToken token)
+        {
+            Stored = token;
+            return Task.CompletedTask;
+        }
+
+        public Task<bool> TryUpdateAsync(
+            string refreshTokenSecretHash,
+            DateTimeOffset revokedAt
+        )
+        {
+            if (
+                Stored?.RefreshTokenSecretHash != refreshTokenSecretHash
+                || Stored.RevokedAt is not null
+            )
+                return Task.FromResult(false);
+
+            RevokedHash = refreshTokenSecretHash;
+            Stored = Stored with { RevokedAt = revokedAt };
+            return Task.FromResult(true);
+        }
     }
 }

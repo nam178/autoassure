@@ -1,39 +1,56 @@
 using A2.Server.Contracts;
 using A2.Server.Models;
-using ContractEnvironmentClassification = A2.Server.Contracts.EnvironmentClassification;
+using ContractEnvironmentClassification =
+    A2.Server.Contracts.EnvironmentClassification;
 using Environment = A2.Server.Models.Environment;
-using ModelEnvironmentClassification = A2.Server.Models.EnvironmentClassification;
+using ModelEnvironmentClassification =
+    A2.Server.Models.EnvironmentClassification;
 
 namespace A2.Server.Controllers;
 
 /// <summary>Mapping between Environment Contracts and domain Models.</summary>
 public static partial class ContractMapper
 {
-    /// <summary>Combines an Environment with its Variables into the response returned to the client.</summary>
+    /// <summary>
+    ///     Combines an Environment with its Variables into the response returned
+    ///     to the client.
+    /// </summary>
     public static EnvironmentResponse ToResponse(
         this Environment environment,
         IReadOnlyList<EnvironmentVariable> variables
-    ) =>
-        new(
+    )
+    {
+        return new EnvironmentResponse(
             environment.Id,
             environment.Name,
             environment.Classification.ToContract(),
             variables.Select(v => v.ToResponse()).ToList()
         );
+    }
 
-    /// <summary>Maps a single Environment variable to its response representation. A sensitive
-    /// variable's Value is masked -- see <see cref="SensitiveValueMasker"/>.</summary>
-    private static EnvironmentVariableResponse ToResponse(this EnvironmentVariable variable) =>
-        new(
+    /// <summary>
+    ///     Maps a single Environment variable to its response representation. A
+    ///     sensitive
+    ///     variable's Value is masked -- see <see cref="SensitiveValueMasker" />.
+    /// </summary>
+    private static EnvironmentVariableResponse ToResponse(
+        this EnvironmentVariable variable
+    )
+    {
+        return new EnvironmentVariableResponse(
             variable.Key,
-            variable.IsSensitive ? SensitiveValueMasker.Mask(variable.Value) : variable.Value,
+            variable.IsSensitive
+                ? SensitiveValueMasker.Mask(variable.Value)
+                : variable.Value,
             variable.IsSensitive
         );
+    }
 
     public static ModelEnvironmentClassification ToModel(
         this ContractEnvironmentClassification classification
-    ) =>
-        classification switch
+    )
+    {
+        return classification switch
         {
             ContractEnvironmentClassification.Production =>
                 ModelEnvironmentClassification.Production,
@@ -41,11 +58,13 @@ public static partial class ContractMapper
                 ModelEnvironmentClassification.NonProduction,
             _ => throw new ArgumentOutOfRangeException(nameof(classification)),
         };
+    }
 
     private static ContractEnvironmentClassification ToContract(
         this ModelEnvironmentClassification classification
-    ) =>
-        classification switch
+    )
+    {
+        return classification switch
         {
             ModelEnvironmentClassification.Production =>
                 ContractEnvironmentClassification.Production,
@@ -53,4 +72,5 @@ public static partial class ContractMapper
                 ContractEnvironmentClassification.NonProduction,
             _ => throw new ArgumentOutOfRangeException(nameof(classification)),
         };
+    }
 }

@@ -19,7 +19,10 @@ public class AuthTokenService(
     public async Task<IssuedTokens> IssueAsync(User user)
     {
         var accessToken = GenerateNewAccessToken(user.Id, user.Email);
-        var refreshTokenSecret = await CreateRefreshTokenSecretAsync(user.Id, user.Email);
+        var refreshTokenSecret = await CreateRefreshTokenSecretAsync(
+            user.Id,
+            user.Email
+        );
 
         return new IssuedTokens(accessToken, refreshTokenSecret);
     }
@@ -29,18 +32,20 @@ public class AuthTokenService(
         var refreshTokenSecretHash = Hash(refreshTokenSecret);
         var stored = await repository.GetByHashAsync(refreshTokenSecretHash);
 
-        if (stored is null || stored.RevokedAt is not null || stored.ExpiresAt < clock.UtcNow)
-        {
+        if (
+            stored is null
+            || stored.RevokedAt is not null
+            || stored.ExpiresAt < clock.UtcNow
+        )
             return null;
-        }
 
         // Atomically claim the token so two concurrent refreshes of the same secret can't both
         // succeed. If we lose the race, someone else already revoked/used it — treat as invalid.
-        var claimed = await repository.TryUpdateAsync(refreshTokenSecretHash, clock.UtcNow);
-        if (!claimed)
-        {
-            return null;
-        }
+        var claimed = await repository.TryUpdateAsync(
+            refreshTokenSecretHash,
+            clock.UtcNow
+        );
+        if (!claimed) return null;
 
         var accessToken = GenerateNewAccessToken(stored.UserId, stored.Email);
         var newRefreshTokenSecret = await CreateRefreshTokenSecretAsync(
@@ -53,32 +58,45 @@ public class AuthTokenService(
 
     private AppToken GenerateNewAccessToken(Guid userId, string email)
     {
-        var expiresAt = clock.UtcNow.AddMinutes(authTokenOptions.Value.AccessTokenExpiryMinutes);
+        var expiresAt = clock.UtcNow.AddMinutes(
+            authTokenOptions.Value.AccessTokenExpiryMinutes
+        );
 
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.CreateVersion7().ToString()),
+            new Claim(
+                JwtRegisteredClaimNames.Jti,
+                Guid.CreateVersion7().ToString()
+            ),
         };
 
         var credentials = new SigningCredentials(
-            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authTokenOptions.Value.SigningKey)),
+            new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(authTokenOptions.Value.SigningKey)
+            ),
             SecurityAlgorithms.HmacSha256
         );
 
         var token = new JwtSecurityToken(
-            issuer: authTokenOptions.Value.Issuer,
-            audience: authTokenOptions.Value.Audience,
-            claims: claims,
+            authTokenOptions.Value.Issuer,
+            authTokenOptions.Value.Audience,
+            claims,
             expires: expiresAt.UtcDateTime,
             signingCredentials: credentials
         );
 
-        return new AppToken(new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
+        return new AppToken(
+            new JwtSecurityTokenHandler().WriteToken(token),
+            expiresAt
+        );
     }
 
-    private async Task<string> CreateRefreshTokenSecretAsync(Guid userId, string email)
+    private async Task<string> CreateRefreshTokenSecretAsync(
+        Guid userId,
+        string email
+    )
     {
         var secret = Convert
             .ToBase64String(RandomNumberGenerator.GetBytes(32))
@@ -101,6 +119,9 @@ public class AuthTokenService(
         return secret;
     }
 
-    private static string Hash(string value) =>
-        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+    private static string Hash(string value)
+    {
+        return Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+    }
 }

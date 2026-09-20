@@ -16,10 +16,15 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace A2.Server.Tests.Controllers;
 
-/// <summary>Integration tests for <see cref="A2.Server.Controllers.ApplicationsController"/> over real
-/// HTTP, against DynamoDB Local. Each Organization used by a test is pre-seeded with an
-/// <see cref="OrganizationUser"/> membership so <c>ICallerOrganizationService</c> can resolve the
-/// caller's Organization from the request's JWT.</summary>
+/// <summary>
+///     Integration tests for
+///     <see cref="A2.Server.Controllers.ApplicationsController" /> over real
+///     HTTP, against DynamoDB Local. Each Organization used by a test is
+///     pre-seeded with an
+///     <see cref="OrganizationUser" /> membership so
+///     <c>ICallerOrganizationService</c> can resolve the
+///     caller's Organization from the request's JWT.
+/// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class ApplicationsControllerTests
     : IClassFixture<WebApplicationFactory<Program>>,
@@ -39,22 +44,25 @@ public sealed class ApplicationsControllerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration(
-                (_, config) =>
-                    config.AddInMemoryCollection(
-                        new Dictionary<string, string?>
-                        {
-                            ["Auth:SigningKey"] = SigningKey,
-                            ["DynamoDb:ApplicationTableName"] = "Applications",
-                            ["DynamoDb:OrganizationTableName"] = "Organizations",
-                            ["DynamoDb:OrganizationUserTableName"] = "OrganizationUsers",
-                        }
-                    )
+            builder.ConfigureAppConfiguration((_, config) =>
+                config.AddInMemoryCollection(
+                    new Dictionary<string, string?>
+                    {
+                        ["Auth:SigningKey"] = SigningKey,
+                        ["DynamoDb:ApplicationTableName"] = "Applications",
+                        ["DynamoDb:OrganizationTableName"] =
+                            "Organizations",
+                        ["DynamoDb:OrganizationUserTableName"] =
+                            "OrganizationUsers",
+                    }
+                )
             );
             builder.ConfigureServices(services =>
             {
                 _client = dynamoDbLocalFixture.CreateClient();
-                services.Replace(ServiceDescriptor.Singleton<IAmazonDynamoDB>(_client));
+                services.Replace(
+                    ServiceDescriptor.Singleton<IAmazonDynamoDB>(_client)
+                );
             });
         });
     }
@@ -76,7 +84,10 @@ public sealed class ApplicationsControllerTests
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -88,7 +99,10 @@ public sealed class ApplicationsControllerTests
             {
                 TableName = "Organizations",
                 KeySchema = [new KeySchemaElement("Id", KeyType.HASH)],
-                AttributeDefinitions = [new AttributeDefinition("Id", ScalarAttributeType.S)],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
@@ -104,7 +118,10 @@ public sealed class ApplicationsControllerTests
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("UserId", ScalarAttributeType.S),
                 ],
                 GlobalSecondaryIndexes =
@@ -115,9 +132,15 @@ public sealed class ApplicationsControllerTests
                         KeySchema =
                         [
                             new KeySchemaElement("UserId", KeyType.HASH),
-                            new KeySchemaElement("OrganizationId", KeyType.RANGE),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.RANGE
+                            ),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -127,18 +150,27 @@ public sealed class ApplicationsControllerTests
 
     public async Task DisposeAsync()
     {
-        foreach (var tableName in new[] { "Applications", "Organizations", "OrganizationUsers" })
-        {
+        foreach (
+            var tableName in new[]
+            {
+                "Applications",
+                "Organizations",
+                "OrganizationUsers",
+            }
+        )
             await _client.DeleteTableAsync(tableName);
-        }
         _client.Dispose();
     }
 
-    private async Task SeedOrganizationMembershipAsync(Guid userId, bool seedOrganization = true)
+    private async Task SeedOrganizationMembershipAsync(
+        Guid userId,
+        bool seedOrganization = true
+    )
     {
         var organizationId = Guid.CreateVersion7();
         if (seedOrganization)
         {
+            var now = DateTimeOffset.UtcNow;
             await _client.PutItemAsync(
                 new PutItemRequest
                 {
@@ -146,6 +178,15 @@ public sealed class ApplicationsControllerTests
                     Item = new Dictionary<string, AttributeValue>
                     {
                         ["Id"] = new(organizationId.ToString()),
+                        ["Name"] = new("Test Organization"),
+                        ["IsPersonal"] = new() { BOOL = true },
+                        ["CreatedByUserId"] = new(userId.ToString()),
+                        ["UpdatedByUserId"] = new(userId.ToString()),
+                        ["CreatedAt"] = new(now.ToString("O")),
+                        ["UpdatedAt"] = new(now.ToString("O")),
+                        ["LifecycleState"] = new(
+                            LifecycleState.Active.ToString()
+                        ),
                     },
                 }
             );
@@ -175,11 +216,14 @@ public sealed class ApplicationsControllerTests
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey)),
             SecurityAlgorithms.HmacSha256
         );
-        var claims = new[] { new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()) };
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+        };
         var token = new JwtSecurityToken(
-            issuer: Issuer,
-            audience: Audience,
-            claims: claims,
+            Issuer,
+            Audience,
+            claims,
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: credentials
         );
@@ -189,10 +233,8 @@ public sealed class ApplicationsControllerTests
     private HttpClient CreateAuthenticatedClient(Guid userId)
     {
         var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            CreateAccessToken(userId)
-        );
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", CreateAccessToken(userId));
         return client;
     }
 
@@ -216,7 +258,9 @@ public sealed class ApplicationsControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
-        var created = await createResponse.Content.ReadFromJsonAsync<ApplicationResponse>();
+        var created =
+            await createResponse.Content
+                .ReadFromJsonAsync<ApplicationResponse>();
         Assert.NotNull(created);
         Assert.Equal("Checkout Service", created.Name);
 
@@ -225,7 +269,8 @@ public sealed class ApplicationsControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
-        var fetched = await getResponse.Content.ReadFromJsonAsync<ApplicationResponse>();
+        var fetched =
+            await getResponse.Content.ReadFromJsonAsync<ApplicationResponse>();
         Assert.Equal(created, fetched);
     }
 
@@ -240,28 +285,36 @@ public sealed class ApplicationsControllerTests
         // test
         var createResponse = await client.PostAsJsonAsync(
             "/applications",
-            new CreateApplicationRequest { Name = "Checkout Service", Description = "" }
+            new CreateApplicationRequest
+            {
+                Name = "Checkout Service",
+                Description = "",
+            }
         );
 
         // verify
         Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
-        var created = await createResponse.Content.ReadFromJsonAsync<ApplicationResponse>();
+        var created =
+            await createResponse.Content
+                .ReadFromJsonAsync<ApplicationResponse>();
         Assert.Equal("", created!.Description);
 
         // test
         var getResponse = await client.GetAsync($"/applications/{created.Id}");
 
         // verify
-        var fetched = await getResponse.Content.ReadFromJsonAsync<ApplicationResponse>();
+        var fetched =
+            await getResponse.Content.ReadFromJsonAsync<ApplicationResponse>();
         Assert.Equal("", fetched!.Description);
     }
 
     [Fact]
-    public async Task Create_WhenOrganizationDoesNotExist_ReturnsBadRequestWithMessage()
+    public async Task
+        Create_WhenOrganizationDoesNotExist_ReturnsBadRequestWithMessage()
     {
         // setup
         var userId = Guid.CreateVersion7();
-        await SeedOrganizationMembershipAsync(userId, seedOrganization: false);
+        await SeedOrganizationMembershipAsync(userId, false);
         var client = CreateAuthenticatedClient(userId);
 
         // test
@@ -273,11 +326,15 @@ public sealed class ApplicationsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-        Assert.Equal("Organization could not be found or has been deleted.", error!.Message);
+        Assert.Equal(
+            "Organization could not be found or has been deleted.",
+            error!.Message
+        );
     }
 
     [Fact]
-    public async Task List_WhenMultipleOrganizationsExist_ReturnsOnlyCallersOrganizationApplications()
+    public async Task
+        List_WhenMultipleOrganizationsExist_ReturnsOnlyCallersOrganizationApplications()
     {
         // setup
         var userA = Guid.CreateVersion7();
@@ -308,7 +365,8 @@ public sealed class ApplicationsControllerTests
     }
 
     [Fact]
-    public async Task GetById_WhenApplicationInDifferentOrganization_ReturnsNotFound()
+    public async Task
+        GetById_WhenApplicationInDifferentOrganization_ReturnsNotFound()
     {
         // setup
         var userA = Guid.CreateVersion7();
@@ -321,10 +379,14 @@ public sealed class ApplicationsControllerTests
             "/applications",
             new CreateApplicationRequest { Name = "App A", Description = "" }
         );
-        var created = await createResponse.Content.ReadFromJsonAsync<ApplicationResponse>();
+        var created =
+            await createResponse.Content
+                .ReadFromJsonAsync<ApplicationResponse>();
 
         // test
-        var getResponse = await clientB.GetAsync($"/applications/{created!.Id}");
+        var getResponse = await clientB.GetAsync(
+            $"/applications/{created!.Id}"
+        );
 
         // verify
         Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
@@ -372,7 +434,11 @@ public sealed class ApplicationsControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             "/applications",
-            new CreateApplicationRequest { Name = new string('a', nameLength), Description = "" }
+            new CreateApplicationRequest
+            {
+                Name = new string('a', nameLength),
+                Description = "",
+            }
         );
 
         // verify
@@ -382,10 +448,11 @@ public sealed class ApplicationsControllerTests
     [Theory]
     [InlineData(1000, HttpStatusCode.OK)]
     [InlineData(1001, HttpStatusCode.BadRequest)]
-    public async Task Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
-        int descriptionLength,
-        HttpStatusCode expectedStatus
-    )
+    public async Task
+        Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
+            int descriptionLength,
+            HttpStatusCode expectedStatus
+        )
     {
         // setup
         var userId = Guid.CreateVersion7();
@@ -410,7 +477,9 @@ public sealed class ApplicationsControllerTests
     [InlineData("""{"description":"x"}""")] // name missing entirely
     [InlineData("""{"name":null,"description":"x"}""")] // name explicitly null
     [InlineData("""{"name":123,"description":"x"}""")] // name wrong type
-    public async Task Create_WhenNameHasInvalidShape_ReturnsBadRequest(string rawJson)
+    public async Task Create_WhenNameHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // setup
         var userId = Guid.CreateVersion7();
@@ -429,9 +498,14 @@ public sealed class ApplicationsControllerTests
 
     [Theory]
     [InlineData("""{"name":"App"}""")] // description missing entirely
-    [InlineData("""{"name":"App","description":null}""")] // description explicitly null
-    [InlineData("""{"name":"App","description":123}""")] // description wrong type
-    public async Task Create_WhenDescriptionHasInvalidShape_ReturnsBadRequest(string rawJson)
+    [InlineData(
+        """{"name":"App","description":null}""")] // description explicitly null
+    [InlineData(
+        """{"name":"App","description":123}""")] // description wrong type
+    public async Task
+        Create_WhenDescriptionHasInvalidShape_ReturnsBadRequest(
+            string rawJson
+        )
     {
         // setup
         var userId = Guid.CreateVersion7();

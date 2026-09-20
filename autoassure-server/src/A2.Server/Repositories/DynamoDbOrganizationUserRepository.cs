@@ -15,12 +15,20 @@ public class DynamoDbOrganizationUserRepository(
 
     private string TableName => options.Value.OrganizationUserTableName;
 
-    public Task SaveAsync(OrganizationUser membership) =>
-        client.PutItemAsync(
-            new PutItemRequest { TableName = TableName, Item = membership.ToDynamoDbRow() }
+    public Task SaveAsync(OrganizationUser membership)
+    {
+        return client.PutItemAsync(
+            new PutItemRequest
+            {
+                TableName = TableName,
+                Item = membership.ToDynamoDbRow(),
+            }
         );
+    }
 
-    public async Task<IReadOnlyList<OrganizationUser>> ListByUserAsync(Guid userId)
+    public async Task<IReadOnlyList<OrganizationUser>> ListByUserAsync(
+        Guid userId
+    )
     {
         var response = await client.QueryAsync(
             new QueryRequest
@@ -28,7 +36,10 @@ public class DynamoDbOrganizationUserRepository(
                 TableName = TableName,
                 IndexName = UserIdIndexName,
                 KeyConditionExpression = "UserId = :userId",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":userId"] = new(userId.ToString()),
                 },
@@ -38,6 +49,8 @@ public class DynamoDbOrganizationUserRepository(
             }
         );
 
-        return response.Items.Select(item => item.ToOrganizationUser()).ToList();
+        return response
+            .Items.Select(item => item.ToOrganizationUser())
+            .ToList();
     }
 }

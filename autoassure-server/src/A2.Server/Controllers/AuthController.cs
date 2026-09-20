@@ -15,10 +15,16 @@ public class AuthController(
     IClock clock
 ) : ControllerBase
 {
-    /// <response code="401">The Google authorization code or PKCE verifier is invalid or expired.</response>
+    /// <response code="401">
+    ///     The Google authorization code or PKCE verifier is invalid
+    ///     or expired.
+    /// </response>
     [HttpPost("google/token", Name = "ExchangeGoogleCode")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        typeof(ErrorResponse),
+        StatusCodes.Status401Unauthorized
+    )]
     public async Task<ActionResult<AuthTokenResponse>> ExchangeGoogleCode(
         ExchangeGoogleCodeRequest request
     )
@@ -40,26 +46,36 @@ public class AuthController(
                 )
             );
         }
-        catch (Exception ex) when (ex is InvalidJwtException or GoogleTokenExchangeException)
+        catch (Exception ex)
+            when (ex is InvalidJwtException or GoogleTokenExchangeException)
         {
-            return Unauthorized(new ErrorResponse("Google authorization failed."));
+            return Unauthorized(
+                new ErrorResponse("Google authorization failed.")
+            );
         }
     }
 
     /// <response code="401">The refresh token is invalid, expired, or revoked.</response>
     [HttpPost("refresh", Name = "RefreshToken")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<RefreshTokenResponse>> Refresh(RefreshTokenRequest request)
+    [ProducesResponseType(
+        typeof(ErrorResponse),
+        StatusCodes.Status401Unauthorized
+    )]
+    public async Task<ActionResult<RefreshTokenResponse>> Refresh(
+        RefreshTokenRequest request
+    )
     {
-        var tokens = await authTokenService.RefreshAsync(request.RefreshTokenSecret);
+        var tokens = await authTokenService.RefreshAsync(
+            request.RefreshTokenSecret
+        );
 
         if (tokens is null)
-        {
             return Unauthorized(
-                new ErrorResponse("Refresh token is invalid, expired, or revoked.")
+                new ErrorResponse(
+                    "Refresh token is invalid, expired, or revoked."
+                )
             );
-        }
 
         return Ok(
             new RefreshTokenResponse(
@@ -70,6 +86,8 @@ public class AuthController(
         );
     }
 
-    private int ExpiresInSeconds(DateTimeOffset expiresAt) =>
-        (int)Math.Round((expiresAt - clock.UtcNow).TotalSeconds);
+    private int ExpiresInSeconds(DateTimeOffset expiresAt)
+    {
+        return (int)Math.Round((expiresAt - clock.UtcNow).TotalSeconds);
+    }
 }

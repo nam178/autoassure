@@ -6,8 +6,9 @@ namespace A2.Server.Controllers;
 /// <summary>Mapping between Activity Contracts and domain Models.</summary>
 public static partial class ContractMapper
 {
-    public static ActivityResponse ToResponse(this Activity activity) =>
-        new()
+    public static ActivityResponse ToResponse(this Activity activity)
+    {
+        return new ActivityResponse
         {
             Id = activity.Id,
             ScenarioId = activity.ScenarioId,
@@ -20,4 +21,5 @@ public static partial class ContractMapper
             CreatedAt = activity.CreatedAt,
             UpdatedAt = activity.UpdatedAt,
         };
+    }
 }

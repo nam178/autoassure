@@ -32,8 +32,12 @@ public class DynamoDbEvidenceDefinitionRepository(
                                 TableName = ApplicationTableName,
                                 Key = new Dictionary<string, AttributeValue>
                                 {
-                                    ["OrganizationId"] = new(evidence.OrganizationId.ToString()),
-                                    ["Id"] = new(evidence.ApplicationId.ToString()),
+                                    ["OrganizationId"] = new(
+                                        evidence.OrganizationId.ToString()
+                                    ),
+                                    ["Id"] = new(
+                                        evidence.ApplicationId.ToString()
+                                    ),
                                 },
                                 ConditionExpression = "attribute_exists(Id)",
                             },
@@ -88,12 +92,17 @@ public class DynamoDbEvidenceDefinitionRepository(
                     {
                         ["#name"] = "Name",
                     },
-                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    ExpressionAttributeValues = new Dictionary<
+                        string,
+                        AttributeValue
+                    >
                     {
                         [":name"] = new(fields.Name),
                         [":description"] = new(fields.Description),
                         [":exampleValue"] = new(fields.ExampleValue),
-                        [":updatedByUserId"] = new(fields.UpdatedByUserId.ToString()),
+                        [":updatedByUserId"] = new(
+                            fields.UpdatedByUserId.ToString()
+                        ),
                         [":updatedAt"] = new(fields.UpdatedAt.ToString("O")),
                     },
                 }
@@ -116,8 +125,12 @@ public class DynamoDbEvidenceDefinitionRepository(
             {
                 TableName = TableName,
                 IndexName = IdIndexName,
-                KeyConditionExpression = "OrganizationId = :organizationId AND Id = :id",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                KeyConditionExpression =
+                    "OrganizationId = :organizationId AND Id = :id",
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":organizationId"] = new(organizationId.ToString()),
                     [":id"] = new(evidenceDefinitionId.ToString()),
@@ -126,7 +139,9 @@ public class DynamoDbEvidenceDefinitionRepository(
             }
         );
 
-        return response.Items.Count > 0 ? response.Items[0].ToEvidenceDefinition() : null;
+        return response.Items.Count > 0
+            ? response.Items[0].ToEvidenceDefinition()
+            : null;
     }
 
     public async Task<IReadOnlyList<EvidenceDefinition>> ListByApplicationAsync(
@@ -138,11 +153,18 @@ public class DynamoDbEvidenceDefinitionRepository(
             new QueryRequest
             {
                 TableName = TableName,
-                KeyConditionExpression = "OrganizationId_ApplicationId = :partitionKey",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                KeyConditionExpression =
+                    "OrganizationId_ApplicationId = :partitionKey",
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":partitionKey"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            applicationId
+                        )
                     ),
                 },
                 ConsistentRead = true,
@@ -152,6 +174,8 @@ public class DynamoDbEvidenceDefinitionRepository(
             }
         );
 
-        return response.Items.Select(item => item.ToEvidenceDefinition()).ToList();
+        return response
+            .Items.Select(item => item.ToEvidenceDefinition())
+            .ToList();
     }
 }

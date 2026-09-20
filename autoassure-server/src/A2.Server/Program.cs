@@ -12,9 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 var ssmParameterPath = builder.Configuration["AUTOASSURE_SSM_PARAMETER_PATH"];
 if (!DesignTimeBuild.IsActive && !string.IsNullOrEmpty(ssmParameterPath))
-{
     builder.Configuration.AddSystemsManager(ssmParameterPath);
-}
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -22,9 +20,14 @@ builder.Services.AddOpenApi(options =>
 {
     options.AddSchemaTransformer<NotBlankSchemaTransformer>();
     options.AddOperationTransformer<RequestValidationOperationTransformer>();
+    options.AddOperationTransformer<ArchivedOrganizationOperationTransformer>();
 });
 builder
-    .Services.AddControllers()
+    .Services.AddControllers(options =>
+    {
+        // Register the global filter that blocks writes to archived organizations
+        options.Filters.Add<RequireActiveOrganizationFilter>();
+    })
     .ConfigureApiBehaviorOptions(options =>
     {
         // When automatic DataAnnotations validation (e.g. [NotBlank]) fails, then respond with the
@@ -41,26 +44,67 @@ builder
             return new BadRequestObjectResult(new ErrorResponse(message));
         };
     })
-    .AddJsonOptions(options => options.JsonSerializerOptions.RespectNullableAnnotations = true);
-builder.Services.Configure<GoogleAuthOptions>(builder.Configuration.GetSection("OAuth:Google"));
-builder.Services.Configure<AuthTokenOptions>(builder.Configuration.GetSection("Auth"));
-builder.Services.Configure<DynamoDbOptions>(builder.Configuration.GetSection("DynamoDb"));
-builder.Services.AddSingleton<IGoogleIdTokenValidator, GoogleIdTokenValidator>();
-builder.Services.AddHttpClient<IGoogleTokenExchangeService, GoogleTokenExchangeService>();
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.RespectNullableAnnotations = true
+    );
+builder.Services.Configure<GoogleAuthOptions>(
+    builder.Configuration.GetSection("OAuth:Google")
+);
+builder.Services.Configure<AuthTokenOptions>(
+    builder.Configuration.GetSection("Auth")
+);
+builder.Services.Configure<DynamoDbOptions>(
+    builder.Configuration.GetSection("DynamoDb")
+);
+builder.Services.AddSingleton<
+    IGoogleIdTokenValidator,
+    GoogleIdTokenValidator
+>();
+builder.Services.AddHttpClient<
+    IGoogleTokenExchangeService,
+    GoogleTokenExchangeService
+>();
 builder.Services.AddSingleton<IClock, SystemClock>();
-builder.Services.AddScoped<IRefreshTokenRepository, DynamoDbRefreshTokenRepository>();
+builder.Services.AddScoped<
+    IRefreshTokenRepository,
+    DynamoDbRefreshTokenRepository
+>();
 builder.Services.AddScoped<IUserRepository, DynamoDbUserRepository>();
-builder.Services.AddScoped<IOrganizationRepository, DynamoDbOrganizationRepository>();
-builder.Services.AddScoped<IOrganizationUserRepository, DynamoDbOrganizationUserRepository>();
+builder.Services.AddScoped<
+    IOrganizationRepository,
+    DynamoDbOrganizationRepository
+>();
+builder.Services.AddScoped<
+    IOrganizationUserRepository,
+    DynamoDbOrganizationUserRepository
+>();
 builder.Services.AddScoped<IGoogleUserSyncService, GoogleUserSyncService>();
 builder.Services.AddScoped<IAuthTokenService, AuthTokenService>();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ICallerOrganizationService, CallerOrganizationService>();
-builder.Services.AddScoped<IApplicationRepository, DynamoDbApplicationRepository>();
-builder.Services.AddScoped<IEnvironmentRepository, DynamoDbEnvironmentRepository>();
-builder.Services.AddScoped<IEnvironmentVariableRepository, DynamoDbEnvironmentVariableRepository>();
-builder.Services.AddScoped<IPreconditionRepository, DynamoDbPreconditionRepository>();
-builder.Services.AddScoped<IEvidenceDefinitionRepository, DynamoDbEvidenceDefinitionRepository>();
+builder.Services.AddScoped<
+    ICallerOrganizationService,
+    CallerOrganizationService
+>();
+builder.Services.AddScoped<
+    IApplicationRepository,
+    DynamoDbApplicationRepository
+>();
+builder.Services.AddScoped<
+    IEnvironmentRepository,
+    DynamoDbEnvironmentRepository
+>();
+builder.Services.AddScoped<
+    IEnvironmentVariableRepository,
+    DynamoDbEnvironmentVariableRepository
+>();
+builder.Services.AddScoped<
+    IPreconditionRepository,
+    DynamoDbPreconditionRepository
+>();
+builder.Services.AddScoped<
+    IEvidenceDefinitionRepository,
+    DynamoDbEvidenceDefinitionRepository
+>();
 builder.Services.AddScoped<IScenarioRepository, DynamoDbScenarioRepository>();
 builder.Services.AddScoped<IActivityRepository, DynamoDbActivityRepository>();
 builder.Services.AddScoped<IRunRepository, DynamoDbRunRepository>();
@@ -69,7 +113,9 @@ builder.Services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
 builder.Services.AddHostedService<ConfigValidationHostedService>();
 
 // Allow CORS, allowing the web page to invoke this APIs directly
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+var allowedOrigins =
+    builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? [];
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -85,7 +131,9 @@ builder
         // Keep JWT claim types as-issued (e.g. "sub") instead of ASP.NET's default remapping to
         // long-form ClaimTypes URIs, so ClaimsPrincipalExtensions.GetUserId() can read Sub directly.
         jwtOptions.MapInboundClaims = false;
-        var tokenOptions = builder.Configuration.GetSection("Auth").Get<AuthTokenOptions>()!;
+        var tokenOptions = builder
+            .Configuration.GetSection("Auth")
+            .Get<AuthTokenOptions>()!;
         jwtOptions.TokenValidationParameters = new TokenValidationParameters
         {
             ValidIssuer = tokenOptions.Issuer,
@@ -100,10 +148,7 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
 app.UseHttpsRedirection();
 app.UseCors();
@@ -112,4 +157,6 @@ app.UseAuthorization();
 app.MapControllers();
 app.Run();
 
-public abstract partial class Program { }
+public abstract partial class Program
+{
+}

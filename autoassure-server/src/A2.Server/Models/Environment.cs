@@ -1,7 +1,10 @@
 namespace A2.Server.Models;
 
-/// <summary>A deployment target (e.g. "Staging", "Production") that a test execution runs against.
-/// Variables live separately — see <see cref="EnvironmentVariable"/>.</summary>
+/// <summary>
+///     A deployment target (e.g. "Staging", "Production") that a test execution
+///     runs against.
+///     Variables live separately — see <see cref="EnvironmentVariable" />.
+/// </summary>
 public record Environment
 {
     public required Guid Id { get; init; }
@@ -15,7 +18,10 @@ public record Environment
     public required DateTimeOffset UpdatedAt { get; init; }
 }
 
-/// <summary>Whether an Environment is a live Production system or a non-production one (staging, dev, ...).</summary>
+/// <summary>
+///     Whether an Environment is a live Production system or a non-production
+///     one (staging, dev, ...).
+/// </summary>
 public enum EnvironmentClassification
 {
     Production,

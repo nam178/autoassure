@@ -1,6 +1,9 @@
 namespace A2.Server.Repositories;
 
-/// <summary>The only Activity fields <see cref="IActivityRepository.TryUpdateAsync"/> is allowed to change.</summary>
+/// <summary>
+///     The only Activity fields
+///     <see cref="IActivityRepository.TryUpdateAsync" /> is allowed to change.
+/// </summary>
 public record ActivityUpdatableFields
 {
     public required string Description { get; init; }

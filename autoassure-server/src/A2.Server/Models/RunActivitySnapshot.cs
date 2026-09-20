@@ -5,15 +5,23 @@ public record RunActivitySnapshot
     public required RunSnapshotSource Source { get; init; }
     public required int Order { get; init; }
     public required string Description { get; init; }
-    public required IReadOnlyList<RunPreconditionSnapshot> Preconditions { get; init; }
-    public required IReadOnlyList<RunEvidenceDefinitionSnapshot> EvidenceDefinitions { get; init; }
+
+    public required IReadOnlyList<RunPreconditionSnapshot> Preconditions
+    {
+        get;
+        init;
+    }
+
+    public required IReadOnlyList<RunEvidenceDefinitionSnapshot>
+        EvidenceDefinitions { get; init; }
 
     public static RunActivitySnapshot FromActivity(
         Activity activity,
         IReadOnlyList<RunPreconditionSnapshot> preconditions,
         IReadOnlyList<RunEvidenceDefinitionSnapshot> evidenceDefinitions
-    ) =>
-        new()
+    )
+    {
+        return new RunActivitySnapshot
         {
             Source = new RunSnapshotSource
             {
@@ -28,4 +36,5 @@ public record RunActivitySnapshot
             Preconditions = preconditions,
             EvidenceDefinitions = evidenceDefinitions,
         };
+    }
 }

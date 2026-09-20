@@ -7,8 +7,11 @@ using Microsoft.Extensions.Options;
 
 namespace A2.Server.Tests.Repositories;
 
-/// <summary>Integration tests for <see cref="DynamoDbEvidenceDefinitionRepository"/> against DynamoDB
-/// Local, covering read/write mapping only.</summary>
+/// <summary>
+///     Integration tests for <see cref="DynamoDbEvidenceDefinitionRepository" />
+///     against DynamoDB
+///     Local, covering read/write mapping only.
+/// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
     DynamoDbLocalFixture dynamoDbLocalFixture
@@ -45,7 +48,10 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -58,14 +64,23 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
                 TableName = TableName,
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -74,10 +89,16 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
                         IndexName = "IdIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("Id", KeyType.RANGE),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -94,7 +115,10 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
 
     // Puts an Application row directly so TrySaveAsync's ConditionCheck against the Applications table
     // succeeds without depending on IApplicationRepository.
-    private async Task PutApplicationAsync(Guid organizationId, Guid applicationId)
+    private async Task PutApplicationAsync(
+        Guid organizationId,
+        Guid applicationId
+    )
     {
         await _client.PutItemAsync(
             new PutItemRequest
@@ -113,23 +137,27 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
         Guid organizationId,
         Guid applicationId,
         Guid? id = null
-    ) =>
-        new()
+    )
+    {
+        return new EvidenceDefinition
         {
             Id = id ?? Guid.CreateVersion7(),
             OrganizationId = organizationId,
             ApplicationId = applicationId,
             Name = "Order Confirmation ID",
-            Description = "The confirmation ID returned after placing an order.",
+            Description =
+                "The confirmation ID returned after placing an order.",
             ExampleValue = "ORD-12345",
             CreatedByUserId = Guid.CreateVersion7(),
             UpdatedByUserId = Guid.CreateVersion7(),
             CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             UpdatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
         };
+    }
 
     [Fact]
-    public async Task TrySaveAsync_WhenApplicationExists_RoundTripsThroughGetById()
+    public async Task
+        TrySaveAsync_WhenApplicationExists_RoundTripsThroughGetById()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -139,7 +167,10 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
 
         // test
         var saved = await _repository.TrySaveAsync(evidence);
-        var result = await _repository.GetByIdAsync(organizationId, evidence.Id);
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            evidence.Id
+        );
 
         // verify
         Assert.True(saved);
@@ -189,7 +220,10 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
             evidence.Id,
             fields
         );
-        var result = await _repository.GetByIdAsync(organizationId, evidence.Id);
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            evidence.Id
+        );
 
         // verify
         Assert.True(succeeded);
@@ -207,7 +241,8 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
     }
 
     [Fact]
-    public async Task TryUpdateAsync_WhenEvidenceDefinitionDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
+    public async Task
+        TryUpdateAsync_WhenEvidenceDefinitionDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -225,7 +260,15 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
                 Description = "Updated description.",
                 ExampleValue = "ORD-99999",
                 UpdatedByUserId = Guid.CreateVersion7(),
-                UpdatedAt = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
+                UpdatedAt = new DateTimeOffset(
+                    2026,
+                    2,
+                    1,
+                    0,
+                    0,
+                    0,
+                    TimeSpan.Zero
+                ),
             }
         );
         var result = await _repository.GetByIdAsync(organizationId, id);
@@ -242,14 +285,18 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
         var organizationId = Guid.CreateVersion7();
 
         // test
-        var result = await _repository.GetByIdAsync(organizationId, Guid.CreateVersion7());
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            Guid.CreateVersion7()
+        );
 
         // verify
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task GetByIdAsync_WhenScopedToDifferentOrganization_ReturnsNull()
+    public async Task
+        GetByIdAsync_WhenScopedToDifferentOrganization_ReturnsNull()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -260,14 +307,18 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
         await _repository.TrySaveAsync(evidence);
 
         // test
-        var result = await _repository.GetByIdAsync(otherOrganizationId, evidence.Id);
+        var result = await _repository.GetByIdAsync(
+            otherOrganizationId,
+            evidence.Id
+        );
 
         // verify
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task ListByApplicationAsync_WhenMultipleEvidenceDefinitionsExist_ReturnsOnlyThoseForApplication()
+    public async Task
+        ListByApplicationAsync_WhenMultipleEvidenceDefinitionsExist_ReturnsOnlyThoseForApplication()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -278,13 +329,19 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
 
         var evidence1 = CreateEvidenceDefinition(organizationId, applicationId);
         var evidence2 = CreateEvidenceDefinition(organizationId, applicationId);
-        var otherEvidence = CreateEvidenceDefinition(organizationId, otherApplicationId);
+        var otherEvidence = CreateEvidenceDefinition(
+            organizationId,
+            otherApplicationId
+        );
         await _repository.TrySaveAsync(evidence1);
         await _repository.TrySaveAsync(evidence2);
         await _repository.TrySaveAsync(otherEvidence);
 
         // test
-        var result = await _repository.ListByApplicationAsync(organizationId, applicationId);
+        var result = await _repository.ListByApplicationAsync(
+            organizationId,
+            applicationId
+        );
 
         // verify
         Assert.Equal(2, result.Count);
@@ -293,14 +350,18 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
     }
 
     [Fact]
-    public async Task ListByApplicationAsync_WhenNoEvidenceDefinitionsExist_ReturnsEmpty()
+    public async Task
+        ListByApplicationAsync_WhenNoEvidenceDefinitionsExist_ReturnsEmpty()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
 
         // test
-        var result = await _repository.ListByApplicationAsync(organizationId, applicationId);
+        var result = await _repository.ListByApplicationAsync(
+            organizationId,
+            applicationId
+        );
 
         // verify
         Assert.Empty(result);

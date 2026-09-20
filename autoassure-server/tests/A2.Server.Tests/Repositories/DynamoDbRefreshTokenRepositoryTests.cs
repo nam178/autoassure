@@ -8,12 +8,17 @@ using Microsoft.Extensions.Options;
 
 namespace A2.Server.Tests.Repositories;
 
-/// <summary>Integration tests for <see cref="DynamoDbRefreshTokenRepository"/> against DynamoDB Local,
-/// covering read/write mapping only — the atomic-revoke race is covered by the fakes in
-/// <c>AuthTokenServiceTests</c> (A2.Server.UnitTests) instead.</summary>
+/// <summary>
+///     Integration tests for <see cref="DynamoDbRefreshTokenRepository" /> against
+///     DynamoDB Local,
+///     covering read/write mapping only — the atomic-revoke race is covered by the
+///     fakes in
+///     <c>AuthTokenServiceTests</c> (A2.Server.UnitTests) instead.
+/// </summary>
 [Collection("DynamoDbLocal")]
-public sealed class DynamoDbRefreshTokenRepositoryTests(DynamoDbLocalFixture dynamoDbLocalFixture)
-    : IAsyncLifetime
+public sealed class DynamoDbRefreshTokenRepositoryTests(
+    DynamoDbLocalFixture dynamoDbLocalFixture
+) : IAsyncLifetime
 {
     private const string TableName = "RefreshTokens";
 
@@ -25,17 +30,28 @@ public sealed class DynamoDbRefreshTokenRepositoryTests(DynamoDbLocalFixture dyn
         _client = dynamoDbLocalFixture.CreateClient();
         _repository = new DynamoDbRefreshTokenRepository(
             _client,
-            Options.Create(new DynamoDbOptions { RefreshTokenTableName = TableName })
+            Options.Create(
+                new DynamoDbOptions { RefreshTokenTableName = TableName }
+            )
         );
 
         await _client.CreateTableAsync(
             new CreateTableRequest
             {
                 TableName = TableName,
-                KeySchema = [new KeySchemaElement("RefreshTokenSecretHash", KeyType.HASH)],
+                KeySchema =
+                [
+                    new KeySchemaElement(
+                        "RefreshTokenSecretHash",
+                        KeyType.HASH
+                    ),
+                ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("RefreshTokenSecretHash", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "RefreshTokenSecretHash",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -49,7 +65,8 @@ public sealed class DynamoDbRefreshTokenRepositoryTests(DynamoDbLocalFixture dyn
     }
 
     [Fact]
-    public async Task SaveAsync_WhenTokenHasAllFields_RoundTripsThroughGetByHash()
+    public async Task
+        SaveAsync_WhenTokenHasAllFields_RoundTripsThroughGetByHash()
     {
         // setup
         var token = new RefreshToken(
@@ -80,7 +97,8 @@ public sealed class DynamoDbRefreshTokenRepositoryTests(DynamoDbLocalFixture dyn
     }
 
     [Fact]
-    public async Task GetByHashAsync_WhenStoredTokenIsRevoked_RoundTripsRevokedAt()
+    public async Task
+        GetByHashAsync_WhenStoredTokenIsRevoked_RoundTripsRevokedAt()
     {
         // setup
         var token = new RefreshToken(
@@ -98,7 +116,9 @@ public sealed class DynamoDbRefreshTokenRepositoryTests(DynamoDbLocalFixture dyn
                 TableName = TableName,
                 Item = new Dictionary<string, AttributeValue>
                 {
-                    ["RefreshTokenSecretHash"] = new(token.RefreshTokenSecretHash),
+                    ["RefreshTokenSecretHash"] = new(
+                        token.RefreshTokenSecretHash
+                    ),
                     ["UserId"] = new(token.UserId.ToString()),
                     ["Email"] = new(token.Email),
                     ["ExpiresAt"] = new()
@@ -121,7 +141,8 @@ public sealed class DynamoDbRefreshTokenRepositoryTests(DynamoDbLocalFixture dyn
     }
 
     [Fact]
-    public async Task TryUpdateAsync_WhenTokenIsNotYetRevoked_SetsRevokedAtAndReturnsTrue()
+    public async Task
+        TryUpdateAsync_WhenTokenIsNotYetRevoked_SetsRevokedAtAndReturnsTrue()
     {
         // setup
         var token = new RefreshToken(
@@ -145,7 +166,8 @@ public sealed class DynamoDbRefreshTokenRepositoryTests(DynamoDbLocalFixture dyn
     }
 
     [Fact]
-    public async Task TryUpdateAsync_WhenTokenDoesNotExist_ReturnsFalseAndDoesNotCreateRow()
+    public async Task
+        TryUpdateAsync_WhenTokenDoesNotExist_ReturnsFalseAndDoesNotCreateRow()
     {
         // test
         var result = await _repository.TryUpdateAsync(
@@ -178,7 +200,9 @@ public sealed class DynamoDbRefreshTokenRepositoryTests(DynamoDbLocalFixture dyn
                 TableName = TableName,
                 Item = new Dictionary<string, AttributeValue>
                 {
-                    ["RefreshTokenSecretHash"] = new(token.RefreshTokenSecretHash),
+                    ["RefreshTokenSecretHash"] = new(
+                        token.RefreshTokenSecretHash
+                    ),
                     ["UserId"] = new(token.UserId.ToString()),
                     ["Email"] = new(token.Email),
                     ["ExpiresAt"] = new()

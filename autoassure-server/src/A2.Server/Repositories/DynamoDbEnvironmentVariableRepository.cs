@@ -40,10 +40,11 @@ public class DynamoDbEnvironmentVariableRepository(
                                 Key = new Dictionary<string, AttributeValue>
                                 {
                                     ["OrganizationId_ApplicationId"] = new(
-                                        DynamoDbMapper.ApplicationScopedPartitionKey(
-                                            organizationId,
-                                            applicationId
-                                        )
+                                        DynamoDbMapper
+                                            .ApplicationScopedPartitionKey(
+                                                organizationId,
+                                                applicationId
+                                            )
                                     ),
                                     ["Id"] = new(environmentId.ToString()),
                                 },
@@ -58,7 +59,10 @@ public class DynamoDbEnvironmentVariableRepository(
                                 Key = new Dictionary<string, AttributeValue>
                                 {
                                     ["OrganizationId_EnvironmentId"] = new(
-                                        GetPartitionKey(organizationId, environmentId)
+                                        GetPartitionKey(
+                                            organizationId,
+                                            environmentId
+                                        )
                                     ),
                                     ["Key"] = new(key),
                                 },
@@ -67,17 +71,32 @@ public class DynamoDbEnvironmentVariableRepository(
                                     + "UpdatedByUserId = :updatedByUserId, UpdatedAt = :now, "
                                     + "CreatedAt = if_not_exists(CreatedAt, :now), "
                                     + "CreatedByUserId = if_not_exists(CreatedByUserId, :updatedByUserId)",
-                                ExpressionAttributeNames = new Dictionary<string, string>
+                                ExpressionAttributeNames = new Dictionary<
+                                    string,
+                                    string
+                                >
                                 {
                                     ["#value"] = "Value",
                                 },
-                                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                                ExpressionAttributeValues = new Dictionary<
+                                    string,
+                                    AttributeValue
+                                >
                                 {
                                     [":value"] = new(value),
-                                    [":isSensitive"] = new() { BOOL = isSensitive },
-                                    [":organizationId"] = new(organizationId.ToString()),
-                                    [":environmentId"] = new(environmentId.ToString()),
-                                    [":updatedByUserId"] = new(updatedByUserId.ToString()),
+                                    [":isSensitive"] = new()
+                                    {
+                                        BOOL = isSensitive,
+                                    },
+                                    [":organizationId"] = new(
+                                        organizationId.ToString()
+                                    ),
+                                    [":environmentId"] = new(
+                                        environmentId.ToString()
+                                    ),
+                                    [":updatedByUserId"] = new(
+                                        updatedByUserId.ToString()
+                                    ),
                                     [":now"] = new(now),
                                 },
                             },
@@ -93,27 +112,39 @@ public class DynamoDbEnvironmentVariableRepository(
         }
     }
 
-    public async Task<IReadOnlyList<EnvironmentVariable>> ListByEnvironmentAsync(
-        Guid organizationId,
-        Guid environmentId
-    )
+    public async Task<
+        IReadOnlyList<EnvironmentVariable>
+    > ListByEnvironmentAsync(Guid organizationId, Guid environmentId)
     {
         var response = await client.QueryAsync(
             new QueryRequest
             {
                 TableName = TableName,
-                KeyConditionExpression = "OrganizationId_EnvironmentId = :partitionKey",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                KeyConditionExpression =
+                    "OrganizationId_EnvironmentId = :partitionKey",
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
-                    [":partitionKey"] = new(GetPartitionKey(organizationId, environmentId)),
+                    [":partitionKey"] = new(
+                        GetPartitionKey(organizationId, environmentId)
+                    ),
                 },
                 ConsistentRead = true,
             }
         );
 
-        return response.Items.Select(item => item.ToEnvironmentVariable()).ToList();
+        return response
+            .Items.Select(item => item.ToEnvironmentVariable())
+            .ToList();
     }
 
-    private static string GetPartitionKey(Guid organizationId, Guid environmentId) =>
-        $"{organizationId}_{environmentId}";
+    private static string GetPartitionKey(
+        Guid organizationId,
+        Guid environmentId
+    )
+    {
+        return $"{organizationId}_{environmentId}";
+    }
 }

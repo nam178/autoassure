@@ -16,7 +16,10 @@ public class EvidenceDefinitionsController(
     IClock clock
 ) : ControllerBase
 {
-    /// <response code="404">No Application with the given applicationId exists in the caller's Organization.</response>
+    /// <response code="404">
+    ///     No Application with the given applicationId exists in the
+    ///     caller's Organization.
+    /// </response>
     [HttpPost(
         "applications/{applicationId:guid}/evidence-definitions",
         Name = "CreateEvidenceDefinition"
@@ -28,7 +31,9 @@ public class EvidenceDefinitionsController(
         CreateEvidenceDefinitionRequest request
     )
     {
-        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
+        var callerOrganization =
+            await callerOrganizationService.GetCallerOrganizationAsync();
+        var organizationId = callerOrganization.Id;
         var userId = User.GetUserId();
         var now = clock.UtcNow;
         var evidence = new EvidenceDefinition
@@ -48,9 +53,7 @@ public class EvidenceDefinitionsController(
         // Application existence is checked here via the save's condition expression instead of a
         // separate lookup, so there's no gap for the app to be deleted in between.
         if (!await evidenceDefinitionRepository.TrySaveAsync(evidence))
-        {
             return NotFound();
-        }
         return Ok(evidence.ToResponse());
     }
 
@@ -58,20 +61,25 @@ public class EvidenceDefinitionsController(
         "applications/{applicationId:guid}/evidence-definitions",
         Name = "ListEvidenceDefinitions"
     )]
-    public async Task<ActionResult<IReadOnlyList<EvidenceDefinitionResponse>>> List(
-        Guid applicationId
-    )
+    public async Task<
+        ActionResult<IReadOnlyList<EvidenceDefinitionResponse>>
+    > List(Guid applicationId)
     {
-        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
-        var evidenceDefinitions = await evidenceDefinitionRepository.ListByApplicationAsync(
-            organizationId,
-            applicationId
-        );
+        var callerOrganization =
+            await callerOrganizationService.GetCallerOrganizationAsync();
+        var organizationId = callerOrganization.Id;
+        var evidenceDefinitions =
+            await evidenceDefinitionRepository.ListByApplicationAsync(
+                organizationId,
+                applicationId
+            );
         return Ok(evidenceDefinitions.Select(e => e.ToResponse()).ToList());
     }
 
-    /// <response code="404">No EvidenceDefinition with the given evidenceDefinitionId exists in the
-    /// caller's Organization.</response>
+    /// <response code="404">
+    ///     No EvidenceDefinition with the given evidenceDefinitionId exists in the
+    ///     caller's Organization.
+    /// </response>
     [HttpPatch(
         "evidence-definitions/{evidenceDefinitionId:guid}",
         Name = "UpdateEvidenceDefinition"
@@ -83,15 +91,14 @@ public class EvidenceDefinitionsController(
         UpdateEvidenceDefinitionRequest request
     )
     {
-        var organizationId = await callerOrganizationService.GetOrganizationIdAsync();
+        var callerOrganization =
+            await callerOrganizationService.GetCallerOrganizationAsync();
+        var organizationId = callerOrganization.Id;
         var existing = await evidenceDefinitionRepository.GetByIdAsync(
             organizationId,
             evidenceDefinitionId
         );
-        if (existing is null)
-        {
-            return NotFound();
-        }
+        if (existing is null) return NotFound();
 
         var fields = new EvidenceDefinitionUpdatableFields
         {
@@ -107,10 +114,7 @@ public class EvidenceDefinitionsController(
             evidenceDefinitionId,
             fields
         );
-        if (!updateSucceeded)
-        {
-            return NotFound();
-        }
+        if (!updateSucceeded) return NotFound();
         var updated = existing with
         {
             Name = fields.Name,

@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using A2.Server.Contracts;
+using A2.Server.Models;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -12,12 +13,21 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
+using ActivityResult = A2.Server.Contracts.ActivityResult;
+using ActivityResultStatus = A2.Server.Contracts.ActivityResultStatus;
+using EnvironmentClassification = A2.Server.Contracts.EnvironmentClassification;
+using RunStatus = A2.Server.Contracts.RunStatus;
 
 namespace A2.Server.Tests.Controllers;
 
-/// <summary>Integration tests for <see cref="A2.Server.Controllers.RunStatusUpdatesController"/> over
-/// real HTTP, against DynamoDB Local: Append Run Status Update, List Run Status Updates, and the full
-/// create -> start -> append -> poll -> end round trip a client actually drives.</summary>
+/// <summary>
+///     Integration tests for
+///     <see cref="A2.Server.Controllers.RunStatusUpdatesController" /> over
+///     real HTTP, against DynamoDB Local: Append Run Status Update, List Run
+///     Status Updates, and the full
+///     create -> start -> append -> poll -> end round trip a client actually
+///     drives.
+/// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class RunStatusUpdatesControllerTests
     : IClassFixture<WebApplicationFactory<Program>>,
@@ -37,32 +47,40 @@ public sealed class RunStatusUpdatesControllerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration(
-                (_, config) =>
-                    config.AddInMemoryCollection(
-                        new Dictionary<string, string?>
-                        {
-                            ["Auth:SigningKey"] = SigningKey,
-                            ["DynamoDb:ApplicationTableName"] = "Applications",
-                            ["DynamoDb:EnvironmentTableName"] = "Environments",
-                            ["DynamoDb:EnvironmentVariableTableName"] = "EnvironmentVariables",
-                            ["DynamoDb:PreconditionTableName"] = "Preconditions",
-                            ["DynamoDb:EvidenceDefinitionTableName"] = "EvidenceDefinitions",
-                            ["DynamoDb:ScenarioTableName"] = "Scenarios",
-                            ["DynamoDb:ScenariosByFolderTableName"] = "ScenariosByFolder",
-                            ["DynamoDb:ScenariosByTagTableName"] = "ScenariosByTag",
-                            ["DynamoDb:ActivityTableName"] = "Activities",
-                            ["DynamoDb:RunTableName"] = "Runs",
-                            ["DynamoDb:RunningRunTableName"] = "RunningRuns",
-                            ["DynamoDb:OrganizationTableName"] = "Organizations",
-                            ["DynamoDb:OrganizationUserTableName"] = "OrganizationUsers",
-                        }
-                    )
+            builder.ConfigureAppConfiguration((_, config) =>
+                config.AddInMemoryCollection(
+                    new Dictionary<string, string?>
+                    {
+                        ["Auth:SigningKey"] = SigningKey,
+                        ["DynamoDb:ApplicationTableName"] = "Applications",
+                        ["DynamoDb:EnvironmentTableName"] = "Environments",
+                        ["DynamoDb:EnvironmentVariableTableName"] =
+                            "EnvironmentVariables",
+                        ["DynamoDb:PreconditionTableName"] =
+                            "Preconditions",
+                        ["DynamoDb:EvidenceDefinitionTableName"] =
+                            "EvidenceDefinitions",
+                        ["DynamoDb:ScenarioTableName"] = "Scenarios",
+                        ["DynamoDb:ScenariosByFolderTableName"] =
+                            "ScenariosByFolder",
+                        ["DynamoDb:ScenariosByTagTableName"] =
+                            "ScenariosByTag",
+                        ["DynamoDb:ActivityTableName"] = "Activities",
+                        ["DynamoDb:RunTableName"] = "Runs",
+                        ["DynamoDb:RunningRunTableName"] = "RunningRuns",
+                        ["DynamoDb:OrganizationTableName"] =
+                            "Organizations",
+                        ["DynamoDb:OrganizationUserTableName"] =
+                            "OrganizationUsers",
+                    }
+                )
             );
             builder.ConfigureServices(services =>
             {
                 _client = dynamoDbLocalFixture.CreateClient();
-                services.Replace(ServiceDescriptor.Singleton<IAmazonDynamoDB>(_client));
+                services.Replace(
+                    ServiceDescriptor.Singleton<IAmazonDynamoDB>(_client)
+                );
             });
         });
     }
@@ -82,7 +100,10 @@ public sealed class RunStatusUpdatesControllerTests
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -95,14 +116,23 @@ public sealed class RunStatusUpdatesControllerTests
                 TableName = "Environments",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -111,10 +141,16 @@ public sealed class RunStatusUpdatesControllerTests
                         IndexName = "IdIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("Id", KeyType.RANGE),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -127,12 +163,18 @@ public sealed class RunStatusUpdatesControllerTests
                 TableName = "EnvironmentVariables",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_EnvironmentId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_EnvironmentId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Key", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_EnvironmentId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_EnvironmentId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Key", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -148,14 +190,23 @@ public sealed class RunStatusUpdatesControllerTests
                 TableName = "Scenarios",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -164,18 +215,30 @@ public sealed class RunStatusUpdatesControllerTests
                         IndexName = "IdIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("Id", KeyType.RANGE),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
 
-        await CreateMappingTableAsync("ScenariosByFolder", "OrganizationId_ApplicationId_Folder");
-        await CreateMappingTableAsync("ScenariosByTag", "OrganizationId_ApplicationId_Tag");
+        await CreateMappingTableAsync(
+            "ScenariosByFolder",
+            "OrganizationId_ApplicationId_Folder"
+        );
+        await CreateMappingTableAsync(
+            "ScenariosByTag",
+            "OrganizationId_ApplicationId_Tag"
+        );
 
         await _client.CreateTableAsync(
             new CreateTableRequest
@@ -183,14 +246,23 @@ public sealed class RunStatusUpdatesControllerTests
                 TableName = "Activities",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ScenarioId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ScenarioId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ScenarioId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ScenarioId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -199,10 +271,16 @@ public sealed class RunStatusUpdatesControllerTests
                         IndexName = "IdIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("Id", KeyType.RANGE),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -215,12 +293,18 @@ public sealed class RunStatusUpdatesControllerTests
                 TableName = "Runs",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("RowKey", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("RowKey", ScalarAttributeType.S),
                     new AttributeDefinition("HeaderId", ScalarAttributeType.S),
                 ],
@@ -231,7 +315,10 @@ public sealed class RunStatusUpdatesControllerTests
                         IndexName = "RunHeaderIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId_ApplicationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("HeaderId", KeyType.RANGE),
                         ],
                         Projection = new Projection
@@ -264,12 +351,18 @@ public sealed class RunStatusUpdatesControllerTests
                 TableName = "RunningRuns",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("RunId", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("RunId", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -281,7 +374,10 @@ public sealed class RunStatusUpdatesControllerTests
             {
                 TableName = "Organizations",
                 KeySchema = [new KeySchemaElement("Id", KeyType.HASH)],
-                AttributeDefinitions = [new AttributeDefinition("Id", ScalarAttributeType.S)],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
@@ -297,7 +393,10 @@ public sealed class RunStatusUpdatesControllerTests
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("UserId", ScalarAttributeType.S),
                 ],
                 GlobalSecondaryIndexes =
@@ -308,66 +407,16 @@ public sealed class RunStatusUpdatesControllerTests
                         KeySchema =
                         [
                             new KeySchemaElement("UserId", KeyType.HASH),
-                            new KeySchemaElement("OrganizationId", KeyType.RANGE),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.RANGE
+                            ),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
-                ],
-                BillingMode = BillingMode.PAY_PER_REQUEST,
-            }
-        );
-    }
-
-    private async Task CreateLibraryTableAsync(string tableName)
-    {
-        await _client.CreateTableAsync(
-            new CreateTableRequest
-            {
-                TableName = tableName,
-                KeySchema =
-                [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
-                    new KeySchemaElement("Id", KeyType.RANGE),
-                ],
-                AttributeDefinitions =
-                [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
-                    new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
-                    },
-                ],
-                BillingMode = BillingMode.PAY_PER_REQUEST,
-            }
-        );
-    }
-
-    private async Task CreateMappingTableAsync(string tableName, string partitionKeyName)
-    {
-        await _client.CreateTableAsync(
-            new CreateTableRequest
-            {
-                TableName = tableName,
-                KeySchema =
-                [
-                    new KeySchemaElement(partitionKeyName, KeyType.HASH),
-                    new KeySchemaElement("ScenarioId", KeyType.RANGE),
-                ],
-                AttributeDefinitions =
-                [
-                    new AttributeDefinition(partitionKeyName, ScalarAttributeType.S),
-                    new AttributeDefinition("ScenarioId", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -394,15 +443,94 @@ public sealed class RunStatusUpdatesControllerTests
                 "OrganizationUsers",
             }
         )
-        {
             await _client.DeleteTableAsync(tableName);
-        }
         _client.Dispose();
+    }
+
+    private async Task CreateLibraryTableAsync(string tableName)
+    {
+        await _client.CreateTableAsync(
+            new CreateTableRequest
+            {
+                TableName = tableName,
+                KeySchema =
+                [
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
+                    new KeySchemaElement("Id", KeyType.RANGE),
+                ],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
+                ],
+                GlobalSecondaryIndexes =
+                [
+                    new GlobalSecondaryIndex
+                    {
+                        IndexName = "IdIndex",
+                        KeySchema =
+                        [
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
+                            new KeySchemaElement("Id", KeyType.RANGE),
+                        ],
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
+                    },
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+            }
+        );
+    }
+
+    private async Task CreateMappingTableAsync(
+        string tableName,
+        string partitionKeyName
+    )
+    {
+        await _client.CreateTableAsync(
+            new CreateTableRequest
+            {
+                TableName = tableName,
+                KeySchema =
+                [
+                    new KeySchemaElement(partitionKeyName, KeyType.HASH),
+                    new KeySchemaElement("ScenarioId", KeyType.RANGE),
+                ],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition(
+                        partitionKeyName,
+                        ScalarAttributeType.S
+                    ),
+                    new AttributeDefinition(
+                        "ScenarioId",
+                        ScalarAttributeType.S
+                    ),
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+            }
+        );
     }
 
     private async Task SeedOrganizationMembershipAsync(Guid userId)
     {
         var organizationId = Guid.CreateVersion7();
+        var now = DateTimeOffset.UtcNow;
         await _client.PutItemAsync(
             new PutItemRequest
             {
@@ -410,6 +538,15 @@ public sealed class RunStatusUpdatesControllerTests
                 Item = new Dictionary<string, AttributeValue>
                 {
                     ["Id"] = new(organizationId.ToString()),
+                    ["Name"] = new("Test Organization"),
+                    ["IsPersonal"] = new() { BOOL = true },
+                    ["CreatedByUserId"] = new(userId.ToString()),
+                    ["UpdatedByUserId"] = new(userId.ToString()),
+                    ["CreatedAt"] = new(now.ToString("O")),
+                    ["UpdatedAt"] = new(now.ToString("O")),
+                    ["LifecycleState"] = new(
+                        LifecycleState.Active.ToString()
+                    ),
                 },
             }
         );
@@ -421,7 +558,7 @@ public sealed class RunStatusUpdatesControllerTests
                 {
                     ["OrganizationId"] = new(organizationId.ToString()),
                     ["UserId"] = new(userId.ToString()),
-                    ["Role"] = new(Models.OrganizationRole.Owner.ToString()),
+                    ["Role"] = new(OrganizationRole.Owner.ToString()),
                     ["CreatedByUserId"] = new(userId.ToString()),
                     ["UpdatedByUserId"] = new(userId.ToString()),
                     ["CreatedAt"] = new(DateTimeOffset.UtcNow.ToString("O")),
@@ -437,11 +574,14 @@ public sealed class RunStatusUpdatesControllerTests
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey)),
             SecurityAlgorithms.HmacSha256
         );
-        var claims = new[] { new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()) };
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+        };
         var token = new JwtSecurityToken(
-            issuer: Issuer,
-            audience: Audience,
-            claims: claims,
+            Issuer,
+            Audience,
+            claims,
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: credentials
         );
@@ -451,10 +591,8 @@ public sealed class RunStatusUpdatesControllerTests
     private HttpClient CreateAuthenticatedClient(Guid userId)
     {
         var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            CreateAccessToken(userId)
-        );
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", CreateAccessToken(userId));
         return client;
     }
 
@@ -471,11 +609,15 @@ public sealed class RunStatusUpdatesControllerTests
             "/applications",
             new CreateApplicationRequest { Name = "Test App", Description = "" }
         );
-        var application = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
+        var application =
+            await response.Content.ReadFromJsonAsync<ApplicationResponse>();
         return application!.Id;
     }
 
-    private static async Task<Guid> CreateEnvironmentAsync(HttpClient client, Guid appId)
+    private static async Task<Guid> CreateEnvironmentAsync(
+        HttpClient client,
+        Guid appId
+    )
     {
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/environments",
@@ -485,11 +627,15 @@ public sealed class RunStatusUpdatesControllerTests
                 Classification = EnvironmentClassification.NonProduction,
             }
         );
-        var environment = await response.Content.ReadFromJsonAsync<EnvironmentResponse>();
+        var environment =
+            await response.Content.ReadFromJsonAsync<EnvironmentResponse>();
         return environment!.Id;
     }
 
-    private static async Task<Guid> CreateScenarioAsync(HttpClient client, Guid appId)
+    private static async Task<Guid> CreateScenarioAsync(
+        HttpClient client,
+        Guid appId
+    )
     {
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
@@ -501,17 +647,22 @@ public sealed class RunStatusUpdatesControllerTests
                 Tags = null,
             }
         );
-        var scenario = await response.Content.ReadFromJsonAsync<ScenarioResponse>();
+        var scenario =
+            await response.Content.ReadFromJsonAsync<ScenarioResponse>();
         return scenario!.Id;
     }
 
-    private static async Task<Guid> CreateActivityAsync(HttpClient client, Guid scenarioId)
+    private static async Task<Guid> CreateActivityAsync(
+        HttpClient client,
+        Guid scenarioId
+    )
     {
         var response = await client.PostAsJsonAsync(
             $"/scenarios/{scenarioId}/activities",
             new CreateActivityRequest { Description = "Click checkout" }
         );
-        var activity = await response.Content.ReadFromJsonAsync<ActivityResponse>();
+        var activity =
+            await response.Content.ReadFromJsonAsync<ActivityResponse>();
         return activity!.Id;
     }
 
@@ -522,7 +673,7 @@ public sealed class RunStatusUpdatesControllerTests
         Guid RunId,
         Guid ScenarioId,
         List<Guid> ActivityIds
-    )> SeedRunningRunAsync(HttpClient client)
+        )> SeedRunningRunAsync(HttpClient client)
     {
         var appId = await CreateApplicationAsync(client);
         var environmentId = await CreateEnvironmentAsync(client, appId);
@@ -535,9 +686,15 @@ public sealed class RunStatusUpdatesControllerTests
 
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",
-            new CreateRunRequest { ScenarioIds = [scenarioId], EnvironmentId = environmentId }
+            new CreateRunRequest
+            {
+                ScenarioIds = [scenarioId],
+                EnvironmentId = environmentId,
+            }
         );
-        var run = (await createResponse.Content.ReadFromJsonAsync<RunResponse>())!;
+        var run = (
+            await createResponse.Content.ReadFromJsonAsync<RunResponse>()
+        )!;
 
         var startResponse = await client.PostAsync(
             $"/applications/{appId}/runs/{run.Id}/start",
@@ -553,7 +710,9 @@ public sealed class RunStatusUpdatesControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(client);
+        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(
+            client
+        );
 
         // test
         var appendResponse = await client.PostAsJsonAsync(
@@ -572,13 +731,17 @@ public sealed class RunStatusUpdatesControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.OK, appendResponse.StatusCode);
-        var appended = await appendResponse.Content.ReadFromJsonAsync<RunStatusUpdateResponse>();
+        var appended =
+            await appendResponse.Content
+                .ReadFromJsonAsync<RunStatusUpdateResponse>();
         Assert.Equal(1, appended!.Seq);
 
         var listResponse = await client.GetAsync(
             $"/applications/{appId}/runs/{runId}/status-updates?after=0"
         );
-        var updates = await listResponse.Content.ReadFromJsonAsync<List<RunStatusUpdateResponse>>();
+        var updates = await listResponse.Content.ReadFromJsonAsync<
+            List<RunStatusUpdateResponse>
+        >();
         var update = Assert.Single(updates!);
         Assert.Equal(activityIds[0], update.ActivityResult!.ActivityId);
         Assert.Equal(ActivityResultStatus.Passed, update.ActivityResult.Status);
@@ -589,7 +752,9 @@ public sealed class RunStatusUpdatesControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(client);
+        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(
+            client
+        );
         var request = new AppendRunStatusUpdateRequest
         {
             Seq = 1,
@@ -600,7 +765,10 @@ public sealed class RunStatusUpdatesControllerTests
                 Status = ActivityResultStatus.Passed,
             },
         };
-        await client.PostAsJsonAsync($"/applications/{appId}/runs/{runId}/status-updates", request);
+        await client.PostAsJsonAsync(
+            $"/applications/{appId}/runs/{runId}/status-updates",
+            request
+        );
 
         // test
         var response = await client.PostAsJsonAsync(
@@ -613,7 +781,9 @@ public sealed class RunStatusUpdatesControllerTests
         var listResponse = await client.GetAsync(
             $"/applications/{appId}/runs/{runId}/status-updates?after=0"
         );
-        var updates = await listResponse.Content.ReadFromJsonAsync<List<RunStatusUpdateResponse>>();
+        var updates = await listResponse.Content.ReadFromJsonAsync<
+            List<RunStatusUpdateResponse>
+        >();
         Assert.Single(updates!);
     }
 
@@ -623,14 +793,17 @@ public sealed class RunStatusUpdatesControllerTests
     [InlineData(ActivityResultStatus.Passed, HttpStatusCode.OK)]
     [InlineData(ActivityResultStatus.Failed, HttpStatusCode.OK)]
     [InlineData(ActivityResultStatus.Skipped, HttpStatusCode.OK)]
-    public async Task Append_WhenActivityResultStatusIsPendingOrRunning_ReturnsBadRequest(
-        ActivityResultStatus status,
-        HttpStatusCode expectedStatus
-    )
+    public async Task
+        Append_WhenActivityResultStatusIsPendingOrRunning_ReturnsBadRequest(
+            ActivityResultStatus status,
+            HttpStatusCode expectedStatus
+        )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(client);
+        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(
+            client
+        );
 
         // test
         var response = await client.PostAsJsonAsync(
@@ -659,7 +832,9 @@ public sealed class RunStatusUpdatesControllerTests
     [InlineData(
         """{"seq":1,"activityResult":{"scenarioId":"11111111-1111-1111-1111-111111111111","activityId":"11111111-1111-1111-1111-111111111111","status":99}}"""
     )] // status out of enum range
-    public async Task Append_WhenRequestHasInvalidShape_ReturnsBadRequest(string rawJson)
+    public async Task Append_WhenRequestHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -711,7 +886,9 @@ public sealed class RunStatusUpdatesControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(client);
+        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(
+            client
+        );
 
         // test
         var response = await client.PostAsJsonAsync(
@@ -735,14 +912,17 @@ public sealed class RunStatusUpdatesControllerTests
     [Theory]
     [InlineData(2000, HttpStatusCode.OK)]
     [InlineData(2001, HttpStatusCode.BadRequest)]
-    public async Task Append_WhenContinuationReasoningLengthAtBoundary_EnforcesLengthLimit(
-        int continuationReasoningLength,
-        HttpStatusCode expectedStatus
-    )
+    public async Task
+        Append_WhenContinuationReasoningLengthAtBoundary_EnforcesLengthLimit(
+            int continuationReasoningLength,
+            HttpStatusCode expectedStatus
+        )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(client);
+        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(
+            client
+        );
 
         // test
         var response = await client.PostAsJsonAsync(
@@ -755,7 +935,10 @@ public sealed class RunStatusUpdatesControllerTests
                     ScenarioId = scenarioId,
                     ActivityId = activityIds[0],
                     Status = ActivityResultStatus.Passed,
-                    ContinuationReasoning = new string('a', continuationReasoningLength),
+                    ContinuationReasoning = new string(
+                        'a',
+                        continuationReasoningLength
+                    ),
                 },
             }
         );
@@ -769,9 +952,10 @@ public sealed class RunStatusUpdatesControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
-        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(client);
+        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(
+            client
+        );
         for (var seq = 1; seq <= 3; seq++)
-        {
             await client.PostAsJsonAsync(
                 $"/applications/{appId}/runs/{runId}/status-updates",
                 new AppendRunStatusUpdateRequest
@@ -785,7 +969,6 @@ public sealed class RunStatusUpdatesControllerTests
                     },
                 }
             );
-        }
 
         // test
         var response = await client.GetAsync(
@@ -793,7 +976,9 @@ public sealed class RunStatusUpdatesControllerTests
         );
 
         // verify
-        var updates = await response.Content.ReadFromJsonAsync<List<RunStatusUpdateResponse>>();
+        var updates = await response.Content.ReadFromJsonAsync<
+            List<RunStatusUpdateResponse>
+        >();
         Assert.Equal([2L, 3L], updates!.Select(u => u.Seq));
     }
 
@@ -814,7 +999,8 @@ public sealed class RunStatusUpdatesControllerTests
     }
 
     [Fact]
-    public async Task FullRoundTrip_CreateStartAppendPollEnd_ClientFoldsTheLogItAppended()
+    public async Task
+        FullRoundTrip_CreateStartAppendPollEnd_ClientFoldsTheLogItAppended()
     {
         // setup -- this walks the exact flow fix_run_design.md section 7 describes: Create, keep the id;
         // List Run Status Updates from 0 and fold; poll again from the last sequence held; End Run.
@@ -827,9 +1013,15 @@ public sealed class RunStatusUpdatesControllerTests
 
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",
-            new CreateRunRequest { ScenarioIds = [scenarioId], EnvironmentId = environmentId }
+            new CreateRunRequest
+            {
+                ScenarioIds = [scenarioId],
+                EnvironmentId = environmentId,
+            }
         );
-        var run = (await createResponse.Content.ReadFromJsonAsync<RunResponse>())!;
+        var run = (
+            await createResponse.Content.ReadFromJsonAsync<RunResponse>()
+        )!;
 
         var startResponse = await client.PostAsync(
             $"/applications/{appId}/runs/{run.Id}/start",
@@ -864,9 +1056,9 @@ public sealed class RunStatusUpdatesControllerTests
             List<RunStatusUpdateResponse>
         >();
         foreach (var update in firstPoll!)
-        {
-            folded[update.ActivityResult!.ActivityId] = update.ActivityResult.Status;
-        }
+            folded[update.ActivityResult!.ActivityId] = update
+                .ActivityResult
+                .Status;
         var lastSeqHeld = firstPoll.Max(u => u.Seq);
 
         var secondAppend = await client.PostAsJsonAsync(
@@ -895,9 +1087,9 @@ public sealed class RunStatusUpdatesControllerTests
         var onlyNewUpdate = Assert.Single(secondPoll!);
         Assert.Equal(2, onlyNewUpdate.Seq);
         foreach (var update in secondPoll!)
-        {
-            folded[update.ActivityResult!.ActivityId] = update.ActivityResult.Status;
-        }
+            folded[update.ActivityResult!.ActivityId] = update
+                .ActivityResult
+                .Status;
 
         var statsResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs/{run.Id}/stats",
@@ -928,7 +1120,9 @@ public sealed class RunStatusUpdatesControllerTests
             folded
         );
 
-        var finalGet = await client.GetAsync($"/applications/{appId}/runs/{run.Id}");
+        var finalGet = await client.GetAsync(
+            $"/applications/{appId}/runs/{run.Id}"
+        );
         var final = await finalGet.Content.ReadFromJsonAsync<RunResponse>();
         Assert.Equal(RunStatus.Completed, final!.Status);
         Assert.Equal(2, final.LastSeq);

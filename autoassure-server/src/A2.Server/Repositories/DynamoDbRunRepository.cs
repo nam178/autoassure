@@ -7,8 +7,10 @@ using Microsoft.Extensions.Options;
 
 namespace A2.Server.Repositories;
 
-public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOptions> options)
-    : IRunRepository
+public class DynamoDbRunRepository(
+    IAmazonDynamoDB client,
+    IOptions<DynamoDbOptions> options
+) : IRunRepository
 {
     private string RunTableName => options.Value.RunTableName;
     private string RunningRunTableName => options.Value.RunningRunTableName;
@@ -50,7 +52,11 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 Put = new Put
                 {
                     TableName = RunTableName,
-                    Item = scenario.ToDynamoDbRow(run.Id, run.OrganizationId, run.ApplicationId),
+                    Item = scenario.ToDynamoDbRow(
+                        run.Id,
+                        run.OrganizationId,
+                        run.ApplicationId
+                    ),
                 },
             })
         );
@@ -66,20 +72,20 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             when (ex.CancellationReasons is { Count: >= 3 } reasons)
         {
             if (reasons[0].Code == "ConditionalCheckFailed")
-            {
                 return RunCreateResult.ApplicationNotFound;
-            }
 
             if (reasons[1].Code == "ConditionalCheckFailed")
-            {
                 return RunCreateResult.AlreadyExists;
-            }
 
             throw;
         }
     }
 
-    public async Task<Run?> GetByIdAsync(Guid organizationId, Guid applicationId, Guid runId)
+    public async Task<Run?> GetByIdAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid runId
+    )
     {
         var headerRowKey = DynamoDbMapper.RunHeaderRowKey(runId);
         var environmentRowKey = DynamoDbMapper.RunEnvironmentRowKey(runId);
@@ -89,46 +95,55 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 TableName = RunTableName,
                 KeyConditionExpression =
                     "OrganizationId_ApplicationId = :partitionKey AND RowKey BETWEEN :low AND :high",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":partitionKey"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            applicationId
+                        )
                     ),
                     // Guaranteed, not assumed: RunHeaderRowKey/RunEnvironmentRowKey/RunScenarioRowKey
                     // carry the 1000/2000/3000 sort-key prefixes, all below RunStatusUpdateRowKey's
                     // 4000 -- see those methods' doc.
                     [":low"] = new(headerRowKey),
-                    [":high"] = new(DynamoDbMapper.RunStatusUpdateRowKeyPrefix(runId)),
+                    [":high"] = new(
+                        DynamoDbMapper.RunStatusUpdateRowKeyPrefix(runId)
+                    ),
                 },
                 ConsistentRead = true,
             }
         );
 
         var headerRow = rows.Find(row => row["RowKey"].S == headerRowKey);
-        if (headerRow is null)
-        {
-            return null;
-        }
+        if (headerRow is null) return null;
 
-        var environmentRow = rows.Find(row => row["RowKey"].S == environmentRowKey);
+        var environmentRow = rows.Find(row =>
+            row["RowKey"].S == environmentRowKey
+        );
 
         if (environmentRow is null)
-        {
             // The Environment row is written in the same transaction as the header and nothing ever
             // deletes it on its own -- a header with no Environment row means the stored data is
             // corrupted, not merely absent.
             throw new CorruptedDynamoDbRowException(
                 $"Run '{runId}' has a header row but no Environment row."
             );
-        }
 
         var scenarios = rows.Where(row =>
-                row["RowKey"].S != headerRowKey && row["RowKey"].S != environmentRowKey
+                row["RowKey"].S != headerRowKey
+                && row["RowKey"].S != environmentRowKey
             )
             .Select(row => row.ToRunScenarioSnapshot())
             .ToList();
 
-        return headerRow.ToRun(environmentRow.ToRunEnvironmentSnapshot(), scenarios);
+        return headerRow.ToRun(
+            environmentRow.ToRunEnvironmentSnapshot(),
+            scenarios
+        );
     }
 
     public async Task<IReadOnlyList<RunInfo>> ListByApplicationAsync(
@@ -138,22 +153,27 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
     )
     {
         if (triggers.Count == 0)
-        {
-            throw new ArgumentException("triggers cannot be empty.", nameof(triggers));
-        }
+            throw new ArgumentException(
+                "triggers cannot be empty.",
+                nameof(triggers)
+            );
 
         var expressionAttributeValues = new Dictionary<string, AttributeValue>
         {
             [":partitionKey"] = new(
-                DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                DynamoDbMapper.ApplicationScopedPartitionKey(
+                    organizationId,
+                    applicationId
+                )
             ),
         };
         var triggerPlaceholders = triggers
-            .Select(
-                (trigger, index) =>
+            .Select((trigger, index) =>
                 {
                     var placeholder = $":trigger{index}";
-                    expressionAttributeValues[placeholder] = new AttributeValue(trigger.ToString());
+                    expressionAttributeValues[placeholder] = new AttributeValue(
+                        trigger.ToString()
+                    );
                     return placeholder;
                 }
             )
@@ -164,8 +184,10 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             {
                 TableName = RunTableName,
                 IndexName = "RunHeaderIndex",
-                KeyConditionExpression = "OrganizationId_ApplicationId = :partitionKey",
-                FilterExpression = $"#trigger IN ({string.Join(", ", triggerPlaceholders)})",
+                KeyConditionExpression =
+                    "OrganizationId_ApplicationId = :partitionKey",
+                FilterExpression =
+                    $"#trigger IN ({string.Join(", ", triggerPlaceholders)})",
                 ExpressionAttributeNames = new Dictionary<string, string>
                 {
                     ["#trigger"] = "Trigger",
@@ -203,7 +225,10 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     {
                         ["#status"] = "Status",
                     },
-                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    ExpressionAttributeValues = new Dictionary<
+                        string,
+                        AttributeValue
+                    >
                     {
                         [":running"] = new(nameof(RunStatus.Running)),
                         [":pending"] = new(nameof(RunStatus.Pending)),
@@ -216,11 +241,19 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 Update = new Update
                 {
                     TableName = RunTableName,
-                    Key = EnvironmentRowKey(organizationId, applicationId, runId),
+                    Key = EnvironmentRowKey(
+                        organizationId,
+                        applicationId,
+                        runId
+                    ),
                     UpdateExpression = "SET Variables = :variables",
-                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    ExpressionAttributeValues = new Dictionary<
+                        string,
+                        AttributeValue
+                    >
                     {
-                        [":variables"] = environment.ToVariablesAttributeValue(),
+                        [":variables"] =
+                            environment.ToVariablesAttributeValue(),
                     },
                 },
             },
@@ -229,10 +262,11 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 Put = new Put
                 {
                     TableName = RunningRunTableName,
-                    Item = new RunningRun { Id = runId, StartedAt = startedAt }.ToDynamoDbRow(
-                        organizationId,
-                        applicationId
-                    ),
+                    Item = new RunningRun
+                    {
+                        Id = runId,
+                        StartedAt = startedAt,
+                    }.ToDynamoDbRow(organizationId, applicationId),
                 },
             },
         };
@@ -242,12 +276,16 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             await client.TransactWriteItemsAsync(
                 new TransactWriteItemsRequest { TransactItems = transactItems }
             );
-            return new RunStartResult { StartedAt = startedAt, LastHeartbeatAt = startedAt };
+            return new RunStartResult
+            {
+                StartedAt = startedAt,
+                LastHeartbeatAt = startedAt,
+            };
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
-                && reasons[0].Code == "ConditionalCheckFailed"
-            )
+                  && reasons[0].Code == "ConditionalCheckFailed"
+                 )
         {
             return null;
         }
@@ -266,13 +304,11 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             && terminalStatus != RunStatus.Cancelled
             && terminalStatus != RunStatus.Abandoned
         )
-        {
             throw new ArgumentException(
                 $"{terminalStatus} is not a terminal state End Run can write -- only Completed, "
-                    + "Cancelled or Abandoned.",
+                + "Cancelled or Abandoned.",
                 nameof(terminalStatus)
             );
-        }
 
         var conditionExpression = "#status = :running";
         var attributeValues = new Dictionary<string, AttributeValue>
@@ -282,7 +318,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             [":running"] = new(RunStatus.Running.ToString()),
         };
 
-        var updateExpression = "SET #status = :terminal, CompletedAt = :completedAt";
+        var updateExpression =
+            "SET #status = :terminal, CompletedAt = :completedAt";
 
         // Two items, one transaction: the header item carries every condition above, and deleting the
         // RunningRuns row rides along with no condition of its own -- if the header's condition fails,
@@ -325,8 +362,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
-                && reasons[0].Code == "ConditionalCheckFailed"
-            )
+                  && reasons[0].Code == "ConditionalCheckFailed"
+                 )
         {
             return false;
         }
@@ -348,7 +385,8 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         if (fields.HeartbeatAt is { } heartbeatAt)
         {
             setClauses.Add("LastHeartbeatAt = :heartbeatAt");
-            attributeValues[":heartbeatAt"] = new(heartbeatAt.ToString("O"));
+            attributeValues[":heartbeatAt"] =
+                new AttributeValue(heartbeatAt.ToString("O"));
         }
 
         if (fields.TotalActivityCount is { } total)
@@ -388,12 +426,10 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         }
 
         if (setClauses.Count == 0)
-        {
             throw new ArgumentException(
                 "At least one field on RunUpdatableFields must be set.",
                 nameof(fields)
             );
-        }
 
         try
         {
@@ -434,11 +470,18 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             new QueryRequest
             {
                 TableName = RunningRunTableName,
-                KeyConditionExpression = "OrganizationId_ApplicationId = :partitionKey",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                KeyConditionExpression =
+                    "OrganizationId_ApplicationId = :partitionKey",
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":partitionKey"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            applicationId
+                        )
                     ),
                 },
                 ConsistentRead = true,
@@ -462,7 +505,11 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 Put = new Put
                 {
                     TableName = RunTableName,
-                    Item = update.ToDynamoDbRow(runId, organizationId, applicationId),
+                    Item = update.ToDynamoDbRow(
+                        runId,
+                        organizationId,
+                        applicationId
+                    ),
                     ConditionExpression = "attribute_not_exists(RowKey)",
                 },
             },
@@ -473,14 +520,23 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                     TableName = RunTableName,
                     Key = HeaderKey(organizationId, applicationId, runId),
                     UpdateExpression = "SET LastSeq = :seq",
-                    ConditionExpression = "LastSeq < :seq AND #status = :running",
+                    ConditionExpression =
+                        "LastSeq < :seq AND #status = :running",
                     ExpressionAttributeNames = new Dictionary<string, string>
                     {
                         ["#status"] = "Status",
                     },
-                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    ExpressionAttributeValues = new Dictionary<
+                        string,
+                        AttributeValue
+                    >
                     {
-                        [":seq"] = new() { N = update.Seq.ToString(CultureInfo.InvariantCulture) },
+                        [":seq"] = new()
+                        {
+                            N = update.Seq.ToString(
+                                CultureInfo.InvariantCulture
+                            ),
+                        },
                         [":running"] = new(RunStatus.Running.ToString()),
                     },
                 },
@@ -495,9 +551,10 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             return true;
         }
         catch (TransactionCanceledException ex)
-            when (ex.CancellationReasons?.Any(reason => reason.Code == "ConditionalCheckFailed")
-                == true
-            )
+            when (ex.CancellationReasons?.Any(reason =>
+                      reason.Code == "ConditionalCheckFailed"
+                  ) == true
+                 )
         {
             return false;
         }
@@ -512,23 +569,20 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
     )
     {
         if (afterSeq < 0)
-        {
             throw new ArgumentOutOfRangeException(
                 nameof(afterSeq),
                 afterSeq,
                 "afterSeq cannot be negative."
             );
-        }
 
         if (limit <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(limit), limit, "limit must be positive.");
-        }
+            throw new ArgumentOutOfRangeException(
+                nameof(limit),
+                limit,
+                "limit must be positive."
+            );
 
-        if (afterSeq == long.MaxValue)
-        {
-            return [];
-        }
+        if (afterSeq == long.MaxValue) return [];
 
         var response = await client.QueryAsync(
             new QueryRequest
@@ -536,13 +590,29 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 TableName = RunTableName,
                 KeyConditionExpression =
                     "OrganizationId_ApplicationId = :partitionKey AND RowKey BETWEEN :low AND :high",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":partitionKey"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            applicationId
+                        )
                     ),
-                    [":low"] = new(DynamoDbMapper.RunStatusUpdateRowKey(runId, afterSeq + 1)),
-                    [":high"] = new(DynamoDbMapper.RunStatusUpdateRowKey(runId, long.MaxValue)),
+                    [":low"] = new(
+                        DynamoDbMapper.RunStatusUpdateRowKey(
+                            runId,
+                            afterSeq + 1
+                        )
+                    ),
+                    [":high"] = new(
+                        DynamoDbMapper.RunStatusUpdateRowKey(
+                            runId,
+                            long.MaxValue
+                        )
+                    ),
                 },
                 ConsistentRead = true,
                 ScanIndexForward = true,
@@ -559,14 +629,19 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         Guid organizationId,
         Guid applicationId,
         Guid runId
-    ) =>
-        new()
+    )
+    {
+        return new Dictionary<string, AttributeValue>
         {
             ["OrganizationId_ApplicationId"] = new(
-                DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                DynamoDbMapper.ApplicationScopedPartitionKey(
+                    organizationId,
+                    applicationId
+                )
             ),
             ["RowKey"] = new(DynamoDbMapper.RunHeaderRowKey(runId)),
         };
+    }
 
     // Builds a Run's Environment snapshot row's primary key -- the Key TryMarkAsStartedAsync's masked
     // Variables
@@ -575,14 +650,19 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         Guid organizationId,
         Guid applicationId,
         Guid runId
-    ) =>
-        new()
+    )
+    {
+        return new Dictionary<string, AttributeValue>
         {
             ["OrganizationId_ApplicationId"] = new(
-                DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                DynamoDbMapper.ApplicationScopedPartitionKey(
+                    organizationId,
+                    applicationId
+                )
             ),
             ["RowKey"] = new(DynamoDbMapper.RunEnvironmentRowKey(runId)),
         };
+    }
 
     // Builds a RunningRuns row's primary key -- the Key TryMarkAsEndedAsync's Delete targets. Mirrors
     // HeaderKey, but against RunningRunTableName's own key shape (OrganizationId_ApplicationId + RunId),
@@ -591,17 +671,26 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
         Guid organizationId,
         Guid applicationId,
         Guid runId
-    ) =>
-        new()
+    )
+    {
+        return new Dictionary<string, AttributeValue>
         {
             ["OrganizationId_ApplicationId"] = new(
-                DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                DynamoDbMapper.ApplicationScopedPartitionKey(
+                    organizationId,
+                    applicationId
+                )
             ),
             ["RunId"] = new(runId.ToString()),
         };
+    }
 
-    private TransactWriteItem ApplicationExistsCheck(Guid organizationId, Guid applicationId) =>
-        new()
+    private TransactWriteItem ApplicationExistsCheck(
+        Guid organizationId,
+        Guid applicationId
+    )
+    {
+        return new TransactWriteItem
         {
             ConditionCheck = new ConditionCheck
             {
@@ -614,10 +703,11 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
                 ConditionExpression = "attribute_exists(Id)",
             },
         };
+    }
 
-    private async Task<List<Dictionary<string, AttributeValue>>> QueryAllPagesAsync(
-        QueryRequest request
-    )
+    private async Task<
+        List<Dictionary<string, AttributeValue>>
+    > QueryAllPagesAsync(QueryRequest request)
     {
         var rows = new List<Dictionary<string, AttributeValue>>();
         Dictionary<string, AttributeValue>? lastEvaluatedKey = null;
@@ -626,7 +716,9 @@ public class DynamoDbRunRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpti
             request.ExclusiveStartKey = lastEvaluatedKey;
             var response = await client.QueryAsync(request);
             rows.AddRange(response.Items);
-            lastEvaluatedKey = response.LastEvaluatedKey is { Count: > 0 } key ? key : null;
+            lastEvaluatedKey = response.LastEvaluatedKey is { Count: > 0 } key
+                ? key
+                : null;
         } while (lastEvaluatedKey is not null);
 
         return rows;

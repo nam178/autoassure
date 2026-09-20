@@ -102,6 +102,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       },
@@ -251,28 +254,9 @@
                 }
               }
             }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Activities"
-        ],
-        "operationId": "DeleteActivity",
-        "parameters": [
-          {
-            "name": "activityId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       }
@@ -383,6 +367,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       }
@@ -453,6 +440,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       },
@@ -701,107 +691,6 @@
         }
       }
     },
-    "/scenarios/{scenarioId}/runs": {
-      "post": {
-        "tags": [
-          "AuthoringRuns"
-        ],
-        "operationId": "CreateAuthoringRun",
-        "parameters": [
-          {
-            "name": "scenarioId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateAuthoringRunRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateAuthoringRunRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateAuthoringRunRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RunResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "EnvironmentId does not reference an Environment belonging to the Scenario's\n    Application. Returns 400 when the request fails a validation constraint.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No Scenario with the given scenarioId exists in the caller's\n    Organization.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/applications/{applicationId}/environments": {
       "post": {
         "tags": [
@@ -882,6 +771,9 @@
           },
           "400": {
             "description": "Returns 400 when the request fails a validation constraint."
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       },
@@ -1073,6 +965,9 @@
           },
           "400": {
             "description": "Returns 400 when the request fails a validation constraint."
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       }
@@ -1151,59 +1046,9 @@
           },
           "400": {
             "description": "Returns 400 when the request fails a validation constraint."
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Environments"
-        ],
-        "operationId": "DeleteEnvironmentVariable",
-        "parameters": [
-          {
-            "name": "environmentId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
           },
-          {
-            "name": "key",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "No Environment with the given environmentId exists in the caller's\n    Organization.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Returns 400 when the request fails a validation constraint."
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       }
@@ -1288,6 +1133,9 @@
           },
           "400": {
             "description": "Returns 400 when the request fails a validation constraint."
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       },
@@ -1420,17 +1268,22 @@
           },
           "400": {
             "description": "Returns 400 when the request fails a validation constraint."
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
-      },
-      "delete": {
+      }
+    },
+    "/organizations/{id}/archive": {
+      "post": {
         "tags": [
-          "EvidenceDefinitions"
+          "Organizations"
         ],
-        "operationId": "DeleteEvidenceDefinition",
+        "operationId": "ArchiveOrganization",
         "parameters": [
           {
-            "name": "evidenceDefinitionId",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -1442,6 +1295,190 @@
         "responses": {
           "204": {
             "description": "No Content"
+          },
+          "400": {
+            "description": "The caller's Organization could not be found, has been deleted, or is a personal organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller is not an Owner of the Organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/organizations/{id}/unarchive": {
+      "post": {
+        "tags": [
+          "Organizations"
+        ],
+        "operationId": "UnarchiveOrganization",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "The caller's Organization could not be found or has been deleted.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller is not an Owner of the Organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/organizations": {
+      "get": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "Returns the caller's active Organizations.",
+        "operationId": "ListOrganizations",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/organizations/archived": {
+      "get": {
+        "tags": [
+          "Organizations"
+        ],
+        "summary": "Returns the caller's archived Organizations.",
+        "operationId": "ListArchivedOrganizations",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationResponse"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -1526,6 +1563,9 @@
           },
           "400": {
             "description": "Returns 400 when the request fails a validation constraint."
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       },
@@ -1658,28 +1698,9 @@
           },
           "400": {
             "description": "Returns 400 when the request fails a validation constraint."
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Preconditions"
-        ],
-        "operationId": "DeletePrecondition",
-        "parameters": [
-          {
-            "name": "preconditionId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       }
@@ -1781,6 +1802,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       },
@@ -1788,7 +1812,6 @@
         "tags": [
           "Runs"
         ],
-        "summary": "Never returns Authoring Runs -- those are scratch runs against a Scenario under\n    construction, not runs of the Application's saved Scenarios.",
         "operationId": "ListRuns",
         "parameters": [
           {
@@ -1960,7 +1983,7 @@
         "tags": [
           "Runs"
         ],
-        "summary": "Claims a Pending Run for execution and returns it, unmasked, to the winning caller only\n    -- the one time in this API's life a sensitive Environment variable's real value is ever returned.\n    Every other response (Create Run, Get Run) always masks sensitive values regardless of what\n    storage currently holds; see RunResponse ContractMapper.ToResponse(Run run, bool maskSensitiveValues = true).",
+        "summary": "Starts a Run and returns it with Environment variable values unmasked -- the last\n    chance to see them unmasked. After the Run starts, every response masks them, for\n    security.",
         "operationId": "StartRun",
         "parameters": [
           {
@@ -2042,6 +2065,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       }
@@ -2155,6 +2181,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       }
@@ -2228,6 +2257,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       }
@@ -2324,6 +2356,9 @@
           },
           "400": {
             "description": "Returns 400 when the request fails a validation constraint."
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       }
@@ -2454,6 +2489,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       },
@@ -2646,6 +2684,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       },
@@ -2908,48 +2949,9 @@
                 }
               }
             }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Scenarios"
-        ],
-        "operationId": "DeleteScenario",
-        "parameters": [
-          {
-            "name": "scenarioId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
           },
-          "404": {
-            "description": "No Scenario with the given scenarioId exists in the caller's\n    Organization.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
           }
         }
       }
@@ -3206,19 +3208,6 @@
         },
         "description": "Request body to create a new Application in the caller's Organization."
       },
-      "CreateAuthoringRunRequest": {
-        "required": [
-          "environmentId"
-        ],
-        "type": "object",
-        "properties": {
-          "environmentId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "description": "Request body to Try a single Scenario against an Environment. The Scenario comes from the\n    URL (`POST /scenarios/{id}/runs`); this only supplies the Environment to run against."
-      },
       "CreateEnvironmentRequest": {
         "required": [
           "name",
@@ -3464,6 +3453,27 @@
           }
         },
         "description": "An OAuth 2.0 PKCE authorization code from Google's consent screen, to be exchanged for\n    the user's Google identity."
+      },
+      "OrganizationResponse": {
+        "required": [
+          "id",
+          "name",
+          "isPersonal"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isPersonal": {
+            "type": "boolean"
+          }
+        },
+        "description": "An Organization, as returned to the client."
       },
       "PreconditionResponse": {
         "required": [
@@ -4044,7 +4054,7 @@
             "format": "date-time"
           }
         },
-        "description": "A Run's identity and execution state only -- no Environment, no Scenarios -- exactly what the\n    Application's Runs panel shows for one row of the list. Authoring Runs never appear here; fetch one by\n    id instead."
+        "description": "A Run's identity and execution state only -- no Environment, no Scenarios -- exactly what the\n    Application's Runs panel shows for one row of the list."
       },
       "RunTrigger": {
         "type": "integer",
@@ -4243,7 +4253,7 @@
         "type": "object",
         "properties": {
           "totalActivityCount": {
-            "maximum": 2147483647,
+            "maximum": 8640,
             "minimum": 0,
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -4253,7 +4263,7 @@
             "format": "int32"
           },
           "passedActivityCount": {
-            "maximum": 2147483647,
+            "maximum": 8640,
             "minimum": 0,
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -4263,7 +4273,7 @@
             "format": "int32"
           },
           "failedActivityCount": {
-            "maximum": 2147483647,
+            "maximum": 8640,
             "minimum": 0,
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -4273,7 +4283,7 @@
             "format": "int32"
           },
           "skippedActivityCount": {
-            "maximum": 2147483647,
+            "maximum": 8640,
             "minimum": 0,
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -4361,13 +4371,13 @@
       "name": "Auth"
     },
     {
-      "name": "AuthoringRuns"
-    },
-    {
       "name": "Environments"
     },
     {
       "name": "EvidenceDefinitions"
+    },
+    {
+      "name": "Organizations"
     },
     {
       "name": "Preconditions"

@@ -1,7 +1,8 @@
 namespace A2.Server.Common;
 
 /// <summary>
-/// Google OAuth client credentials used to exchange an authorization code for tokens.
+///     Google OAuth client credentials used to exchange an authorization code for
+///     tokens.
 /// </summary>
 // ReSharper disable once ClassNeverInstantiated.Global -- bound via IOptions<T> from configuration, not `new`'d directly
 public record GoogleAuthOptions

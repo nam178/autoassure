@@ -5,9 +5,10 @@ public record RunEnvironmentVariableSnapshot
     public required string Key { get; init; }
 
     /// <summary>
-    /// The raw, unmasked value.
+    ///     The raw, unmasked value.
     /// </summary>
     public required string Value { get; init; }
+
     public required bool IsSensitive { get; init; }
     public required Guid CreatedByUserId { get; init; }
     public required Guid UpdatedByUserId { get; init; }
@@ -16,8 +17,9 @@ public record RunEnvironmentVariableSnapshot
 
     public static RunEnvironmentVariableSnapshot FromEnvironmentVariable(
         EnvironmentVariable environmentVariable
-    ) =>
-        new()
+    )
+    {
+        return new RunEnvironmentVariableSnapshot
         {
             Key = environmentVariable.Key,
             Value = environmentVariable.Value,
@@ -27,10 +29,19 @@ public record RunEnvironmentVariableSnapshot
             CreatedAt = environmentVariable.CreatedAt,
             UpdatedAt = environmentVariable.UpdatedAt,
         };
+    }
 
     /// <summary>
-    /// Return a copy of this environment variable snapshot with the sensitive value masked.
+    ///     Return a copy of this environment variable snapshot with the sensitive
+    ///     value masked.
     /// </summary>
-    public RunEnvironmentVariableSnapshot Masked() =>
-        IsSensitive ? this with { Value = SensitiveValueMasker.Mask(Value) } : this;
+    public RunEnvironmentVariableSnapshot Masked()
+    {
+        return IsSensitive
+            ? this with
+            {
+                Value = SensitiveValueMasker.Mask(Value),
+            }
+            : this;
+    }
 }

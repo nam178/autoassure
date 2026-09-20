@@ -16,17 +16,22 @@ public class RunSnapshotBuilder(
         Environment environment
     )
     {
-        var variables = await environmentVariableRepository.ListByEnvironmentAsync(
-            organizationId,
-            environment.Id
-        );
+        var variables =
+            await environmentVariableRepository.ListByEnvironmentAsync(
+                organizationId,
+                environment.Id
+            );
         return RunEnvironmentSnapshot.FromEnvironment(
             environment,
-            variables.Select(RunEnvironmentVariableSnapshot.FromEnvironmentVariable).ToList()
+            variables
+                .Select(RunEnvironmentVariableSnapshot.FromEnvironmentVariable)
+                .ToList()
         );
     }
 
-    public async Task<IReadOnlyList<RunScenarioSnapshot>> BuildScenarioSnapshotsAsync(
+    public async Task<
+        IReadOnlyList<RunScenarioSnapshot>
+    > BuildScenarioSnapshotsAsync(
         Guid organizationId,
         Guid applicationId,
         IReadOnlyList<Scenario> scenarios
@@ -37,10 +42,16 @@ public class RunSnapshotBuilder(
         // Scenarios in the same Run typically reuse a handful of library rows, so this trades one extra
         // read for what would otherwise be dozens of repeated ones.
         var preconditionsById = (
-            await preconditionRepository.ListByApplicationAsync(organizationId, applicationId)
+            await preconditionRepository.ListByApplicationAsync(
+                organizationId,
+                applicationId
+            )
         ).ToDictionary(p => p.Id);
         var evidenceDefinitionsById = (
-            await evidenceDefinitionRepository.ListByApplicationAsync(organizationId, applicationId)
+            await evidenceDefinitionRepository.ListByApplicationAsync(
+                organizationId,
+                applicationId
+            )
         ).ToDictionary(e => e.Id);
 
         var snapshots = new List<RunScenarioSnapshot>(scenarios.Count);
@@ -55,23 +66,32 @@ public class RunSnapshotBuilder(
                     RunActivitySnapshot.FromActivity(
                         activity,
                         activity
-                            .PreconditionIds.Where(preconditionsById.ContainsKey)
+                            .PreconditionIds.Where(
+                                preconditionsById.ContainsKey
+                            )
                             .Select(id =>
-                                RunPreconditionSnapshot.FromPrecondition(preconditionsById[id])
+                                RunPreconditionSnapshot.FromPrecondition(
+                                    preconditionsById[id]
+                                )
                             )
                             .ToList(),
                         activity
-                            .EvidenceIds.Where(evidenceDefinitionsById.ContainsKey)
+                            .EvidenceIds.Where(
+                                evidenceDefinitionsById.ContainsKey
+                            )
                             .Select(id =>
-                                RunEvidenceDefinitionSnapshot.FromEvidenceDefinition(
-                                    evidenceDefinitionsById[id]
-                                )
+                                RunEvidenceDefinitionSnapshot
+                                    .FromEvidenceDefinition(
+                                        evidenceDefinitionsById[id]
+                                    )
                             )
                             .ToList()
                     )
                 )
                 .ToList();
-            snapshots.Add(RunScenarioSnapshot.FromScenario(scenario, activitySnapshots));
+            snapshots.Add(
+                RunScenarioSnapshot.FromScenario(scenario, activitySnapshots)
+            );
         }
 
         return snapshots;

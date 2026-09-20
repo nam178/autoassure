@@ -17,19 +17,21 @@ public class GoogleUserSyncService(
         // Every user needs at least one Organization. Checked on every sign-in, not just the first,
         // so a user left without one (e.g. a crash between creating the User and its personal
         // Organization) gets backfilled on their next sign-in instead of staying stuck forever.
-        var memberships = await organizationUserRepository.ListByUserAsync(user.Id);
-        if (memberships.Count == 0)
-        {
-            await CreatePersonalOrganizationAsync(user);
-        }
+        var memberships = await organizationUserRepository.ListByUserAsync(
+            user.Id
+        );
+        if (memberships.Count == 0) await CreatePersonalOrganizationAsync(user);
 
         return user;
     }
 
     private async Task<User> SyncUserAsync(GoogleIdentity googleIdentity)
     {
-        var isGoogleEmailReallyVerified = googleIdentity.IsEmailReallyVerified();
-        var existing = await userRepository.GetByGoogleUserIdAsync(googleIdentity.GoogleUserId);
+        var isGoogleEmailReallyVerified =
+            googleIdentity.IsEmailReallyVerified();
+        var existing = await userRepository.GetByGoogleUserIdAsync(
+            googleIdentity.GoogleUserId
+        );
 
         if (existing is null)
         {
@@ -48,8 +50,9 @@ public class GoogleUserSyncService(
             var created = await userRepository.TrySaveAsync(newUser);
             return created
                 ? newUser
-                : await userRepository.GetByGoogleUserIdAsync(googleIdentity.GoogleUserId)
-                    ?? newUser;
+                : await userRepository.GetByGoogleUserIdAsync(
+                    googleIdentity.GoogleUserId
+                ) ?? newUser;
         }
 
         var fields = new UserUpdatableFields
@@ -57,17 +60,18 @@ public class GoogleUserSyncService(
             FirstName = googleIdentity.FirstName ?? "",
             LastName = googleIdentity.LastName ?? "",
             Email = googleIdentity.Email,
-            EmailVerified = existing.EmailVerified || isGoogleEmailReallyVerified,
+            EmailVerified =
+                existing.EmailVerified || isGoogleEmailReallyVerified,
         };
 
         // The user may have been deleted since GetByGoogleUserIdAsync ran above (e.g. account
         // deletion racing this sign-in). Treat that the same as a first sign-in rather than letting
         // UpdateItem silently recreate a partial row.
-        var updateSucceeded = await userRepository.TryUpdateAsync(existing.Id, fields);
-        if (!updateSucceeded)
-        {
-            return await SyncUserAsync(googleIdentity);
-        }
+        var updateSucceeded = await userRepository.TryUpdateAsync(
+            existing.Id,
+            fields
+        );
+        if (!updateSucceeded) return await SyncUserAsync(googleIdentity);
 
         return existing with
         {
@@ -91,6 +95,7 @@ public class GoogleUserSyncService(
             UpdatedByUserId = user.Id,
             CreatedAt = now,
             UpdatedAt = now,
+            LifecycleState = LifecycleState.Active,
         };
         var membership = new OrganizationUser
         {
@@ -105,6 +110,9 @@ public class GoogleUserSyncService(
 
         // Ignore the result: if a concurrent sign-in for this same user already won the race and
         // created a personal Organization, we don't need another one.
-        await userRepository.TryCreatePersonalOrganizationAsync(organization, membership);
+        await userRepository.TryCreatePersonalOrganizationAsync(
+            organization,
+            membership
+        );
     }
 }

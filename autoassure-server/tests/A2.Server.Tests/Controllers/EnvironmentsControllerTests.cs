@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using A2.Server.Contracts;
+using A2.Server.Models;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -12,11 +13,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
+using EnvironmentClassification = A2.Server.Contracts.EnvironmentClassification;
 
 namespace A2.Server.Tests.Controllers;
 
-/// <summary>Integration tests for <see cref="A2.Server.Controllers.EnvironmentsController"/> over real
-/// HTTP, against DynamoDB Local.</summary>
+/// <summary>
+///     Integration tests for
+///     <see cref="A2.Server.Controllers.EnvironmentsController" /> over real
+///     HTTP, against DynamoDB Local.
+/// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class EnvironmentsControllerTests
     : IClassFixture<WebApplicationFactory<Program>>,
@@ -36,24 +41,28 @@ public sealed class EnvironmentsControllerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration(
-                (_, config) =>
-                    config.AddInMemoryCollection(
-                        new Dictionary<string, string?>
-                        {
-                            ["Auth:SigningKey"] = SigningKey,
-                            ["DynamoDb:ApplicationTableName"] = "Applications",
-                            ["DynamoDb:EnvironmentTableName"] = "Environments",
-                            ["DynamoDb:EnvironmentVariableTableName"] = "EnvironmentVariables",
-                            ["DynamoDb:OrganizationTableName"] = "Organizations",
-                            ["DynamoDb:OrganizationUserTableName"] = "OrganizationUsers",
-                        }
-                    )
+            builder.ConfigureAppConfiguration((_, config) =>
+                config.AddInMemoryCollection(
+                    new Dictionary<string, string?>
+                    {
+                        ["Auth:SigningKey"] = SigningKey,
+                        ["DynamoDb:ApplicationTableName"] = "Applications",
+                        ["DynamoDb:EnvironmentTableName"] = "Environments",
+                        ["DynamoDb:EnvironmentVariableTableName"] =
+                            "EnvironmentVariables",
+                        ["DynamoDb:OrganizationTableName"] =
+                            "Organizations",
+                        ["DynamoDb:OrganizationUserTableName"] =
+                            "OrganizationUsers",
+                    }
+                )
             );
             builder.ConfigureServices(services =>
             {
                 _client = dynamoDbLocalFixture.CreateClient();
-                services.Replace(ServiceDescriptor.Singleton<IAmazonDynamoDB>(_client));
+                services.Replace(
+                    ServiceDescriptor.Singleton<IAmazonDynamoDB>(_client)
+                );
             });
         });
     }
@@ -73,7 +82,10 @@ public sealed class EnvironmentsControllerTests
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -86,14 +98,23 @@ public sealed class EnvironmentsControllerTests
                 TableName = "Environments",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -102,10 +123,16 @@ public sealed class EnvironmentsControllerTests
                         IndexName = "IdIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("Id", KeyType.RANGE),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -118,12 +145,18 @@ public sealed class EnvironmentsControllerTests
                 TableName = "EnvironmentVariables",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_EnvironmentId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_EnvironmentId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Key", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_EnvironmentId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_EnvironmentId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Key", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -135,7 +168,10 @@ public sealed class EnvironmentsControllerTests
             {
                 TableName = "Organizations",
                 KeySchema = [new KeySchemaElement("Id", KeyType.HASH)],
-                AttributeDefinitions = [new AttributeDefinition("Id", ScalarAttributeType.S)],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
@@ -151,7 +187,10 @@ public sealed class EnvironmentsControllerTests
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("UserId", ScalarAttributeType.S),
                 ],
                 GlobalSecondaryIndexes =
@@ -162,9 +201,15 @@ public sealed class EnvironmentsControllerTests
                         KeySchema =
                         [
                             new KeySchemaElement("UserId", KeyType.HASH),
-                            new KeySchemaElement("OrganizationId", KeyType.RANGE),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.RANGE
+                            ),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -184,15 +229,14 @@ public sealed class EnvironmentsControllerTests
                 "OrganizationUsers",
             }
         )
-        {
             await _client.DeleteTableAsync(tableName);
-        }
         _client.Dispose();
     }
 
     private async Task SeedOrganizationMembershipAsync(Guid userId)
     {
         var organizationId = Guid.CreateVersion7();
+        var now = DateTimeOffset.UtcNow;
         await _client.PutItemAsync(
             new PutItemRequest
             {
@@ -200,6 +244,15 @@ public sealed class EnvironmentsControllerTests
                 Item = new Dictionary<string, AttributeValue>
                 {
                     ["Id"] = new(organizationId.ToString()),
+                    ["Name"] = new("Test Organization"),
+                    ["IsPersonal"] = new() { BOOL = true },
+                    ["CreatedByUserId"] = new(userId.ToString()),
+                    ["UpdatedByUserId"] = new(userId.ToString()),
+                    ["CreatedAt"] = new(now.ToString("O")),
+                    ["UpdatedAt"] = new(now.ToString("O")),
+                    ["LifecycleState"] = new(
+                        LifecycleState.Active.ToString()
+                    ),
                 },
             }
         );
@@ -211,7 +264,7 @@ public sealed class EnvironmentsControllerTests
                 {
                     ["OrganizationId"] = new(organizationId.ToString()),
                     ["UserId"] = new(userId.ToString()),
-                    ["Role"] = new(Models.OrganizationRole.Owner.ToString()),
+                    ["Role"] = new(OrganizationRole.Owner.ToString()),
                     ["CreatedByUserId"] = new(userId.ToString()),
                     ["UpdatedByUserId"] = new(userId.ToString()),
                     ["CreatedAt"] = new(DateTimeOffset.UtcNow.ToString("O")),
@@ -227,11 +280,14 @@ public sealed class EnvironmentsControllerTests
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey)),
             SecurityAlgorithms.HmacSha256
         );
-        var claims = new[] { new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()) };
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+        };
         var token = new JwtSecurityToken(
-            issuer: Issuer,
-            audience: Audience,
-            claims: claims,
+            Issuer,
+            Audience,
+            claims,
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: credentials
         );
@@ -241,10 +297,8 @@ public sealed class EnvironmentsControllerTests
     private HttpClient CreateAuthenticatedClient(Guid userId)
     {
         var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            CreateAccessToken(userId)
-        );
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", CreateAccessToken(userId));
         return client;
     }
 
@@ -261,12 +315,14 @@ public sealed class EnvironmentsControllerTests
             "/applications",
             new CreateApplicationRequest { Name = "Test App", Description = "" }
         );
-        var application = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
+        var application =
+            await response.Content.ReadFromJsonAsync<ApplicationResponse>();
         return application!.Id;
     }
 
     [Fact]
-    public async Task Create_WhenValidRequest_ReturnsEnvironmentWithNoVariablesInList()
+    public async Task
+        Create_WhenValidRequest_ReturnsEnvironmentWithNoVariablesInList()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -284,13 +340,17 @@ public sealed class EnvironmentsControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
-        var created = await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
+        var created =
+            await createResponse.Content
+                .ReadFromJsonAsync<EnvironmentResponse>();
         Assert.NotNull(created);
         Assert.Equal("Staging", created.Name);
         Assert.Empty(created.Variables);
 
         // test
-        var listResponse = await client.GetAsync($"/applications/{appId}/environments");
+        var listResponse = await client.GetAsync(
+            $"/applications/{appId}/environments"
+        );
 
         // verify
         var environments = await listResponse.Content.ReadFromJsonAsync<
@@ -314,7 +374,10 @@ public sealed class EnvironmentsControllerTests
                 Classification = EnvironmentClassification.NonProduction,
             }
         );
-        var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
+        var created = (
+            await createResponse.Content
+                .ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_URL",
             new SetEnvironmentVariableRequest
@@ -329,7 +392,8 @@ public sealed class EnvironmentsControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
-        var environment = await getResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
+        var environment =
+            await getResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
         Assert.Equal(created.Id, environment!.Id);
         Assert.Equal("Staging", environment.Name);
         var variable = Assert.Single(environment.Variables);
@@ -352,10 +416,17 @@ public sealed class EnvironmentsControllerTests
                 Classification = EnvironmentClassification.NonProduction,
             }
         );
-        var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
+        var created = (
+            await createResponse.Content
+                .ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_KEY",
-            new SetEnvironmentVariableRequest { Value = "abcdefghij", IsSensitive = true }
+            new SetEnvironmentVariableRequest
+            {
+                Value = "abcdefghij",
+                IsSensitive = true,
+            }
         );
 
         // test
@@ -364,7 +435,8 @@ public sealed class EnvironmentsControllerTests
         // verify: a leading slice of the value's real characters stays visible, the rest becomes stars
         // padded to the masker's fixed output length -- the real value is never returned whole, and the
         // output length does not depend on the real value's length.
-        var environment = await getResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
+        var environment =
+            await getResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
         var variable = Assert.Single(environment!.Variables);
         Assert.True(variable.IsSensitive);
         Assert.NotEqual("abcdefghij", variable.Value);
@@ -372,7 +444,8 @@ public sealed class EnvironmentsControllerTests
     }
 
     [Fact]
-    public async Task GetById_WhenEnvironmentInDifferentOrganization_ReturnsNotFound()
+    public async Task
+        GetById_WhenEnvironmentInDifferentOrganization_ReturnsNotFound()
     {
         // setup
         var userA = Guid.CreateVersion7();
@@ -390,7 +463,10 @@ public sealed class EnvironmentsControllerTests
                 Classification = EnvironmentClassification.NonProduction,
             }
         );
-        var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
+        var created = (
+            await createResponse.Content
+                .ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
 
         // test
         var response = await clientB.GetAsync($"/environments/{created.Id}");
@@ -413,7 +489,10 @@ public sealed class EnvironmentsControllerTests
                 Classification = EnvironmentClassification.NonProduction,
             }
         );
-        var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
+        var created = (
+            await createResponse.Content
+                .ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
 
         // test
         var patchResponse = await client.PatchAsJsonAsync(
@@ -427,13 +506,19 @@ public sealed class EnvironmentsControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
-        var updated = await patchResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
+        var updated =
+            await patchResponse.Content
+                .ReadFromJsonAsync<EnvironmentResponse>();
         Assert.Equal("Production", updated!.Name);
-        Assert.Equal(EnvironmentClassification.Production, updated.Classification);
+        Assert.Equal(
+            EnvironmentClassification.Production,
+            updated.Classification
+        );
     }
 
     [Fact]
-    public async Task SetVariable_WhenOverwritingExistingKey_DoesNotDisturbOtherVariables()
+    public async Task
+        SetVariable_WhenOverwritingExistingKey_DoesNotDisturbOtherVariables()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -446,7 +531,10 @@ public sealed class EnvironmentsControllerTests
                 Classification = EnvironmentClassification.NonProduction,
             }
         );
-        var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
+        var created = (
+            await createResponse.Content
+                .ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
 
         // test
         await client.PutAsJsonAsync(
@@ -459,23 +547,35 @@ public sealed class EnvironmentsControllerTests
         );
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_KEY",
-            new SetEnvironmentVariableRequest { Value = "secret-1", IsSensitive = false }
+            new SetEnvironmentVariableRequest
+            {
+                Value = "secret-1",
+                IsSensitive = false,
+            }
         );
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_KEY",
-            new SetEnvironmentVariableRequest { Value = "secret-2", IsSensitive = false }
+            new SetEnvironmentVariableRequest
+            {
+                Value = "secret-2",
+                IsSensitive = false,
+            }
         );
 
         // verify
         var getResponse = await client.GetAsync($"/environments/{created.Id}");
-        var environment = await getResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
+        var environment =
+            await getResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
 
         Assert.Equal(2, environment!.Variables.Count);
         Assert.Equal(
             "https://staging.example.com",
             environment.Variables.Single(v => v.Key == "API_URL").Value
         );
-        Assert.Equal("secret-2", environment.Variables.Single(v => v.Key == "API_KEY").Value);
+        Assert.Equal(
+            "secret-2",
+            environment.Variables.Single(v => v.Key == "API_KEY").Value
+        );
     }
 
     [Fact]
@@ -501,7 +601,8 @@ public sealed class EnvironmentsControllerTests
     }
 
     [Fact]
-    public async Task Create_WhenApplicationInDifferentOrganization_ReturnsNotFound()
+    public async Task
+        Create_WhenApplicationInDifferentOrganization_ReturnsNotFound()
     {
         // setup
         var userA = Guid.CreateVersion7();
@@ -539,7 +640,9 @@ public sealed class EnvironmentsControllerTests
         Assert.Equal(HttpStatusCode.NotFound, createResponseB.StatusCode);
 
         // test
-        var listResponse = await clientB.GetAsync($"/applications/{appId}/environments");
+        var listResponse = await clientB.GetAsync(
+            $"/applications/{appId}/environments"
+        );
 
         // verify
         var environments = await listResponse.Content.ReadFromJsonAsync<
@@ -587,7 +690,11 @@ public sealed class EnvironmentsControllerTests
             .CreateClient()
             .PutAsJsonAsync(
                 $"/environments/{Guid.CreateVersion7()}/variables/API_URL",
-                new SetEnvironmentVariableRequest { Value = "x", IsSensitive = false }
+                new SetEnvironmentVariableRequest
+                {
+                    Value = "x",
+                    IsSensitive = false,
+                }
             );
 
         // verify
@@ -653,7 +760,10 @@ public sealed class EnvironmentsControllerTests
                 Classification = EnvironmentClassification.NonProduction,
             }
         );
-        var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
+        var created = (
+            await createResponse.Content
+                .ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
 
         // test
         var response = await client.PatchAsJsonAsync(
@@ -689,7 +799,10 @@ public sealed class EnvironmentsControllerTests
                 Classification = EnvironmentClassification.NonProduction,
             }
         );
-        var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
+        var created = (
+            await createResponse.Content
+                .ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
 
         // test
         var response = await client.PutAsJsonAsync(
@@ -724,12 +837,19 @@ public sealed class EnvironmentsControllerTests
                 Classification = EnvironmentClassification.NonProduction,
             }
         );
-        var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
+        var created = (
+            await createResponse.Content
+                .ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
 
         // test
         var response = await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/{new string('k', keyLength)}",
-            new SetEnvironmentVariableRequest { Value = "x", IsSensitive = false }
+            new SetEnvironmentVariableRequest
+            {
+                Value = "x",
+                IsSensitive = false,
+            }
         );
 
         // verify
@@ -740,8 +860,11 @@ public sealed class EnvironmentsControllerTests
     [InlineData("""{"classification":1}""")] // name missing entirely
     [InlineData("""{"name":null,"classification":1}""")] // name explicitly null
     [InlineData("""{"name":123,"classification":1}""")] // name wrong type
-    [InlineData("""{"name":"Staging","classification":99}""")] // classification out of enum range
-    public async Task Create_WhenRequestHasInvalidShape_ReturnsBadRequest(string rawJson)
+    [InlineData(
+        """{"name":"Staging","classification":99}""")] // classification out of enum range
+    public async Task Create_WhenRequestHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -759,10 +882,15 @@ public sealed class EnvironmentsControllerTests
 
     [Theory]
     [InlineData("""{"classification":1}""")] // name missing entirely
-    [InlineData("""{"name":null,"classification":1}""")] // name explicitly null
+    [InlineData(
+        """{"name":null,"classification":1}""")] // name explicitly null
     [InlineData("""{"name":123,"classification":1}""")] // name wrong type
-    [InlineData("""{"name":"Staging","classification":99}""")] // classification out of enum range
-    public async Task Update_WhenRequestHasInvalidShape_ReturnsBadRequest(string rawJson)
+    [InlineData(
+        """{"name":"Staging","classification":99}""")] // classification out of enum range
+    public async Task
+        Update_WhenRequestHasInvalidShape_ReturnsBadRequest(
+            string rawJson
+        )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -772,15 +900,20 @@ public sealed class EnvironmentsControllerTests
             new CreateEnvironmentRequest
             {
                 Name = "Staging",
-                Classification = EnvironmentClassification.NonProduction,
+                Classification =
+                    EnvironmentClassification.NonProduction,
             }
         );
-        var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
+        var created = (
+            await createResponse.Content
+                .ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
 
         // test
         var response = await client.PatchAsync(
             $"/environments/{created.Id}",
-            new StringContent(rawJson, Encoding.UTF8, "application/json")
+            new StringContent(rawJson, Encoding.UTF8,
+                "application/json")
         );
 
         // verify
@@ -791,7 +924,10 @@ public sealed class EnvironmentsControllerTests
     [InlineData("{}")] // value missing entirely
     [InlineData("""{"value":null}""")] // value explicitly null
     [InlineData("""{"value":123}""")] // value wrong type
-    public async Task SetVariable_WhenValueHasInvalidShape_ReturnsBadRequest(string rawJson)
+    public async Task
+        SetVariable_WhenValueHasInvalidShape_ReturnsBadRequest(
+            string rawJson
+        )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -801,15 +937,20 @@ public sealed class EnvironmentsControllerTests
             new CreateEnvironmentRequest
             {
                 Name = "Staging",
-                Classification = EnvironmentClassification.NonProduction,
+                Classification =
+                    EnvironmentClassification.NonProduction,
             }
         );
-        var created = (await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>())!;
+        var created = (
+            await createResponse.Content
+                .ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
 
         // test
         var response = await client.PutAsync(
             $"/environments/{created.Id}/variables/API_URL",
-            new StringContent(rawJson, Encoding.UTF8, "application/json")
+            new StringContent(rawJson, Encoding.UTF8,
+                "application/json")
         );
 
         // verify

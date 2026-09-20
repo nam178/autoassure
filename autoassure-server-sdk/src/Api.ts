@@ -143,15 +143,6 @@ export interface CreateApplicationRequest {
 }
 
 /**
- * Request body to Try a single Scenario against an Environment. The Scenario comes from the
- *     URL (`POST /scenarios/{id}/runs`); this only supplies the Environment to run against.
- */
-export interface CreateAuthoringRunRequest {
-  /** @format uuid */
-  environmentId: string;
-}
-
-/**
  * Request body to create a new Environment for an Application. No Variables at creation —
  *     set those afterward via `PUT /environments/{id}/variables/{key}`.
  */
@@ -297,6 +288,14 @@ export interface ExchangeGoogleCodeRequest {
    * @maxLength 200
    */
   codeVerifier: string;
+}
+
+/** An Organization, as returned to the client. */
+export interface OrganizationResponse {
+  /** @format uuid */
+  id: string;
+  name: string;
+  isPersonal: boolean;
 }
 
 /** A Precondition library item, as returned to the client. */
@@ -602,8 +601,7 @@ export interface RunStatusUpdateResponse {
 
 /**
  * A Run's identity and execution state only -- no Environment, no Scenarios -- exactly what the
- *     Application's Runs panel shows for one row of the list. Authoring Runs never appear here; fetch one by
- *     id instead.
+ *     Application's Runs panel shows for one row of the list.
  */
 export interface RunSummaryResponse {
   /** @format uuid */
@@ -762,28 +760,28 @@ export interface UpdateRunStatsRequest {
   /**
    * @format int32
    * @min 0
-   * @max 2147483647
+   * @max 8640
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   totalActivityCount: number | string;
   /**
    * @format int32
    * @min 0
-   * @max 2147483647
+   * @max 8640
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   passedActivityCount: number | string;
   /**
    * @format int32
    * @min 0
-   * @max 2147483647
+   * @max 8640
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   failedActivityCount: number | string;
   /**
    * @format int32
    * @min 0
-   * @max 2147483647
+   * @max 8640
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   skippedActivityCount: number | string;
@@ -1009,6 +1007,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request POST:/scenarios/{scenarioId}/activities
      * @response `200` `ActivityResponse` OK
      * @response `400` `ErrorResponse` PreconditionIds/EvidenceIds do not reference existing library rows in the Scenario's Application, or the Scenario already has the maximum number of Activities. Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Scenario with the given scenarioId exists in the caller's Organization, or it no longer exists (deleted after this request started).
      */
     createActivity: (
@@ -1016,7 +1015,10 @@ export class Api<SecurityDataType extends unknown> {
       data: CreateActivityRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<ActivityResponse, ErrorResponse | ProblemDetails>({
+      this.http.request<
+        ActivityResponse,
+        ErrorResponse | void | ProblemDetails
+      >({
         path: `/scenarios/${scenarioId}/activities`,
         method: "POST",
         body: data,
@@ -1049,6 +1051,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request PATCH:/scenarios/{scenarioId}/activities/order
      * @response `200` `(ActivityResponse)[]` OK
      * @response `400` `ErrorResponse` OrderedActivityIds is not exactly a permutation of the Scenario's current Activity ids. Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Scenario with the given scenarioId exists in the caller's Organization.
      */
     reorderActivities: (
@@ -1056,33 +1059,12 @@ export class Api<SecurityDataType extends unknown> {
       data: ReorderActivitiesRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<ActivityResponse[], ErrorResponse | ProblemDetails>({
+      this.http.request<
+        ActivityResponse[],
+        ErrorResponse | void | ProblemDetails
+      >({
         path: `/scenarios/${scenarioId}/activities/order`,
         method: "PATCH",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags AuthoringRuns
-     * @name CreateAuthoringRun
-     * @request POST:/scenarios/{scenarioId}/runs
-     * @response `200` `RunResponse` OK
-     * @response `400` `ErrorResponse` EnvironmentId does not reference an Environment belonging to the Scenario's Application. Returns 400 when the request fails a validation constraint.
-     * @response `404` `ProblemDetails` No Scenario with the given scenarioId exists in the caller's Organization.
-     */
-    createAuthoringRun: (
-      scenarioId: string,
-      data: CreateAuthoringRunRequest,
-      params: RequestParams = {},
-    ) =>
-      this.http.request<RunResponse, ErrorResponse | ProblemDetails>({
-        path: `/scenarios/${scenarioId}/runs`,
-        method: "POST",
         body: data,
         type: ContentType.Json,
         format: "json",
@@ -1114,6 +1096,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request PATCH:/scenarios/{scenarioId}
      * @response `200` `ScenarioResponse` OK
      * @response `400` `ErrorResponse` A tag in Tags is longer than 50 characters. Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Scenario with the given scenarioId exists in the caller's Organization.
      * @response `409` `ErrorResponse` The Scenario's Application no longer exists (deleted after this request started).
      */
@@ -1122,28 +1105,15 @@ export class Api<SecurityDataType extends unknown> {
       data: UpdateScenarioRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<ScenarioResponse, ErrorResponse | ProblemDetails>({
+      this.http.request<
+        ScenarioResponse,
+        ErrorResponse | void | ProblemDetails
+      >({
         path: `/scenarios/${scenarioId}`,
         method: "PATCH",
         body: data,
         type: ContentType.Json,
         format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Scenarios
-     * @name DeleteScenario
-     * @request DELETE:/scenarios/{scenarioId}
-     * @response `204` `void` No Content
-     * @response `404` `ProblemDetails` No Scenario with the given scenarioId exists in the caller's Organization.
-     */
-    deleteScenario: (scenarioId: string, params: RequestParams = {}) =>
-      this.http.request<void, ProblemDetails>({
-        path: `/scenarios/${scenarioId}`,
-        method: "DELETE",
         ...params,
       }),
   };
@@ -1156,6 +1126,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request PATCH:/activities/{activityId}
      * @response `200` `ActivityResponse` OK
      * @response `400` `ErrorResponse` PreconditionIds/EvidenceIds do not reference existing library rows in the Scenario's Application. Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Activity with the given activityId exists in the caller's Organization.
      */
     updateActivity: (
@@ -1163,27 +1134,15 @@ export class Api<SecurityDataType extends unknown> {
       data: UpdateActivityRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<ActivityResponse, ErrorResponse | ProblemDetails>({
+      this.http.request<
+        ActivityResponse,
+        ErrorResponse | void | ProblemDetails
+      >({
         path: `/activities/${activityId}`,
         method: "PATCH",
         body: data,
         type: ContentType.Json,
         format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Activities
-     * @name DeleteActivity
-     * @request DELETE:/activities/{activityId}
-     * @response `204` `void` No Content
-     */
-    deleteActivity: (activityId: string, params: RequestParams = {}) =>
-      this.http.request<void, any>({
-        path: `/activities/${activityId}`,
-        method: "DELETE",
         ...params,
       }),
   };
@@ -1196,12 +1155,13 @@ export class Api<SecurityDataType extends unknown> {
      * @request POST:/applications
      * @response `200` `ApplicationResponse` OK
      * @response `400` `ErrorResponse` The caller's Organization could not be found or has been deleted. Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      */
     createApplication: (
       data: CreateApplicationRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<ApplicationResponse, ErrorResponse>({
+      this.http.request<ApplicationResponse, ErrorResponse | void>({
         path: `/applications`,
         method: "POST",
         body: data,
@@ -1251,6 +1211,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request POST:/applications/{applicationId}/environments
      * @response `200` `EnvironmentResponse` OK
      * @response `400` `void` Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Application with the given applicationId exists in the caller's Organization.
      */
     createEnvironment: (
@@ -1291,6 +1252,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request POST:/applications/{applicationId}/evidence-definitions
      * @response `200` `EvidenceDefinitionResponse` OK
      * @response `400` `void` Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Application with the given applicationId exists in the caller's Organization.
      */
     createEvidenceDefinition: (
@@ -1334,6 +1296,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request POST:/applications/{applicationId}/preconditions
      * @response `200` `PreconditionResponse` OK
      * @response `400` `void` Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Application with the given applicationId exists in the caller's Organization.
      */
     createPrecondition: (
@@ -1374,6 +1337,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request POST:/applications/{applicationId}/runs
      * @response `200` `RunResponse` OK
      * @response `400` `ErrorResponse` EnvironmentId does not reference an Environment belonging to this Application, ScenarioIds contains a duplicate, or ScenarioIds contains an id that does not reference a Scenario belonging to this Application. Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Application with the given applicationId exists in the caller's Organization, or it no longer exists (deleted after this request started).
      */
     createRun: (
@@ -1381,7 +1345,7 @@ export class Api<SecurityDataType extends unknown> {
       data: CreateRunRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<RunResponse, ErrorResponse | ProblemDetails>({
+      this.http.request<RunResponse, ErrorResponse | void | ProblemDetails>({
         path: `/applications/${applicationId}/runs`,
         method: "POST",
         body: data,
@@ -1395,7 +1359,6 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Runs
      * @name ListRuns
-     * @summary Never returns Authoring Runs -- those are scratch runs against a Scenario under construction, not runs of the Application's saved Scenarios.
      * @request GET:/applications/{applicationId}/runs
      * @response `200` `(RunSummaryResponse)[]` OK
      */
@@ -1450,9 +1413,10 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Runs
      * @name StartRun
-     * @summary Claims a Pending Run for execution and returns it, unmasked, to the winning caller only -- the one time in this API's life a sensitive Environment variable's real value is ever returned. Every other response (Create Run, Get Run) always masks sensitive values regardless of what storage currently holds; see RunResponse ContractMapper.ToResponse(Run run, bool maskSensitiveValues = true).
+     * @summary Starts a Run and returns it with Environment variable values unmasked -- the last chance to see them unmasked. After the Run starts, every response masks them, for security.
      * @request POST:/applications/{applicationId}/runs/{runId}/start
      * @response `200` `RunResponse` OK
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Run with the given runId exists in this Application, in the caller's Organization.
      * @response `409` `ErrorResponse` The Run's Status is not Pending.
      */
@@ -1461,7 +1425,7 @@ export class Api<SecurityDataType extends unknown> {
       runId: string,
       params: RequestParams = {},
     ) =>
-      this.http.request<RunResponse, ProblemDetails | ErrorResponse>({
+      this.http.request<RunResponse, void | ProblemDetails | ErrorResponse>({
         path: `/applications/${applicationId}/runs/${runId}/start`,
         method: "POST",
         format: "json",
@@ -1476,6 +1440,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request POST:/applications/{applicationId}/runs/{runId}/end
      * @response `204` `void` No Content
      * @response `400` `ErrorResponse` TerminalStatus is Pending or Running. Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Run with the given runId exists in this Application, in the caller's Organization.
      * @response `409` `ErrorResponse` The Run's Status is not Running.
      */
@@ -1485,7 +1450,7 @@ export class Api<SecurityDataType extends unknown> {
       data: EndRunRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<void, ErrorResponse | ProblemDetails>({
+      this.http.request<void, ErrorResponse | void | ProblemDetails>({
         path: `/applications/${applicationId}/runs/${runId}/end`,
         method: "POST",
         body: data,
@@ -1500,6 +1465,7 @@ export class Api<SecurityDataType extends unknown> {
      * @name UpdateRunHeartbeat
      * @request POST:/applications/{applicationId}/runs/{runId}/heartbeat
      * @response `204` `void` No Content
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Run with the given runId exists in this Application, in the caller's Organization.
      * @response `409` `ErrorResponse` The Run's Status is not Running.
      */
@@ -1508,7 +1474,7 @@ export class Api<SecurityDataType extends unknown> {
       runId: string,
       params: RequestParams = {},
     ) =>
-      this.http.request<void, ProblemDetails | ErrorResponse>({
+      this.http.request<void, void | ProblemDetails | ErrorResponse>({
         path: `/applications/${applicationId}/runs/${runId}/heartbeat`,
         method: "POST",
         ...params,
@@ -1522,6 +1488,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request POST:/applications/{applicationId}/runs/{runId}/stats
      * @response `204` `void` No Content
      * @response `400` `void` Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Run with the given runId exists in this Application, in the caller's Organization.
      * @response `409` `ErrorResponse` The Run's Status is not Running.
      */
@@ -1547,6 +1514,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request POST:/applications/{applicationId}/runs/{runId}/status-updates
      * @response `200` `RunStatusUpdateResponse` OK
      * @response `400` `ErrorResponse` ActivityResult.Status is Pending or Running. Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Run with the given runId exists in this Application, in the caller's Organization.
      * @response `409` `ErrorResponse` Seq is not greater than the Run's current LastSeq, or the Run's Status is not Running.
      */
@@ -1558,7 +1526,7 @@ export class Api<SecurityDataType extends unknown> {
     ) =>
       this.http.request<
         RunStatusUpdateResponse,
-        ErrorResponse | ProblemDetails
+        ErrorResponse | void | ProblemDetails
       >({
         path: `/applications/${applicationId}/runs/${runId}/status-updates`,
         method: "POST",
@@ -1608,6 +1576,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request POST:/applications/{applicationId}/scenarios
      * @response `200` `ScenarioResponse` OK
      * @response `400` `ErrorResponse` A tag in Tags is longer than 50 characters. Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Application with the given applicationId exists in the caller's Organization, or it no longer exists (deleted after this request started).
      */
     createScenario: (
@@ -1615,7 +1584,10 @@ export class Api<SecurityDataType extends unknown> {
       data: CreateScenarioRequest,
       params: RequestParams = {},
     ) =>
-      this.http.request<ScenarioResponse, ErrorResponse | ProblemDetails>({
+      this.http.request<
+        ScenarioResponse,
+        ErrorResponse | void | ProblemDetails
+      >({
         path: `/applications/${applicationId}/scenarios`,
         method: "POST",
         body: data,
@@ -1719,6 +1691,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request PATCH:/environments/{environmentId}
      * @response `200` `EnvironmentResponse` OK
      * @response `400` `void` Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Environment with the given environmentId exists in the caller's Organization.
      */
     updateEnvironment: (
@@ -1743,6 +1716,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request PUT:/environments/{environmentId}/variables/{key}
      * @response `204` `void` No Content
      * @response `400` `void` Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Environment with the given environmentId exists in the caller's Organization, or it no longer exists (deleted after this request started).
      */
     setEnvironmentVariable: (
@@ -1758,27 +1732,6 @@ export class Api<SecurityDataType extends unknown> {
         type: ContentType.Json,
         ...params,
       }),
-
-    /**
-     * No description
-     *
-     * @tags Environments
-     * @name DeleteEnvironmentVariable
-     * @request DELETE:/environments/{environmentId}/variables/{key}
-     * @response `204` `void` No Content
-     * @response `400` `void` Returns 400 when the request fails a validation constraint.
-     * @response `404` `ProblemDetails` No Environment with the given environmentId exists in the caller's Organization.
-     */
-    deleteEnvironmentVariable: (
-      environmentId: string,
-      key: string,
-      params: RequestParams = {},
-    ) =>
-      this.http.request<void, void | ProblemDetails>({
-        path: `/environments/${environmentId}/variables/${key}`,
-        method: "DELETE",
-        ...params,
-      }),
   };
   evidenceDefinitions = {
     /**
@@ -1789,6 +1742,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request PATCH:/evidence-definitions/{evidenceDefinitionId}
      * @response `200` `EvidenceDefinitionResponse` OK
      * @response `400` `void` Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No EvidenceDefinition with the given evidenceDefinitionId exists in the caller's Organization.
      */
     updateEvidenceDefinition: (
@@ -1804,22 +1758,73 @@ export class Api<SecurityDataType extends unknown> {
         format: "json",
         ...params,
       }),
+  };
+  organizations = {
+    /**
+     * No description
+     *
+     * @tags Organizations
+     * @name ArchiveOrganization
+     * @request POST:/organizations/{id}/archive
+     * @response `204` `void` No Content
+     * @response `400` `ErrorResponse` The caller's Organization could not be found, has been deleted, or is a personal organization.
+     * @response `403` `ErrorResponse` The caller is not an Owner of the Organization.
+     */
+    archiveOrganization: (id: string, params: RequestParams = {}) =>
+      this.http.request<void, ErrorResponse>({
+        path: `/organizations/${id}/archive`,
+        method: "POST",
+        ...params,
+      }),
 
     /**
      * No description
      *
-     * @tags EvidenceDefinitions
-     * @name DeleteEvidenceDefinition
-     * @request DELETE:/evidence-definitions/{evidenceDefinitionId}
+     * @tags Organizations
+     * @name UnarchiveOrganization
+     * @request POST:/organizations/{id}/unarchive
      * @response `204` `void` No Content
+     * @response `400` `ErrorResponse` The caller's Organization could not be found or has been deleted.
+     * @response `403` `ErrorResponse` The caller is not an Owner of the Organization.
      */
-    deleteEvidenceDefinition: (
-      evidenceDefinitionId: string,
-      params: RequestParams = {},
-    ) =>
-      this.http.request<void, any>({
-        path: `/evidence-definitions/${evidenceDefinitionId}`,
-        method: "DELETE",
+    unarchiveOrganization: (id: string, params: RequestParams = {}) =>
+      this.http.request<void, ErrorResponse>({
+        path: `/organizations/${id}/unarchive`,
+        method: "POST",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Organizations
+     * @name ListOrganizations
+     * @summary Returns the caller's active Organizations.
+     * @request GET:/organizations
+     * @response `200` `(OrganizationResponse)[]` OK
+     */
+    listOrganizations: (params: RequestParams = {}) =>
+      this.http.request<OrganizationResponse[], any>({
+        path: `/organizations`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Organizations
+     * @name ListArchivedOrganizations
+     * @summary Returns the caller's archived Organizations.
+     * @request GET:/organizations/archived
+     * @response `200` `(OrganizationResponse)[]` OK
+     */
+    listArchivedOrganizations: (params: RequestParams = {}) =>
+      this.http.request<OrganizationResponse[], any>({
+        path: `/organizations/archived`,
+        method: "GET",
+        format: "json",
         ...params,
       }),
   };
@@ -1832,6 +1837,7 @@ export class Api<SecurityDataType extends unknown> {
      * @request PATCH:/preconditions/{preconditionId}
      * @response `200` `PreconditionResponse` OK
      * @response `400` `void` Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Precondition with the given preconditionId exists in the caller's Organization.
      */
     updatePrecondition: (
@@ -1845,21 +1851,6 @@ export class Api<SecurityDataType extends unknown> {
         body: data,
         type: ContentType.Json,
         format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags Preconditions
-     * @name DeletePrecondition
-     * @request DELETE:/preconditions/{preconditionId}
-     * @response `204` `void` No Content
-     */
-    deletePrecondition: (preconditionId: string, params: RequestParams = {}) =>
-      this.http.request<void, any>({
-        path: `/preconditions/${preconditionId}`,
-        method: "DELETE",
         ...params,
       }),
   };

@@ -5,8 +5,11 @@ namespace A2.Server.Repositories;
 
 public static partial class DynamoDbMapper
 {
-    public static Dictionary<string, AttributeValue> ToDynamoDbRow(this User user) =>
-        new()
+    public static Dictionary<string, AttributeValue> ToDynamoDbRow(
+        this User user
+    )
+    {
+        return new Dictionary<string, AttributeValue>
         {
             ["Id"] = new(user.Id.ToString()),
             ["GoogleUserId"] = new(user.GoogleUserId),
@@ -15,9 +18,11 @@ public static partial class DynamoDbMapper
             ["Email"] = new(user.Email),
             ["EmailVerified"] = new() { BOOL = user.EmailVerified },
         };
+    }
 
-    public static User ToUser(this Dictionary<string, AttributeValue> row) =>
-        new()
+    public static User ToUser(this Dictionary<string, AttributeValue> row)
+    {
+        return new User
         {
             Id = Guid.Parse(row["Id"].S),
             GoogleUserId = row["GoogleUserId"].S,
@@ -26,4 +31,5 @@ public static partial class DynamoDbMapper
             Email = row["Email"].S,
             EmailVerified = row["EmailVerified"].RequireBool("EmailVerified"),
         };
+    }
 }

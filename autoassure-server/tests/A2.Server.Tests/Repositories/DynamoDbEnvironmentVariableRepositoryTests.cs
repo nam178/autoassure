@@ -6,8 +6,11 @@ using Microsoft.Extensions.Options;
 
 namespace A2.Server.Tests.Repositories;
 
-/// <summary>Integration tests for <see cref="DynamoDbEnvironmentVariableRepository"/> against DynamoDB
-/// Local, covering read/write mapping only.</summary>
+/// <summary>
+///     Integration tests for <see cref="DynamoDbEnvironmentVariableRepository" />
+///     against DynamoDB
+///     Local, covering read/write mapping only.
+/// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class DynamoDbEnvironmentVariableRepositoryTests(
     DynamoDbLocalFixture dynamoDbLocalFixture
@@ -39,12 +42,18 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
                 TableName = EnvironmentVariableTableName,
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_EnvironmentId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_EnvironmentId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Key", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_EnvironmentId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_EnvironmentId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Key", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -57,12 +66,18 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
                 TableName = EnvironmentTableName,
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -79,23 +94,33 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
 
     // Puts a bare Environment row directly (bypassing the Environment repository/mapper) so the
     // EnvironmentVariable repository's cross-entity ConditionCheck finds it.
-    private Task PutEnvironmentAsync(Guid organizationId, Guid applicationId, Guid environmentId) =>
-        _client.PutItemAsync(
+    private Task PutEnvironmentAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid environmentId
+    )
+    {
+        return _client.PutItemAsync(
             new PutItemRequest
             {
                 TableName = EnvironmentTableName,
                 Item = new Dictionary<string, AttributeValue>
                 {
                     ["OrganizationId_ApplicationId"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, applicationId)
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            applicationId
+                        )
                     ),
                     ["Id"] = new(environmentId.ToString()),
                 },
             }
         );
+    }
 
     [Fact]
-    public async Task TrySaveAsync_WhenEnvironmentExists_CreatesRowWithCreatedAndUpdatedFields()
+    public async Task
+        TrySaveAsync_WhenEnvironmentExists_CreatesRowWithCreatedAndUpdatedFields()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -114,7 +139,10 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
             false,
             updatedByUserId
         );
-        var result = await _repository.ListByEnvironmentAsync(organizationId, environmentId);
+        var result = await _repository.ListByEnvironmentAsync(
+            organizationId,
+            environmentId
+        );
 
         // verify
         Assert.True(updated);
@@ -129,7 +157,8 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
     }
 
     [Fact]
-    public async Task TrySaveAsync_WhenVariableAlreadyExists_UpdatesValueButKeepsCreatedFields()
+    public async Task
+        TrySaveAsync_WhenVariableAlreadyExists_UpdatesValueButKeepsCreatedFields()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -158,7 +187,10 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
             false,
             newUserId
         );
-        var result = await _repository.ListByEnvironmentAsync(organizationId, environmentId);
+        var result = await _repository.ListByEnvironmentAsync(
+            organizationId,
+            environmentId
+        );
 
         // verify
         Assert.True(updated);
@@ -187,7 +219,8 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
     }
 
     [Fact]
-    public async Task ListByEnvironmentAsync_WhenMultipleVariablesExist_ReturnsSortedByKeyScopedToEnvironment()
+    public async Task
+        ListByEnvironmentAsync_WhenMultipleVariablesExist_ReturnsSortedByKeyScopedToEnvironment()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -195,7 +228,11 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
         var environmentId = Guid.CreateVersion7();
         var otherEnvironmentId = Guid.CreateVersion7();
         await PutEnvironmentAsync(organizationId, applicationId, environmentId);
-        await PutEnvironmentAsync(organizationId, applicationId, otherEnvironmentId);
+        await PutEnvironmentAsync(
+            organizationId,
+            applicationId,
+            otherEnvironmentId
+        );
         var updatedByUserId = Guid.CreateVersion7();
 
         await _repository.TrySaveAsync(
@@ -227,15 +264,25 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
         );
 
         // test
-        var result = await _repository.ListByEnvironmentAsync(organizationId, environmentId);
+        var result = await _repository.ListByEnvironmentAsync(
+            organizationId,
+            environmentId
+        );
 
         // verify
-        Assert.Equal(["API_KEY", "ZOO_KEY"], result.Select(variable => variable.Key));
-        Assert.All(result, variable => Assert.Equal(environmentId, variable.EnvironmentId));
+        Assert.Equal(
+            ["API_KEY", "ZOO_KEY"],
+            result.Select(variable => variable.Key)
+        );
+        Assert.All(
+            result,
+            variable => Assert.Equal(environmentId, variable.EnvironmentId)
+        );
     }
 
     [Fact]
-    public async Task TrySaveAsync_WhenIsSensitiveTrue_StoresValueWholeAndUnmasked()
+    public async Task
+        TrySaveAsync_WhenIsSensitiveTrue_StoresValueWholeAndUnmasked()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -253,7 +300,10 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
             true,
             Guid.CreateVersion7()
         );
-        var result = await _repository.ListByEnvironmentAsync(organizationId, environmentId);
+        var result = await _repository.ListByEnvironmentAsync(
+            organizationId,
+            environmentId
+        );
 
         // verify: the repository never masks -- the whole value is stored regardless of IsSensitive.
         Assert.True(updated);

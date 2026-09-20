@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using A2.Server.Contracts;
+using A2.Server.Models;
 using A2.Server.Repositories;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
@@ -16,8 +17,11 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace A2.Server.Tests.Controllers;
 
-/// <summary>Integration tests for <see cref="A2.Server.Controllers.ScenariosController"/> over real
-/// HTTP, against DynamoDB Local.</summary>
+/// <summary>
+///     Integration tests for
+///     <see cref="A2.Server.Controllers.ScenariosController" /> over real
+///     HTTP, against DynamoDB Local.
+/// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class ScenariosControllerTests
     : IClassFixture<WebApplicationFactory<Program>>,
@@ -37,26 +41,31 @@ public sealed class ScenariosControllerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration(
-                (_, config) =>
-                    config.AddInMemoryCollection(
-                        new Dictionary<string, string?>
-                        {
-                            ["Auth:SigningKey"] = SigningKey,
-                            ["DynamoDb:ApplicationTableName"] = "Applications",
-                            ["DynamoDb:ScenarioTableName"] = "Scenarios",
-                            ["DynamoDb:ScenariosByFolderTableName"] = "ScenariosByFolder",
-                            ["DynamoDb:ScenariosByTagTableName"] = "ScenariosByTag",
-                            ["DynamoDb:ActivityTableName"] = "Activities",
-                            ["DynamoDb:OrganizationTableName"] = "Organizations",
-                            ["DynamoDb:OrganizationUserTableName"] = "OrganizationUsers",
-                        }
-                    )
+            builder.ConfigureAppConfiguration((_, config) =>
+                config.AddInMemoryCollection(
+                    new Dictionary<string, string?>
+                    {
+                        ["Auth:SigningKey"] = SigningKey,
+                        ["DynamoDb:ApplicationTableName"] = "Applications",
+                        ["DynamoDb:ScenarioTableName"] = "Scenarios",
+                        ["DynamoDb:ScenariosByFolderTableName"] =
+                            "ScenariosByFolder",
+                        ["DynamoDb:ScenariosByTagTableName"] =
+                            "ScenariosByTag",
+                        ["DynamoDb:ActivityTableName"] = "Activities",
+                        ["DynamoDb:OrganizationTableName"] =
+                            "Organizations",
+                        ["DynamoDb:OrganizationUserTableName"] =
+                            "OrganizationUsers",
+                    }
+                )
             );
             builder.ConfigureServices(services =>
             {
                 _client = dynamoDbLocalFixture.CreateClient();
-                services.Replace(ServiceDescriptor.Singleton<IAmazonDynamoDB>(_client));
+                services.Replace(
+                    ServiceDescriptor.Singleton<IAmazonDynamoDB>(_client)
+                );
             });
         });
     }
@@ -76,7 +85,10 @@ public sealed class ScenariosControllerTests
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -89,14 +101,23 @@ public sealed class ScenariosControllerTests
                 TableName = "Scenarios",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -105,18 +126,30 @@ public sealed class ScenariosControllerTests
                         IndexName = "IdIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("Id", KeyType.RANGE),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
 
-        await CreateMappingTableAsync("ScenariosByFolder", "OrganizationId_ApplicationId_Folder");
-        await CreateMappingTableAsync("ScenariosByTag", "OrganizationId_ApplicationId_Tag");
+        await CreateMappingTableAsync(
+            "ScenariosByFolder",
+            "OrganizationId_ApplicationId_Folder"
+        );
+        await CreateMappingTableAsync(
+            "ScenariosByTag",
+            "OrganizationId_ApplicationId_Tag"
+        );
         await CreateActivityTableAsync("Activities");
 
         await _client.CreateTableAsync(
@@ -124,7 +157,10 @@ public sealed class ScenariosControllerTests
             {
                 TableName = "Organizations",
                 KeySchema = [new KeySchemaElement("Id", KeyType.HASH)],
-                AttributeDefinitions = [new AttributeDefinition("Id", ScalarAttributeType.S)],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
@@ -140,7 +176,10 @@ public sealed class ScenariosControllerTests
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("UserId", ScalarAttributeType.S),
                 ],
                 GlobalSecondaryIndexes =
@@ -151,66 +190,16 @@ public sealed class ScenariosControllerTests
                         KeySchema =
                         [
                             new KeySchemaElement("UserId", KeyType.HASH),
-                            new KeySchemaElement("OrganizationId", KeyType.RANGE),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.RANGE
+                            ),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
-                ],
-                BillingMode = BillingMode.PAY_PER_REQUEST,
-            }
-        );
-    }
-
-    private async Task CreateActivityTableAsync(string tableName)
-    {
-        await _client.CreateTableAsync(
-            new CreateTableRequest
-            {
-                TableName = tableName,
-                KeySchema =
-                [
-                    new KeySchemaElement("OrganizationId_ScenarioId", KeyType.HASH),
-                    new KeySchemaElement("Id", KeyType.RANGE),
-                ],
-                AttributeDefinitions =
-                [
-                    new AttributeDefinition("OrganizationId_ScenarioId", ScalarAttributeType.S),
-                    new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
-                    },
-                ],
-                BillingMode = BillingMode.PAY_PER_REQUEST,
-            }
-        );
-    }
-
-    private async Task CreateMappingTableAsync(string tableName, string partitionKeyName)
-    {
-        await _client.CreateTableAsync(
-            new CreateTableRequest
-            {
-                TableName = tableName,
-                KeySchema =
-                [
-                    new KeySchemaElement(partitionKeyName, KeyType.HASH),
-                    new KeySchemaElement("ScenarioId", KeyType.RANGE),
-                ],
-                AttributeDefinitions =
-                [
-                    new AttributeDefinition(partitionKeyName, ScalarAttributeType.S),
-                    new AttributeDefinition("ScenarioId", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -231,15 +220,94 @@ public sealed class ScenariosControllerTests
                 "OrganizationUsers",
             }
         )
-        {
             await _client.DeleteTableAsync(tableName);
-        }
         _client.Dispose();
+    }
+
+    private async Task CreateActivityTableAsync(string tableName)
+    {
+        await _client.CreateTableAsync(
+            new CreateTableRequest
+            {
+                TableName = tableName,
+                KeySchema =
+                [
+                    new KeySchemaElement(
+                        "OrganizationId_ScenarioId",
+                        KeyType.HASH
+                    ),
+                    new KeySchemaElement("Id", KeyType.RANGE),
+                ],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition(
+                        "OrganizationId_ScenarioId",
+                        ScalarAttributeType.S
+                    ),
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
+                ],
+                GlobalSecondaryIndexes =
+                [
+                    new GlobalSecondaryIndex
+                    {
+                        IndexName = "IdIndex",
+                        KeySchema =
+                        [
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
+                            new KeySchemaElement("Id", KeyType.RANGE),
+                        ],
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
+                    },
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+            }
+        );
+    }
+
+    private async Task CreateMappingTableAsync(
+        string tableName,
+        string partitionKeyName
+    )
+    {
+        await _client.CreateTableAsync(
+            new CreateTableRequest
+            {
+                TableName = tableName,
+                KeySchema =
+                [
+                    new KeySchemaElement(partitionKeyName, KeyType.HASH),
+                    new KeySchemaElement("ScenarioId", KeyType.RANGE),
+                ],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition(
+                        partitionKeyName,
+                        ScalarAttributeType.S
+                    ),
+                    new AttributeDefinition(
+                        "ScenarioId",
+                        ScalarAttributeType.S
+                    ),
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+            }
+        );
     }
 
     private async Task SeedOrganizationMembershipAsync(Guid userId)
     {
         var organizationId = Guid.CreateVersion7();
+        var now = DateTimeOffset.UtcNow;
         await _client.PutItemAsync(
             new PutItemRequest
             {
@@ -247,6 +315,15 @@ public sealed class ScenariosControllerTests
                 Item = new Dictionary<string, AttributeValue>
                 {
                     ["Id"] = new(organizationId.ToString()),
+                    ["Name"] = new("Test Organization"),
+                    ["IsPersonal"] = new() { BOOL = true },
+                    ["CreatedByUserId"] = new(userId.ToString()),
+                    ["UpdatedByUserId"] = new(userId.ToString()),
+                    ["CreatedAt"] = new(now.ToString("O")),
+                    ["UpdatedAt"] = new(now.ToString("O")),
+                    ["LifecycleState"] = new(
+                        LifecycleState.Active.ToString()
+                    ),
                 },
             }
         );
@@ -258,7 +335,7 @@ public sealed class ScenariosControllerTests
                 {
                     ["OrganizationId"] = new(organizationId.ToString()),
                     ["UserId"] = new(userId.ToString()),
-                    ["Role"] = new(Models.OrganizationRole.Owner.ToString()),
+                    ["Role"] = new(OrganizationRole.Owner.ToString()),
                     ["CreatedByUserId"] = new(userId.ToString()),
                     ["UpdatedByUserId"] = new(userId.ToString()),
                     ["CreatedAt"] = new(DateTimeOffset.UtcNow.ToString("O")),
@@ -274,11 +351,14 @@ public sealed class ScenariosControllerTests
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey)),
             SecurityAlgorithms.HmacSha256
         );
-        var claims = new[] { new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()) };
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+        };
         var token = new JwtSecurityToken(
-            issuer: Issuer,
-            audience: Audience,
-            claims: claims,
+            Issuer,
+            Audience,
+            claims,
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: credentials
         );
@@ -288,10 +368,8 @@ public sealed class ScenariosControllerTests
     private HttpClient CreateAuthenticatedClient(Guid userId)
     {
         var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            CreateAccessToken(userId)
-        );
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", CreateAccessToken(userId));
         return client;
     }
 
@@ -308,7 +386,8 @@ public sealed class ScenariosControllerTests
             "/applications",
             new CreateApplicationRequest { Name = "Test App", Description = "" }
         );
-        var application = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
+        var application =
+            await response.Content.ReadFromJsonAsync<ApplicationResponse>();
         return application!.Id;
     }
 
@@ -322,7 +401,10 @@ public sealed class ScenariosControllerTests
                 TableName = "OrganizationUsers",
                 IndexName = "UserIdIndex",
                 KeyConditionExpression = "UserId = :userId",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":userId"] = new(userId.ToString()),
                 },
@@ -352,7 +434,8 @@ public sealed class ScenariosControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
-        var created = await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>();
+        var created =
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>();
         Assert.NotNull(created);
         Assert.Equal("Checkout completes", created.Title);
         Assert.Equal("/Checkout", created.Folder);
@@ -361,13 +444,15 @@ public sealed class ScenariosControllerTests
         var getResponse = await client.GetAsync($"/scenarios/{created.Id}");
 
         // verify
-        var fetched = await getResponse.Content.ReadFromJsonAsync<ScenarioResponse>();
+        var fetched =
+            await getResponse.Content.ReadFromJsonAsync<ScenarioResponse>();
         Assert.Equal(created.Id, fetched!.Id);
         Assert.Equal("Checkout completes", fetched.Title);
     }
 
     [Fact]
-    public async Task Create_WhenTagIsEmptyString_RoundTripsAsEmptyStringInTagsList()
+    public async Task
+        Create_WhenTagIsEmptyString_RoundTripsAsEmptyStringInTagsList()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -387,14 +472,16 @@ public sealed class ScenariosControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
-        var created = await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>();
+        var created =
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>();
         Assert.Equal("", Assert.Single(created!.Tags));
 
         // test
         var getResponse = await client.GetAsync($"/scenarios/{created.Id}");
 
         // verify
-        var fetched = await getResponse.Content.ReadFromJsonAsync<ScenarioResponse>();
+        var fetched =
+            await getResponse.Content.ReadFromJsonAsync<ScenarioResponse>();
         Assert.Equal("", Assert.Single(fetched!.Tags));
     }
 
@@ -418,7 +505,8 @@ public sealed class ScenariosControllerTests
         );
 
         // verify
-        var created = await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>();
+        var created =
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>();
         Assert.Equal("/", created!.Folder);
     }
 
@@ -445,7 +533,8 @@ public sealed class ScenariosControllerTests
     }
 
     [Fact]
-    public async Task Update_WhenFolderChanges_MovesScenarioWithNoIntermediateDuplicateOrGap()
+    public async Task
+        Update_WhenFolderChanges_MovesScenarioWithNoIntermediateDuplicateOrGap()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -460,7 +549,9 @@ public sealed class ScenariosControllerTests
                 Tags = null,
             }
         );
-        var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
 
         // test
         var patchResponse = await client.PatchAsJsonAsync(
@@ -483,9 +574,10 @@ public sealed class ScenariosControllerTests
         );
 
         // verify
-        var oldFolderScenarios = await oldFolderResponse.Content.ReadFromJsonAsync<
-            List<ScenarioResponse>
-        >();
+        var oldFolderScenarios =
+            await oldFolderResponse.Content.ReadFromJsonAsync<
+                List<ScenarioResponse>
+            >();
         Assert.Empty(oldFolderScenarios!);
 
         // test
@@ -494,9 +586,10 @@ public sealed class ScenariosControllerTests
         );
 
         // verify
-        var newFolderScenarios = await newFolderResponse.Content.ReadFromJsonAsync<
-            List<ScenarioResponse>
-        >();
+        var newFolderScenarios =
+            await newFolderResponse.Content.ReadFromJsonAsync<
+                List<ScenarioResponse>
+            >();
         var scenario = Assert.Single(newFolderScenarios!);
         Assert.Equal(created.Id, scenario.Id);
     }
@@ -517,7 +610,9 @@ public sealed class ScenariosControllerTests
                 Tags = [],
             }
         );
-        var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
 
         // test
         await client.PatchAsJsonAsync(
@@ -530,10 +625,14 @@ public sealed class ScenariosControllerTests
                 Tags = ["regression"],
             }
         );
-        var listWithTag = await client.GetAsync($"/applications/{appId}/scenarios?tag=regression");
+        var listWithTag = await client.GetAsync(
+            $"/applications/{appId}/scenarios?tag=regression"
+        );
 
         // verify
-        var withTag = await listWithTag.Content.ReadFromJsonAsync<List<ScenarioResponse>>();
+        var withTag = await listWithTag.Content.ReadFromJsonAsync<
+            List<ScenarioResponse>
+        >();
         Assert.Single(withTag!);
 
         // test
@@ -552,12 +651,15 @@ public sealed class ScenariosControllerTests
         );
 
         // verify
-        var withoutTag = await listWithoutTag.Content.ReadFromJsonAsync<List<ScenarioResponse>>();
+        var withoutTag = await listWithoutTag.Content.ReadFromJsonAsync<
+            List<ScenarioResponse>
+        >();
         Assert.Empty(withoutTag!);
     }
 
     [Fact]
-    public async Task Update_WhenScenarioDoesNotExistInCallersOrganization_ReturnsNotFound()
+    public async Task
+        Update_WhenScenarioDoesNotExistInCallersOrganization_ReturnsNotFound()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -596,7 +698,9 @@ public sealed class ScenariosControllerTests
                 Tags = null,
             }
         );
-        var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
 
         // Update() never re-checks the Application's existence itself (only the Scenario's) -- the
         // Application is only re-validated inside TryUpdateAsync's transaction, so deleting it here
@@ -648,7 +752,9 @@ public sealed class ScenariosControllerTests
                 Tags = null,
             }
         );
-        var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
 
         // Update() checks the Scenario exists up front via GetByIdAsync, then relies on
         // TryUpdateAsync's condition expression to catch it being deleted after that -- delete it
@@ -662,7 +768,10 @@ public sealed class ScenariosControllerTests
                 Key = new Dictionary<string, AttributeValue>
                 {
                     ["OrganizationId_ApplicationId"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(organizationId, appId)
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            appId
+                        )
                     ),
                     ["Id"] = new(created.Id.ToString()),
                 },
@@ -693,7 +802,9 @@ public sealed class ScenariosControllerTests
         var appId = await CreateApplicationAsync(client);
 
         // test
-        var response = await client.GetAsync($"/applications/{appId}/scenarios?folder=/&tag=smoke");
+        var response = await client.GetAsync(
+            $"/applications/{appId}/scenarios?folder=/&tag=smoke"
+        );
 
         // verify
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -732,10 +843,11 @@ public sealed class ScenariosControllerTests
     [InlineData(2000, HttpStatusCode.OK)]
     [InlineData(2001, HttpStatusCode.BadRequest)]
     [InlineData(0, HttpStatusCode.BadRequest)]
-    public async Task Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
-        int descriptionLength,
-        HttpStatusCode expectedStatus
-    )
+    public async Task
+        Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
+            int descriptionLength,
+            HttpStatusCode expectedStatus
+        )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -805,7 +917,10 @@ public sealed class ScenariosControllerTests
                 Title = "Title",
                 Description = "Description",
                 Folder = null,
-                Tags = Enumerable.Range(0, tagCount).Select(i => $"tag{i}").ToList(),
+                Tags = Enumerable
+                    .Range(0, tagCount)
+                    .Select(i => $"tag{i}")
+                    .ToList(),
             }
         );
 
@@ -857,7 +972,9 @@ public sealed class ScenariosControllerTests
                 Tags = null,
             }
         );
-        var created = (await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>())!;
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
 
         // test
         var response = await client.PatchAsync(
@@ -874,12 +991,22 @@ public sealed class ScenariosControllerTests
     }
 
     [Theory]
-    [InlineData("""{"description":"Description","folder":null,"tags":null}""")] // title missing entirely
-    [InlineData("""{"title":null,"description":"Description","folder":null,"tags":null}""")] // title explicitly null
-    [InlineData("""{"title":123,"description":"Description","folder":null,"tags":null}""")] // title wrong type
-    [InlineData("""{"title":"Title","folder":null,"tags":null}""")] // description missing entirely
-    [InlineData("""{"title":"Title","description":null,"folder":null,"tags":null}""")] // description explicitly null
-    public async Task Create_WhenRequestHasInvalidShape_ReturnsBadRequest(string rawJson)
+    [InlineData(
+        """{"description":"Description","folder":null,"tags":null}""")] // title missing entirely
+    [InlineData(
+        """{"title":null,"description":"Description","folder":null,"tags":null}"""
+    )] // title explicitly null
+    [InlineData(
+        """{"title":123,"description":"Description","folder":null,"tags":null}"""
+    )] // title wrong type
+    [InlineData(
+        """{"title":"Title","folder":null,"tags":null}""")] // description missing entirely
+    [InlineData(
+        """{"title":"Title","description":null,"folder":null,"tags":null}"""
+    )] // description explicitly null
+    public async Task Create_WhenRequestHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();

@@ -6,6 +6,15 @@ namespace A2.Server.Controllers;
 /// <summary>Mapping between EvidenceDefinition Contracts and domain Models.</summary>
 public static partial class ContractMapper
 {
-    public static EvidenceDefinitionResponse ToResponse(this EvidenceDefinition evidence) =>
-        new(evidence.Id, evidence.Name, evidence.Description, evidence.ExampleValue);
+    public static EvidenceDefinitionResponse ToResponse(
+        this EvidenceDefinition evidence
+    )
+    {
+        return new EvidenceDefinitionResponse(
+            evidence.Id,
+            evidence.Name,
+            evidence.Description,
+            evidence.ExampleValue
+        );
+    }
 }

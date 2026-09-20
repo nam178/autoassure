@@ -13,18 +13,18 @@ public class GoogleTokenExchangeService(
 {
     private const string TokenEndpoint = "https://oauth2.googleapis.com/token";
 
-    private sealed record GoogleTokenEndpointResponse(
-        [property: JsonPropertyName("id_token")] string? IdToken,
-        [property: JsonPropertyName("expires_in")] int? ExpiresIn,
-        [property: JsonPropertyName("token_type")] string? TokenType,
-        [property: JsonPropertyName("scope")] string? Scope,
-        [property: JsonPropertyName("error")] string? Error,
-        [property: JsonPropertyName("error_description")] string? ErrorDescription
-    );
-
-    /// <exception cref="GoogleTokenExchangeException">Google rejected the code or returned no ID token.</exception>
-    /// <exception cref="Google.Apis.Auth.InvalidJwtException">The returned ID token failed validation.</exception>
-    public async Task<GoogleIdentity> ExchangeCodeAsync(string code, string codeVerifier)
+    /// <exception cref="GoogleTokenExchangeException">
+    ///     Google rejected the code or
+    ///     returned no ID token.
+    /// </exception>
+    /// <exception cref="Google.Apis.Auth.InvalidJwtException">
+    ///     The returned ID token
+    ///     failed validation.
+    /// </exception>
+    public async Task<GoogleIdentity> ExchangeCodeAsync(
+        string code,
+        string codeVerifier
+    )
     {
         var response = await httpClient.PostAsync(
             TokenEndpoint,
@@ -41,16 +41,21 @@ public class GoogleTokenExchangeService(
             )
         );
 
-        var body = await response.Content.ReadFromJsonAsync<GoogleTokenEndpointResponse>();
+        var body =
+            await response.Content
+                .ReadFromJsonAsync<GoogleTokenEndpointResponse>();
 
         if (!response.IsSuccessStatusCode || body?.IdToken is null)
-        {
             throw new GoogleTokenExchangeException(
-                body?.ErrorDescription ?? body?.Error ?? "Google token exchange failed."
+                body?.ErrorDescription
+                ?? body?.Error
+                ?? "Google token exchange failed."
             );
-        }
 
-        var payload = await idTokenValidator.ValidateAsync(body.IdToken, options.Value.ClientId);
+        var payload = await idTokenValidator.ValidateAsync(
+            body.IdToken,
+            options.Value.ClientId
+        );
 
         return new GoogleIdentity(
             payload.Subject,
@@ -61,4 +66,17 @@ public class GoogleTokenExchangeService(
             payload.HostedDomain
         );
     }
+
+    private sealed record GoogleTokenEndpointResponse(
+        [property: JsonPropertyName("id_token")]
+        string? IdToken,
+        [property: JsonPropertyName("expires_in")]
+        int? ExpiresIn,
+        [property: JsonPropertyName("token_type")]
+        string? TokenType,
+        [property: JsonPropertyName("scope")] string? Scope,
+        [property: JsonPropertyName("error")] string? Error,
+        [property: JsonPropertyName("error_description")]
+        string? ErrorDescription
+    );
 }

@@ -1,6 +1,10 @@
 namespace A2.Server.Repositories;
 
-/// <summary>The only EvidenceDefinition fields <see cref="IEvidenceDefinitionRepository.TryUpdateAsync"/> is allowed to change.</summary>
+/// <summary>
+///     The only EvidenceDefinition fields
+///     <see cref="IEvidenceDefinitionRepository.TryUpdateAsync" /> is allowed to
+///     change.
+/// </summary>
 public record EvidenceDefinitionUpdatableFields
 {
     public required string Name { get; init; }

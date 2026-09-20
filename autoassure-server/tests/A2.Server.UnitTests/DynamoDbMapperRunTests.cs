@@ -3,13 +3,18 @@ using A2.Server.Repositories;
 
 namespace A2.Server.UnitTests;
 
-/// <summary>Unit tests for the runs-table row mappers in <c>DynamoDbMapper.Run.cs</c>: the header row,
-/// the Scenario snapshot row and the status update row, each converted to a DynamoDB attribute map and
-/// back.</summary>
+/// <summary>
+///     Unit tests for the runs-table row mappers in <c>DynamoDbMapper.Run.cs</c>:
+///     the header row,
+///     the Scenario snapshot row and the status update row, each converted to a
+///     DynamoDB attribute map and
+///     back.
+/// </summary>
 public sealed class DynamoDbMapperRunTests
 {
-    private static RunSnapshotSource SampleSource(Guid id) =>
-        new()
+    private static RunSnapshotSource SampleSource(Guid id)
+    {
+        return new RunSnapshotSource
         {
             Id = id,
             CreatedByUserId = Guid.NewGuid(),
@@ -17,9 +22,11 @@ public sealed class DynamoDbMapperRunTests
             CreatedAt = DateTimeOffset.Parse("2026-01-01T00:00:00Z"),
             UpdatedAt = DateTimeOffset.Parse("2026-01-02T00:00:00Z"),
         };
+    }
 
-    private static RunEnvironmentSnapshot SampleEnvironment() =>
-        new()
+    private static RunEnvironmentSnapshot SampleEnvironment()
+    {
+        return new RunEnvironmentSnapshot
         {
             Source = SampleSource(Guid.NewGuid()),
             Name = "Staging",
@@ -48,9 +55,11 @@ public sealed class DynamoDbMapperRunTests
                 },
             ],
         };
+    }
 
-    private static Run SampleRun(Guid? id = null) =>
-        new()
+    private static Run SampleRun(Guid? id = null)
+    {
+        return new Run
         {
             Id = id ?? Guid.NewGuid(),
             OrganizationId = Guid.NewGuid(),
@@ -70,9 +79,13 @@ public sealed class DynamoDbMapperRunTests
             CompletedAt = DateTimeOffset.Parse("2026-01-01T00:10:00Z"),
             LastHeartbeatAt = DateTimeOffset.Parse("2026-01-01T00:09:30Z"),
         };
+    }
 
-    private static RunScenarioSnapshot SampleScenarioSnapshot(Guid scenarioId) =>
-        new()
+    private static RunScenarioSnapshot SampleScenarioSnapshot(
+        Guid scenarioId
+    )
+    {
+        return new RunScenarioSnapshot
         {
             Source = SampleSource(scenarioId),
             Title = "Checkout flow",
@@ -109,17 +122,29 @@ public sealed class DynamoDbMapperRunTests
                 },
             ],
         };
+    }
 
-    private static ActivityResult SampleActivityResult(Guid scenarioId, Guid activityId) =>
-        new()
+    private static ActivityResult SampleActivityResult(
+        Guid scenarioId,
+        Guid activityId
+    )
+    {
+        return new ActivityResult
         {
             ScenarioId = scenarioId,
             ActivityId = activityId,
             Status = ActivityResultStatus.Passed,
-            ResolvedPreconditions = new Dictionary<Guid, string> { [Guid.NewGuid()] = "ORD-123" },
-            Evidence = new Dictionary<Guid, string> { [Guid.NewGuid()] = "$42.00" },
+            ResolvedPreconditions = new Dictionary<Guid, string>
+            {
+                [Guid.NewGuid()] = "ORD-123",
+            },
+            Evidence = new Dictionary<Guid, string>
+            {
+                [Guid.NewGuid()] = "$42.00",
+            },
             ContinuationReasoning = "Retried after a transient 500.",
         };
+    }
 
     // ----- Header row -----
 
@@ -142,7 +167,10 @@ public sealed class DynamoDbMapperRunTests
         Assert.Equal(run.TotalActivityCount, roundTripped.TotalActivityCount);
         Assert.Equal(run.PassedActivityCount, roundTripped.PassedActivityCount);
         Assert.Equal(run.FailedActivityCount, roundTripped.FailedActivityCount);
-        Assert.Equal(run.SkippedActivityCount, roundTripped.SkippedActivityCount);
+        Assert.Equal(
+            run.SkippedActivityCount,
+            roundTripped.SkippedActivityCount
+        );
         Assert.Equal(
             run.LastStatusUpdateSequenceNumber,
             roundTripped.LastStatusUpdateSequenceNumber
@@ -155,7 +183,8 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void HeaderRow_WhenOptionalFieldsAreNull_MapsToAbsentAttributesAndBackToNull()
+    public void
+        HeaderRow_WhenOptionalFieldsAreNull_MapsToAbsentAttributesAndBackToNull()
     {
         // setup: a freshly-Pending run has none of the fields that only get set once execution starts.
         var run = new Run
@@ -270,21 +299,26 @@ public sealed class DynamoDbMapperRunTests
         var roundTripped = row.ToRunEnvironmentSnapshot();
 
         // verify
-        Assert.Equivalent(snapshot, roundTripped, strict: true);
+        Assert.Equivalent(snapshot, roundTripped, true);
         Assert.Equal(runId.ToString(), row["RunId"].S);
         Assert.Equal(organizationId.ToString(), row["OrganizationId"].S);
         Assert.Equal(applicationId.ToString(), row["ApplicationId"].S);
     }
 
     [Fact]
-    public void EnvironmentRow_WhenRoundTripped_KeepsASensitiveVariableUnmasked()
+    public void
+        EnvironmentRow_WhenRoundTripped_KeepsASensitiveVariableUnmasked()
     {
         // setup: nothing masks on the way into storage -- a Run is created holding real credentials, and
         // only Start Run overwrites them.
         var snapshot = SampleEnvironment();
 
         // test
-        var row = snapshot.ToDynamoDbRow(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var row = snapshot.ToDynamoDbRow(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid()
+        );
         var roundTripped = row.ToRunEnvironmentSnapshot();
 
         // verify
@@ -293,7 +327,8 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void EnvironmentRow_WhenMapped_UsesTheRunIdWithA2000SuffixAsItsRowKey()
+    public void
+        EnvironmentRow_WhenMapped_UsesTheRunIdWithA2000SuffixAsItsRowKey()
     {
         // setup
         var runId = Guid.NewGuid();
@@ -304,7 +339,10 @@ public sealed class DynamoDbMapperRunTests
 
         // verify
         Assert.Equal($"{runId}#2000", row["RowKey"].S);
-        Assert.Equal(DynamoDbMapper.RunEnvironmentRowKey(runId), row["RowKey"].S);
+        Assert.Equal(
+            DynamoDbMapper.RunEnvironmentRowKey(runId),
+            row["RowKey"].S
+        );
     }
 
     [Fact]
@@ -315,14 +353,19 @@ public sealed class DynamoDbMapperRunTests
         var snapshot = SampleEnvironment();
 
         // test
-        var row = snapshot.ToDynamoDbRow(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var row = snapshot.ToDynamoDbRow(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid()
+        );
 
         // verify
         Assert.False(row.ContainsKey("HeaderId"));
     }
 
     [Fact]
-    public void RunEnvironmentRowKey_SortsBetweenTheHeaderKeyAndTheStatusUpdatePrefix()
+    public void
+        RunEnvironmentRowKey_SortsBetweenTheHeaderKeyAndTheStatusUpdatePrefix()
     {
         // setup: Get Run reads the header, the Environment row and every Scenario row with one BETWEEN
         // query bounded by the header key and the status-update prefix. That only works while the
@@ -354,7 +397,7 @@ public sealed class DynamoDbMapperRunTests
         var roundTripped = row.ToRunScenarioSnapshot();
 
         // verify
-        Assert.Equivalent(snapshot, roundTripped, strict: true);
+        Assert.Equivalent(snapshot, roundTripped, true);
         Assert.Equal(runId.ToString(), row["RunId"].S);
         Assert.Equal(organizationId.ToString(), row["OrganizationId"].S);
         Assert.Equal(applicationId.ToString(), row["ApplicationId"].S);
@@ -362,7 +405,8 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void ScenarioRow_WhenMapped_UsesTheRunAndScenarioIdWithA3000SuffixAsItsRowKey()
+    public void
+        ScenarioRow_WhenMapped_UsesTheRunAndScenarioIdWithA3000SuffixAsItsRowKey()
     {
         // setup
         var runId = Guid.NewGuid();
@@ -374,7 +418,10 @@ public sealed class DynamoDbMapperRunTests
 
         // verify
         Assert.Equal($"{runId}#3000#{scenarioId}", row["RowKey"].S);
-        Assert.Equal(DynamoDbMapper.RunScenarioRowKey(runId, scenarioId), row["RowKey"].S);
+        Assert.Equal(
+            DynamoDbMapper.RunScenarioRowKey(runId, scenarioId),
+            row["RowKey"].S
+        );
     }
 
     [Fact]
@@ -384,7 +431,11 @@ public sealed class DynamoDbMapperRunTests
         var snapshot = SampleScenarioSnapshot(Guid.NewGuid());
 
         // test
-        var row = snapshot.ToDynamoDbRow(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var row = snapshot.ToDynamoDbRow(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid()
+        );
 
         // verify: only a header row carries HeaderId -- see the sparse RunHeaderIndex.
         Assert.False(row.ContainsKey("HeaderId"));
@@ -404,7 +455,10 @@ public sealed class DynamoDbMapperRunTests
             Seq = 7,
             Kind = RunStatusUpdateKind.AppendActivityResult,
             CreatedAt = DateTimeOffset.Parse("2026-01-01T00:05:00Z"),
-            ActivityResult = SampleActivityResult(Guid.NewGuid(), Guid.NewGuid()),
+            ActivityResult = SampleActivityResult(
+                Guid.NewGuid(),
+                Guid.NewGuid()
+            ),
         };
 
         // test
@@ -412,14 +466,15 @@ public sealed class DynamoDbMapperRunTests
         var roundTripped = row.ToRunStatusUpdate();
 
         // verify
-        Assert.Equivalent(update, roundTripped, strict: true);
+        Assert.Equivalent(update, roundTripped, true);
         Assert.Equal(runId.ToString(), row["RunId"].S);
         Assert.Equal(organizationId.ToString(), row["OrganizationId"].S);
         Assert.Equal(applicationId.ToString(), row["ApplicationId"].S);
     }
 
     [Fact]
-    public void StatusUpdateRow_WhenContinuationReasoningIsNull_MapsToAnAbsentAttributeAndBackToNull()
+    public void
+        StatusUpdateRow_WhenContinuationReasoningIsNull_MapsToAnAbsentAttributeAndBackToNull()
     {
         // setup
         var update = new RunStatusUpdate
@@ -437,11 +492,17 @@ public sealed class DynamoDbMapperRunTests
         };
 
         // test
-        var row = update.ToDynamoDbRow(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var row = update.ToDynamoDbRow(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid()
+        );
         var roundTripped = row.ToRunStatusUpdate();
 
         // verify
-        Assert.False(row["ActivityResult"].M.ContainsKey("ContinuationReasoning"));
+        Assert.False(
+            row["ActivityResult"].M.ContainsKey("ContinuationReasoning")
+        );
         Assert.Null(roundTripped.ActivityResult?.ContinuationReasoning);
         Assert.Empty(roundTripped.ActivityResult!.ResolvedPreconditions);
         Assert.Empty(roundTripped.ActivityResult!.Evidence);
@@ -456,18 +517,26 @@ public sealed class DynamoDbMapperRunTests
             Seq = 1,
             Kind = RunStatusUpdateKind.AppendActivityResult,
             CreatedAt = DateTimeOffset.UtcNow,
-            ActivityResult = SampleActivityResult(Guid.NewGuid(), Guid.NewGuid()),
+            ActivityResult = SampleActivityResult(
+                Guid.NewGuid(),
+                Guid.NewGuid()
+            ),
         };
 
         // test
-        var row = update.ToDynamoDbRow(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var row = update.ToDynamoDbRow(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid()
+        );
 
         // verify
         Assert.False(row.ContainsKey("HeaderId"));
     }
 
     [Fact]
-    public void StatusUpdateRow_WhenMapped_UsesTheRunIdAndPaddedSeqWithA4000SuffixAsItsRowKey()
+    public void
+        StatusUpdateRow_WhenMapped_UsesTheRunIdAndPaddedSeqWithA4000SuffixAsItsRowKey()
     {
         // setup
         var runId = Guid.NewGuid();
@@ -476,7 +545,10 @@ public sealed class DynamoDbMapperRunTests
             Seq = 9,
             Kind = RunStatusUpdateKind.AppendActivityResult,
             CreatedAt = DateTimeOffset.UtcNow,
-            ActivityResult = SampleActivityResult(Guid.NewGuid(), Guid.NewGuid()),
+            ActivityResult = SampleActivityResult(
+                Guid.NewGuid(),
+                Guid.NewGuid()
+            ),
         };
 
         // test
@@ -484,13 +556,17 @@ public sealed class DynamoDbMapperRunTests
 
         // verify
         Assert.Equal($"{runId}#4000#000000000009", row["RowKey"].S);
-        Assert.Equal(DynamoDbMapper.RunStatusUpdateRowKey(runId, 9), row["RowKey"].S);
+        Assert.Equal(
+            DynamoDbMapper.RunStatusUpdateRowKey(runId, 9),
+            row["RowKey"].S
+        );
     }
 
     // ----- The padding function, and why it matters -----
 
     [Fact]
-    public void RunStatusUpdateRowKey_WhenSequencesAreSortedAsStrings_SortsInNumericOrder()
+    public void
+        RunStatusUpdateRowKey_WhenSequencesAreSortedAsStrings_SortsInNumericOrder()
     {
         // setup: 1, 9, 10 and 100 built into row keys for the same run. An unpadded scheme would sort
         // "#4000#10" before "#4000#9" as plain strings, silently reordering a poll cursor's results
@@ -502,14 +578,19 @@ public sealed class DynamoDbMapperRunTests
             .ToList();
 
         // test: sort the keys the same way DynamoDB compares range keys -- as plain strings.
-        var sortedByStringComparison = keys.OrderBy(key => key, StringComparer.Ordinal).ToList();
+        var sortedByStringComparison = keys.OrderBy(
+                key => key,
+                StringComparer.Ordinal
+            )
+            .ToList();
 
         // verify: the string sort recovers exactly the creation (numeric) order.
         Assert.Equal(keys, sortedByStringComparison);
     }
 
     [Fact]
-    public void RunStatusUpdateRowKey_WhenGivenASequenceNumber_PadsItToTwelveDigits()
+    public void
+        RunStatusUpdateRowKey_WhenGivenASequenceNumber_PadsItToTwelveDigits()
     {
         // setup
         var runId = Guid.NewGuid();

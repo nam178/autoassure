@@ -2,7 +2,7 @@ using A2.Server.Models;
 
 namespace A2.Server.UnitTests;
 
-/// <summary>Unit tests for <see cref="RunScenarioSnapshot.FromScenario"/>.</summary>
+/// <summary>Unit tests for <see cref="RunScenarioSnapshot.FromScenario" />.</summary>
 public sealed class RunScenarioSnapshotTests
 {
     [Fact]
@@ -15,7 +15,8 @@ public sealed class RunScenarioSnapshotTests
             OrganizationId = Guid.NewGuid(),
             ApplicationId = Guid.NewGuid(),
             Title = "Checkout with a saved card",
-            Description = "Verifies checkout succeeds when a card is already on file.",
+            Description =
+                "Verifies checkout succeeds when a card is already on file.",
             Folder = "Checkout",
             Tags = ["smoke", "checkout"],
             ActivityCount = 1,

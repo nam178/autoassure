@@ -6,8 +6,11 @@ namespace A2.Server.Repositories;
 
 public static partial class DynamoDbMapper
 {
-    public static Dictionary<string, AttributeValue> ToDynamoDbRow(this Application application) =>
-        new()
+    public static Dictionary<string, AttributeValue> ToDynamoDbRow(
+        this Application application
+    )
+    {
+        return new Dictionary<string, AttributeValue>
         {
             ["OrganizationId"] = new(application.OrganizationId.ToString()),
             ["Id"] = new(application.Id.ToString()),
@@ -18,9 +21,13 @@ public static partial class DynamoDbMapper
             ["CreatedAt"] = new(application.CreatedAt.ToString("O")),
             ["UpdatedAt"] = new(application.UpdatedAt.ToString("O")),
         };
+    }
 
-    public static Application ToApplication(this Dictionary<string, AttributeValue> row) =>
-        new()
+    public static Application ToApplication(
+        this Dictionary<string, AttributeValue> row
+    )
+    {
+        return new Application
         {
             OrganizationId = Guid.Parse(row["OrganizationId"].S),
             Id = Guid.Parse(row["Id"].S),
@@ -28,7 +35,14 @@ public static partial class DynamoDbMapper
             Description = row["Description"].S,
             CreatedByUserId = Guid.Parse(row["CreatedByUserId"].S),
             UpdatedByUserId = Guid.Parse(row["UpdatedByUserId"].S),
-            CreatedAt = DateTimeOffset.Parse(row["CreatedAt"].S, CultureInfo.InvariantCulture),
-            UpdatedAt = DateTimeOffset.Parse(row["UpdatedAt"].S, CultureInfo.InvariantCulture),
+            CreatedAt = DateTimeOffset.Parse(
+                row["CreatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
+            UpdatedAt = DateTimeOffset.Parse(
+                row["UpdatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
         };
+    }
 }

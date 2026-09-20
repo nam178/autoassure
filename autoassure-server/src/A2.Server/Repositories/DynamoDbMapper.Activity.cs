@@ -6,39 +6,53 @@ namespace A2.Server.Repositories;
 
 public static partial class DynamoDbMapper
 {
-    public static Dictionary<string, AttributeValue> ToDynamoDbRow(this Activity activity) =>
-        new()
+    public static Dictionary<string, AttributeValue> ToDynamoDbRow(
+        this Activity activity
+    )
+    {
+        return new Dictionary<string, AttributeValue>
         {
             ["OrganizationId_ScenarioId"] = new(
-                ScenarioScopedPartitionKey(activity.OrganizationId, activity.ScenarioId)
+                ScenarioScopedPartitionKey(
+                    activity.OrganizationId,
+                    activity.ScenarioId
+                )
             ),
             ["Id"] = new(activity.Id.ToString()),
             ["OrganizationId"] = new(activity.OrganizationId.ToString()),
             ["ApplicationId"] = new(activity.ApplicationId.ToString()),
             ["ScenarioId"] = new(activity.ScenarioId.ToString()),
             ["Description"] = new(activity.Description),
-            ["Order"] = new AttributeValue
+            ["Order"] = new()
             {
                 N = activity.Order.ToString(CultureInfo.InvariantCulture),
             },
-            ["PreconditionIds"] = new AttributeValue
+            ["PreconditionIds"] = new()
             {
                 L = activity
-                    .PreconditionIds.Select(id => new AttributeValue(id.ToString()))
+                    .PreconditionIds.Select(id => new AttributeValue(
+                        id.ToString()
+                    ))
                     .ToList(),
             },
-            ["EvidenceIds"] = new AttributeValue
+            ["EvidenceIds"] = new()
             {
-                L = activity.EvidenceIds.Select(id => new AttributeValue(id.ToString())).ToList(),
+                L = activity
+                    .EvidenceIds.Select(id => new AttributeValue(id.ToString()))
+                    .ToList(),
             },
             ["CreatedByUserId"] = new(activity.CreatedByUserId.ToString()),
             ["UpdatedByUserId"] = new(activity.UpdatedByUserId.ToString()),
             ["CreatedAt"] = new(activity.CreatedAt.ToString("O")),
             ["UpdatedAt"] = new(activity.UpdatedAt.ToString("O")),
         };
+    }
 
-    public static Activity ToActivity(this Dictionary<string, AttributeValue> row) =>
-        new()
+    public static Activity ToActivity(
+        this Dictionary<string, AttributeValue> row
+    )
+    {
+        return new Activity
         {
             Id = Guid.Parse(row["Id"].S),
             OrganizationId = Guid.Parse(row["OrganizationId"].S),
@@ -46,11 +60,22 @@ public static partial class DynamoDbMapper
             ScenarioId = Guid.Parse(row["ScenarioId"].S),
             Description = row["Description"].S,
             Order = int.Parse(row["Order"].N, CultureInfo.InvariantCulture),
-            PreconditionIds = row["PreconditionIds"].L.Select(id => Guid.Parse(id.S)).ToList(),
-            EvidenceIds = row["EvidenceIds"].L.Select(id => Guid.Parse(id.S)).ToList(),
+            PreconditionIds = row["PreconditionIds"]
+                .L.Select(id => Guid.Parse(id.S))
+                .ToList(),
+            EvidenceIds = row["EvidenceIds"]
+                .L.Select(id => Guid.Parse(id.S))
+                .ToList(),
             CreatedByUserId = Guid.Parse(row["CreatedByUserId"].S),
             UpdatedByUserId = Guid.Parse(row["UpdatedByUserId"].S),
-            CreatedAt = DateTimeOffset.Parse(row["CreatedAt"].S, CultureInfo.InvariantCulture),
-            UpdatedAt = DateTimeOffset.Parse(row["UpdatedAt"].S, CultureInfo.InvariantCulture),
+            CreatedAt = DateTimeOffset.Parse(
+                row["CreatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
+            UpdatedAt = DateTimeOffset.Parse(
+                row["UpdatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
         };
+    }
 }

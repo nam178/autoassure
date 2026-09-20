@@ -15,74 +15,48 @@ namespace A2.Server.Tests.Controllers;
 public class AuthControllerTests(WebApplicationFactory<Program> factory)
     : IClassFixture<WebApplicationFactory<Program>>
 {
-    private sealed class FakeGoogleTokenExchangeService(GoogleIdentity? identity)
-        : IGoogleTokenExchangeService
+    private HttpClient CreateClient(
+        GoogleIdentity? fakeIdentity,
+        IssuedTokens? fakeTokens
+    )
     {
-        public Task<GoogleIdentity> ExchangeCodeAsync(string code, string codeVerifier) =>
-            identity is not null
-                ? Task.FromResult(identity)
-                : throw new GoogleTokenExchangeException("invalid_grant");
-    }
-
-    private sealed class FakeAuthTokenService(IssuedTokens? tokens) : IAuthTokenService
-    {
-        public Task<IssuedTokens> IssueAsync(User user) => Task.FromResult(tokens!);
-
-        public Task<IssuedTokens?> RefreshAsync(string refreshTokenSecret) =>
-            Task.FromResult(tokens);
-    }
-
-    private sealed class FakeGoogleUserSyncService : IGoogleUserSyncService
-    {
-        public static readonly Guid FixedUserId = Guid.CreateVersion7();
-
-        public Task<User> SyncAsync(GoogleIdentity googleIdentity) =>
-            Task.FromResult(
-                new User
-                {
-                    Id = FixedUserId,
-                    GoogleUserId = googleIdentity.GoogleUserId,
-                    FirstName = googleIdentity.FirstName ?? "",
-                    LastName = googleIdentity.LastName ?? "",
-                    Email = googleIdentity.Email,
-                    EmailVerified = googleIdentity.EmailVerified,
-                }
-            );
-    }
-
-    private HttpClient CreateClient(GoogleIdentity? fakeIdentity, IssuedTokens? fakeTokens) =>
-        factory
+        return factory
             .WithWebHostBuilder(builder =>
                 builder
-                    .ConfigureAppConfiguration(
-                        (_, config) =>
-                            config.AddInMemoryCollection(
-                                new Dictionary<string, string?>
-                                {
-                                    ["Auth:SigningKey"] = "test-signing-key-at-least-32-bytes-long",
-                                }
-                            )
+                    .ConfigureAppConfiguration((_, config) =>
+                        config.AddInMemoryCollection(
+                            new Dictionary<string, string?>
+                            {
+                                ["Auth:SigningKey"] =
+                                    "test-signing-key-at-least-32-bytes-long",
+                            }
+                        )
                     )
                     .ConfigureServices(services =>
                     {
                         services.Replace(
-                            ServiceDescriptor.Scoped<IGoogleTokenExchangeService>(
-                                _ => new FakeGoogleTokenExchangeService(fakeIdentity)
-                            )
+                            ServiceDescriptor
+                                .Scoped<IGoogleTokenExchangeService>(_ =>
+                                    new FakeGoogleTokenExchangeService(
+                                        fakeIdentity
+                                    )
+                                )
                         );
                         services.Replace(
-                            ServiceDescriptor.Scoped<IGoogleUserSyncService>(
-                                _ => new FakeGoogleUserSyncService()
-                            )
+                            ServiceDescriptor
+                                .Scoped<IGoogleUserSyncService>(_ =>
+                                    new FakeGoogleUserSyncService()
+                                )
                         );
                         services.Replace(
-                            ServiceDescriptor.Scoped<IAuthTokenService>(
-                                _ => new FakeAuthTokenService(fakeTokens)
+                            ServiceDescriptor.Scoped<IAuthTokenService>(_ =>
+                                new FakeAuthTokenService(fakeTokens)
                             )
                         );
                     })
             )
             .CreateClient();
+    }
 
     [Fact]
     public async Task PostAuthGoogleToken_WhenExchangeSucceeds_ReturnsToken()
@@ -110,7 +84,8 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
 
         // verify
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<AuthTokenResponse>();
+        var body =
+            await response.Content.ReadFromJsonAsync<AuthTokenResponse>();
         Assert.NotNull(body);
         Assert.Equal(tokens.AccessToken.Value, body.Token);
         Assert.Equal(tokens.RefreshTokenSecret, body.RefreshTokenSecret);
@@ -119,7 +94,8 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
     }
 
     [Fact]
-    public async Task PostAuthGoogleToken_WhenExchangeFails_ReturnsUnauthorized()
+    public async Task
+        PostAuthGoogleToken_WhenExchangeFails_ReturnsUnauthorized()
     {
         // setup
         var unusedTokens = new IssuedTokens(
@@ -159,11 +135,15 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
 
         // test
         var response = await CreateClient(identity, tokens)
-            .PostAsJsonAsync("/auth/refresh", new { refreshTokenSecret = "fake-refresh-token" });
+            .PostAsJsonAsync(
+                "/auth/refresh",
+                new { refreshTokenSecret = "fake-refresh-token" }
+            );
 
         // verify
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<RefreshTokenResponse>();
+        var body =
+            await response.Content.ReadFromJsonAsync<RefreshTokenResponse>();
         Assert.NotNull(body);
         Assert.Equal(tokens.AccessToken.Value, body.Token);
         Assert.Equal(tokens.RefreshTokenSecret, body.RefreshTokenSecret);
@@ -175,19 +155,28 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
     {
         // test
         var response = await CreateClient(null, null)
-            .PostAsJsonAsync("/auth/refresh", new { refreshTokenSecret = "unknown-token" });
+            .PostAsJsonAsync(
+                "/auth/refresh",
+                new { refreshTokenSecret = "unknown-token" }
+            );
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-        Assert.Equal("Refresh token is invalid, expired, or revoked.", error!.Message);
+        Assert.Equal(
+            "Refresh token is invalid, expired, or revoked.",
+            error!.Message
+        );
     }
 
     [Theory]
     [InlineData("""{"codeVerifier":"v"}""")] // code missing entirely
     [InlineData("""{"code":null,"codeVerifier":"v"}""")] // code explicitly null
     [InlineData("""{"code":123,"codeVerifier":"v"}""")] // code wrong type
-    public async Task PostAuthGoogleToken_WhenCodeHasInvalidShape_ReturnsBadRequest(string rawJson)
+    public async Task
+        PostAuthGoogleToken_WhenCodeHasInvalidShape_ReturnsBadRequest(
+            string rawJson
+        )
     {
         // test
         var response = await CreateClient(null, null)
@@ -202,20 +191,73 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
 
     [Theory]
     [InlineData("{}")] // refreshTokenSecret missing entirely
-    [InlineData("""{"refreshTokenSecret":null}""")] // refreshTokenSecret explicitly null
-    [InlineData("""{"refreshTokenSecret":123}""")] // refreshTokenSecret wrong type
-    public async Task PostAuthRefresh_WhenRefreshTokenSecretHasInvalidShape_ReturnsBadRequest(
-        string rawJson
-    )
+    [InlineData(
+        """{"refreshTokenSecret":null}""")] // refreshTokenSecret explicitly null
+    [InlineData(
+        """{"refreshTokenSecret":123}""")] // refreshTokenSecret wrong type
+    public async Task
+        PostAuthRefresh_WhenRefreshTokenSecretHasInvalidShape_ReturnsBadRequest(
+            string rawJson
+        )
     {
         // test
         var response = await CreateClient(null, null)
             .PostAsync(
                 "/auth/refresh",
-                new StringContent(rawJson, Encoding.UTF8, "application/json")
+                new StringContent(rawJson, Encoding.UTF8,
+                    "application/json")
             );
 
         // verify
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    private sealed class FakeGoogleTokenExchangeService(
+        GoogleIdentity? identity
+    ) : IGoogleTokenExchangeService
+    {
+        public Task<GoogleIdentity> ExchangeCodeAsync(
+            string code,
+            string codeVerifier
+        )
+        {
+            return identity is not null
+                ? Task.FromResult(identity)
+                : throw new GoogleTokenExchangeException("invalid_grant");
+        }
+    }
+
+    private sealed class FakeAuthTokenService(IssuedTokens? tokens)
+        : IAuthTokenService
+    {
+        public Task<IssuedTokens> IssueAsync(User user)
+        {
+            return Task.FromResult(tokens!);
+        }
+
+        public Task<IssuedTokens?> RefreshAsync(string refreshTokenSecret)
+        {
+            return Task.FromResult(tokens);
+        }
+    }
+
+    private sealed class FakeGoogleUserSyncService : IGoogleUserSyncService
+    {
+        public static readonly Guid FixedUserId = Guid.CreateVersion7();
+
+        public Task<User> SyncAsync(GoogleIdentity googleIdentity)
+        {
+            return Task.FromResult(
+                new User
+                {
+                    Id = FixedUserId,
+                    GoogleUserId = googleIdentity.GoogleUserId,
+                    FirstName = googleIdentity.FirstName ?? "",
+                    LastName = googleIdentity.LastName ?? "",
+                    Email = googleIdentity.Email,
+                    EmailVerified = googleIdentity.EmailVerified,
+                }
+            );
+        }
     }
 }

@@ -7,12 +7,17 @@ using Microsoft.Extensions.Options;
 
 namespace A2.Server.Tests.Repositories;
 
-/// <summary>Integration tests for <see cref="DynamoDbActivityRepository"/> against DynamoDB Local,
-/// covering read/write mapping correctness only — concurrency/races are covered elsewhere with
-/// fakes.</summary>
+/// <summary>
+///     Integration tests for <see cref="DynamoDbActivityRepository" /> against
+///     DynamoDB Local,
+///     covering read/write mapping correctness only — concurrency/races are
+///     covered elsewhere with
+///     fakes.
+/// </summary>
 [Collection("DynamoDbLocal")]
-public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoDbLocalFixture)
-    : IAsyncLifetime
+public sealed class DynamoDbActivityRepositoryTests(
+    DynamoDbLocalFixture dynamoDbLocalFixture
+) : IAsyncLifetime
 {
     private const string ActivityTableName = "Activities";
     private const string ScenarioTableName = "Scenarios";
@@ -44,12 +49,18 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
                 TableName = ScenarioTableName,
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -65,14 +76,23 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
                 TableName = ActivityTableName,
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ScenarioId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ScenarioId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ScenarioId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ScenarioId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -81,35 +101,22 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
                         IndexName = "IdIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("Id", KeyType.RANGE),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
     }
-
-    private async Task CreateLibraryTableAsync(string tableName) =>
-        await _client.CreateTableAsync(
-            new CreateTableRequest
-            {
-                TableName = tableName,
-                KeySchema =
-                [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
-                    new KeySchemaElement("Id", KeyType.RANGE),
-                ],
-                AttributeDefinitions =
-                [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
-                    new AttributeDefinition("Id", ScalarAttributeType.S),
-                ],
-                BillingMode = BillingMode.PAY_PER_REQUEST,
-            }
-        );
 
     public async Task DisposeAsync()
     {
@@ -122,45 +129,78 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
                 ActivityTableName,
             }
         )
-        {
             await _client.DeleteTableAsync(tableName);
-        }
         _client.Dispose();
+    }
+
+    private async Task CreateLibraryTableAsync(string tableName)
+    {
+        await _client.CreateTableAsync(
+            new CreateTableRequest
+            {
+                TableName = tableName,
+                KeySchema =
+                [
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
+                    new KeySchemaElement("Id", KeyType.RANGE),
+                ],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+            }
+        );
     }
 
     private async Task SeedScenarioAsync(
         Guid organizationId,
         Guid applicationId,
         Guid scenarioId
-    ) =>
+    )
+    {
         await _client.PutItemAsync(
             new PutItemRequest
             {
                 TableName = ScenarioTableName,
                 Item = new Dictionary<string, AttributeValue>
                 {
-                    ["OrganizationId_ApplicationId"] = new($"{organizationId}_{applicationId}"),
+                    ["OrganizationId_ApplicationId"] = new(
+                        $"{organizationId}_{applicationId}"
+                    ),
                     ["Id"] = new(scenarioId.ToString()),
                 },
             }
         );
+    }
 
     private async Task SeedPreconditionAsync(
         Guid organizationId,
         Guid applicationId,
         Guid preconditionId
-    ) =>
+    )
+    {
         await _client.PutItemAsync(
             new PutItemRequest
             {
                 TableName = PreconditionTableName,
                 Item = new Dictionary<string, AttributeValue>
                 {
-                    ["OrganizationId_ApplicationId"] = new($"{organizationId}_{applicationId}"),
+                    ["OrganizationId_ApplicationId"] = new(
+                        $"{organizationId}_{applicationId}"
+                    ),
                     ["Id"] = new(preconditionId.ToString()),
                 },
             }
         );
+    }
 
     private static Activity CreateActivity(
         Guid organizationId,
@@ -169,8 +209,9 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
         int order = 0,
         IReadOnlyList<Guid>? preconditionIds = null,
         Guid? id = null
-    ) =>
-        new()
+    )
+    {
+        return new Activity
         {
             Id = id ?? Guid.CreateVersion7(),
             OrganizationId = organizationId,
@@ -185,6 +226,7 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
             CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
             UpdatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
         };
+    }
 
     [Fact]
     public async Task TrySaveAsync_WhenScenarioExists_RoundTripsThroughGetById()
@@ -194,11 +236,18 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
         var applicationId = Guid.CreateVersion7();
         var scenarioId = Guid.CreateVersion7();
         await SeedScenarioAsync(organizationId, applicationId, scenarioId);
-        var activity = CreateActivity(organizationId, applicationId, scenarioId);
+        var activity = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
 
         // test
         var result = await _repository.TrySaveAsync(activity);
-        var fetched = await _repository.GetByIdAsync(organizationId, activity.Id);
+        var fetched = await _repository.GetByIdAsync(
+            organizationId,
+            activity.Id
+        );
 
         // verify
         Assert.Equal(ActivitySaveResult.Success, result);
@@ -206,13 +255,18 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
     }
 
     [Fact]
-    public async Task TrySaveAsync_WhenScenarioDoesNotExist_ReturnsScenarioNotFound()
+    public async Task
+        TrySaveAsync_WhenScenarioDoesNotExist_ReturnsScenarioNotFound()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var scenarioId = Guid.CreateVersion7();
-        var activity = CreateActivity(organizationId, applicationId, scenarioId);
+        var activity = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
 
         // test
         var result = await _repository.TrySaveAsync(activity);
@@ -222,7 +276,8 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
     }
 
     [Fact]
-    public async Task TrySaveAsync_WhenReferencedPreconditionDoesNotExist_ReturnsReferenceNotFound()
+    public async Task
+        TrySaveAsync_WhenReferencedPreconditionDoesNotExist_ReturnsReferenceNotFound()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -251,10 +306,18 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
         var applicationId = Guid.CreateVersion7();
         var scenarioId = Guid.CreateVersion7();
         await SeedScenarioAsync(organizationId, applicationId, scenarioId);
-        var activity = CreateActivity(organizationId, applicationId, scenarioId);
+        var activity = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
         await _repository.TrySaveAsync(activity);
         var preconditionId = Guid.CreateVersion7();
-        await SeedPreconditionAsync(organizationId, applicationId, preconditionId);
+        await SeedPreconditionAsync(
+            organizationId,
+            applicationId,
+            preconditionId
+        );
 
         var updatedByUserId = Guid.CreateVersion7();
         var updatedAt = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero);
@@ -275,7 +338,10 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
             activity.Id,
             fields
         );
-        var fetched = await _repository.GetByIdAsync(organizationId, activity.Id);
+        var fetched = await _repository.GetByIdAsync(
+            organizationId,
+            activity.Id
+        );
 
         // verify
         Assert.Equal(ActivityUpdateResult.Success, result);
@@ -293,7 +359,8 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
     }
 
     [Fact]
-    public async Task TryUpdateAsync_WhenActivityDoesNotExist_ReturnsActivityNotFound()
+    public async Task
+        TryUpdateAsync_WhenActivityDoesNotExist_ReturnsActivityNotFound()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -311,7 +378,15 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
             {
                 Description = "Updated description",
                 UpdatedByUserId = Guid.CreateVersion7(),
-                UpdatedAt = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
+                UpdatedAt = new DateTimeOffset(
+                    2026,
+                    2,
+                    1,
+                    0,
+                    0,
+                    0,
+                    TimeSpan.Zero
+                ),
             }
         );
 
@@ -320,16 +395,25 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
     }
 
     [Fact]
-    public async Task TryUpdateAsync_WhenScenarioIdDoesNotMatchActivity_ReturnsActivityNotFound()
+    public async Task
+        TryUpdateAsync_WhenScenarioIdDoesNotMatchActivity_ReturnsActivityNotFound()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var actualScenarioId = Guid.CreateVersion7();
         var otherScenarioId = Guid.CreateVersion7();
-        await SeedScenarioAsync(organizationId, applicationId, actualScenarioId);
+        await SeedScenarioAsync(
+            organizationId,
+            applicationId,
+            actualScenarioId
+        );
         await SeedScenarioAsync(organizationId, applicationId, otherScenarioId);
-        var activity = CreateActivity(organizationId, applicationId, actualScenarioId);
+        var activity = CreateActivity(
+            organizationId,
+            applicationId,
+            actualScenarioId
+        );
         await _repository.TrySaveAsync(activity);
 
         // test
@@ -345,7 +429,15 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
             {
                 Description = "Updated description",
                 UpdatedByUserId = Guid.CreateVersion7(),
-                UpdatedAt = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
+                UpdatedAt = new DateTimeOffset(
+                    2026,
+                    2,
+                    1,
+                    0,
+                    0,
+                    0,
+                    TimeSpan.Zero
+                ),
             }
         );
 
@@ -354,14 +446,19 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
     }
 
     [Fact]
-    public async Task TryUpdateAsync_WhenReferencedPreconditionDoesNotExist_ReturnsReferenceNotFound()
+    public async Task
+        TryUpdateAsync_WhenReferencedPreconditionDoesNotExist_ReturnsReferenceNotFound()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var scenarioId = Guid.CreateVersion7();
         await SeedScenarioAsync(organizationId, applicationId, scenarioId);
-        var activity = CreateActivity(organizationId, applicationId, scenarioId);
+        var activity = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
         await _repository.TrySaveAsync(activity);
 
         // test
@@ -375,39 +472,66 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
                 Description = "Updated description",
                 PreconditionIds = [Guid.CreateVersion7()],
                 UpdatedByUserId = Guid.CreateVersion7(),
-                UpdatedAt = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero),
+                UpdatedAt = new DateTimeOffset(
+                    2026,
+                    2,
+                    1,
+                    0,
+                    0,
+                    0,
+                    TimeSpan.Zero
+                ),
             }
         );
 
         // verify
-        Assert.Equal(ActivityUpdateResult.PreconditionOrEvidenceNotFound, result);
+        Assert.Equal(
+            ActivityUpdateResult.PreconditionOrEvidenceNotFound,
+            result
+        );
     }
 
     [Fact]
     public async Task GetByIdAsync_WhenNotFound_ReturnsNull()
     {
         // test
-        var result = await _repository.GetByIdAsync(Guid.CreateVersion7(), Guid.CreateVersion7());
+        var result = await _repository.GetByIdAsync(
+            Guid.CreateVersion7(),
+            Guid.CreateVersion7()
+        );
 
         // verify
         Assert.Null(result);
     }
 
     [Fact]
-    public async Task ListByScenarioAsync_WhenMultipleActivitiesExist_ReturnsAllOrderedByOrder()
+    public async Task
+        ListByScenarioAsync_WhenMultipleActivitiesExist_ReturnsAllOrderedByOrder()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var scenarioId = Guid.CreateVersion7();
         await SeedScenarioAsync(organizationId, applicationId, scenarioId);
-        var second = CreateActivity(organizationId, applicationId, scenarioId, order: 1);
-        var first = CreateActivity(organizationId, applicationId, scenarioId, order: 0);
+        var second = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId,
+            1
+        );
+        var first = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
         await _repository.TrySaveAsync(second);
         await _repository.TrySaveAsync(first);
 
         // test
-        var result = await _repository.ListByScenarioAsync(organizationId, scenarioId);
+        var result = await _repository.ListByScenarioAsync(
+            organizationId,
+            scenarioId
+        );
 
         // verify
         Assert.Equal([first.Id, second.Id], result.Select(a => a.Id));
@@ -434,8 +558,17 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
         var applicationId = Guid.CreateVersion7();
         var scenarioId = Guid.CreateVersion7();
         await SeedScenarioAsync(organizationId, applicationId, scenarioId);
-        var first = CreateActivity(organizationId, applicationId, scenarioId, order: 0);
-        var second = CreateActivity(organizationId, applicationId, scenarioId, order: 1);
+        var first = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
+        var second = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId,
+            1
+        );
         await _repository.TrySaveAsync(first);
         await _repository.TrySaveAsync(second);
 
@@ -445,7 +578,10 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
             scenarioId,
             [second.Id, first.Id]
         );
-        var reordered = await _repository.ListByScenarioAsync(organizationId, scenarioId);
+        var reordered = await _repository.ListByScenarioAsync(
+            organizationId,
+            scenarioId
+        );
 
         // verify
         Assert.True(result);
@@ -460,7 +596,11 @@ public sealed class DynamoDbActivityRepositoryTests(DynamoDbLocalFixture dynamoD
         var applicationId = Guid.CreateVersion7();
         var scenarioId = Guid.CreateVersion7();
         await SeedScenarioAsync(organizationId, applicationId, scenarioId);
-        var activity = CreateActivity(organizationId, applicationId, scenarioId);
+        var activity = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
         await _repository.TrySaveAsync(activity);
 
         // test

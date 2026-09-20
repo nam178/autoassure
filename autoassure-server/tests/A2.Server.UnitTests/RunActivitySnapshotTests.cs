@@ -2,7 +2,7 @@ using A2.Server.Models;
 
 namespace A2.Server.UnitTests;
 
-/// <summary>Unit tests for <see cref="RunActivitySnapshot.FromActivity"/>.</summary>
+/// <summary>Unit tests for <see cref="RunActivitySnapshot.FromActivity" />.</summary>
 public sealed class RunActivitySnapshotTests
 {
     [Fact]

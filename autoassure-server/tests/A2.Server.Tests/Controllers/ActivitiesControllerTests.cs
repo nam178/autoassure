@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using A2.Server.Contracts;
+using A2.Server.Models;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -12,11 +13,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
+using PreconditionValueSource = A2.Server.Contracts.PreconditionValueSource;
 
 namespace A2.Server.Tests.Controllers;
 
-/// <summary>Integration tests for <see cref="A2.Server.Controllers.ActivitiesController"/> over real
-/// HTTP, against DynamoDB Local.</summary>
+/// <summary>
+///     Integration tests for
+///     <see cref="A2.Server.Controllers.ActivitiesController" /> over real
+///     HTTP, against DynamoDB Local.
+/// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class ActivitiesControllerTests
     : IClassFixture<WebApplicationFactory<Program>>,
@@ -36,28 +41,35 @@ public sealed class ActivitiesControllerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration(
-                (_, config) =>
-                    config.AddInMemoryCollection(
-                        new Dictionary<string, string?>
-                        {
-                            ["Auth:SigningKey"] = SigningKey,
-                            ["DynamoDb:ApplicationTableName"] = "Applications",
-                            ["DynamoDb:PreconditionTableName"] = "Preconditions",
-                            ["DynamoDb:EvidenceDefinitionTableName"] = "EvidenceDefinitions",
-                            ["DynamoDb:ScenarioTableName"] = "Scenarios",
-                            ["DynamoDb:ScenariosByFolderTableName"] = "ScenariosByFolder",
-                            ["DynamoDb:ScenariosByTagTableName"] = "ScenariosByTag",
-                            ["DynamoDb:ActivityTableName"] = "Activities",
-                            ["DynamoDb:OrganizationTableName"] = "Organizations",
-                            ["DynamoDb:OrganizationUserTableName"] = "OrganizationUsers",
-                        }
-                    )
+            builder.ConfigureAppConfiguration((_, config) =>
+                config.AddInMemoryCollection(
+                    new Dictionary<string, string?>
+                    {
+                        ["Auth:SigningKey"] = SigningKey,
+                        ["DynamoDb:ApplicationTableName"] = "Applications",
+                        ["DynamoDb:PreconditionTableName"] =
+                            "Preconditions",
+                        ["DynamoDb:EvidenceDefinitionTableName"] =
+                            "EvidenceDefinitions",
+                        ["DynamoDb:ScenarioTableName"] = "Scenarios",
+                        ["DynamoDb:ScenariosByFolderTableName"] =
+                            "ScenariosByFolder",
+                        ["DynamoDb:ScenariosByTagTableName"] =
+                            "ScenariosByTag",
+                        ["DynamoDb:ActivityTableName"] = "Activities",
+                        ["DynamoDb:OrganizationTableName"] =
+                            "Organizations",
+                        ["DynamoDb:OrganizationUserTableName"] =
+                            "OrganizationUsers",
+                    }
+                )
             );
             builder.ConfigureServices(services =>
             {
                 _client = dynamoDbLocalFixture.CreateClient();
-                services.Replace(ServiceDescriptor.Singleton<IAmazonDynamoDB>(_client));
+                services.Replace(
+                    ServiceDescriptor.Singleton<IAmazonDynamoDB>(_client)
+                );
             });
         });
     }
@@ -77,7 +89,10 @@ public sealed class ActivitiesControllerTests
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -93,14 +108,23 @@ public sealed class ActivitiesControllerTests
                 TableName = "Scenarios",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -109,18 +133,30 @@ public sealed class ActivitiesControllerTests
                         IndexName = "IdIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("Id", KeyType.RANGE),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
 
-        await CreateMappingTableAsync("ScenariosByFolder", "OrganizationId_ApplicationId_Folder");
-        await CreateMappingTableAsync("ScenariosByTag", "OrganizationId_ApplicationId_Tag");
+        await CreateMappingTableAsync(
+            "ScenariosByFolder",
+            "OrganizationId_ApplicationId_Folder"
+        );
+        await CreateMappingTableAsync(
+            "ScenariosByTag",
+            "OrganizationId_ApplicationId_Tag"
+        );
 
         await _client.CreateTableAsync(
             new CreateTableRequest
@@ -128,14 +164,23 @@ public sealed class ActivitiesControllerTests
                 TableName = "Activities",
                 KeySchema =
                 [
-                    new KeySchemaElement("OrganizationId_ScenarioId", KeyType.HASH),
+                    new KeySchemaElement(
+                        "OrganizationId_ScenarioId",
+                        KeyType.HASH
+                    ),
                     new KeySchemaElement("Id", KeyType.RANGE),
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId_ScenarioId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId_ScenarioId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                 ],
                 GlobalSecondaryIndexes =
                 [
@@ -144,10 +189,16 @@ public sealed class ActivitiesControllerTests
                         IndexName = "IdIndex",
                         KeySchema =
                         [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
                             new KeySchemaElement("Id", KeyType.RANGE),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -159,7 +210,10 @@ public sealed class ActivitiesControllerTests
             {
                 TableName = "Organizations",
                 KeySchema = [new KeySchemaElement("Id", KeyType.HASH)],
-                AttributeDefinitions = [new AttributeDefinition("Id", ScalarAttributeType.S)],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
         );
@@ -175,7 +229,10 @@ public sealed class ActivitiesControllerTests
                 ],
                 AttributeDefinitions =
                 [
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
                     new AttributeDefinition("UserId", ScalarAttributeType.S),
                 ],
                 GlobalSecondaryIndexes =
@@ -186,66 +243,16 @@ public sealed class ActivitiesControllerTests
                         KeySchema =
                         [
                             new KeySchemaElement("UserId", KeyType.HASH),
-                            new KeySchemaElement("OrganizationId", KeyType.RANGE),
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.RANGE
+                            ),
                         ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
                     },
-                ],
-                BillingMode = BillingMode.PAY_PER_REQUEST,
-            }
-        );
-    }
-
-    private async Task CreateLibraryTableAsync(string tableName)
-    {
-        await _client.CreateTableAsync(
-            new CreateTableRequest
-            {
-                TableName = tableName,
-                KeySchema =
-                [
-                    new KeySchemaElement("OrganizationId_ApplicationId", KeyType.HASH),
-                    new KeySchemaElement("Id", KeyType.RANGE),
-                ],
-                AttributeDefinitions =
-                [
-                    new AttributeDefinition("OrganizationId_ApplicationId", ScalarAttributeType.S),
-                    new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("OrganizationId", ScalarAttributeType.S),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement("OrganizationId", KeyType.HASH),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection { ProjectionType = ProjectionType.ALL },
-                    },
-                ],
-                BillingMode = BillingMode.PAY_PER_REQUEST,
-            }
-        );
-    }
-
-    private async Task CreateMappingTableAsync(string tableName, string partitionKeyName)
-    {
-        await _client.CreateTableAsync(
-            new CreateTableRequest
-            {
-                TableName = tableName,
-                KeySchema =
-                [
-                    new KeySchemaElement(partitionKeyName, KeyType.HASH),
-                    new KeySchemaElement("ScenarioId", KeyType.RANGE),
-                ],
-                AttributeDefinitions =
-                [
-                    new AttributeDefinition(partitionKeyName, ScalarAttributeType.S),
-                    new AttributeDefinition("ScenarioId", ScalarAttributeType.S),
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -268,15 +275,94 @@ public sealed class ActivitiesControllerTests
                 "OrganizationUsers",
             }
         )
-        {
             await _client.DeleteTableAsync(tableName);
-        }
         _client.Dispose();
+    }
+
+    private async Task CreateLibraryTableAsync(string tableName)
+    {
+        await _client.CreateTableAsync(
+            new CreateTableRequest
+            {
+                TableName = tableName,
+                KeySchema =
+                [
+                    new KeySchemaElement(
+                        "OrganizationId_ApplicationId",
+                        KeyType.HASH
+                    ),
+                    new KeySchemaElement("Id", KeyType.RANGE),
+                ],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition(
+                        "OrganizationId_ApplicationId",
+                        ScalarAttributeType.S
+                    ),
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                    new AttributeDefinition(
+                        "OrganizationId",
+                        ScalarAttributeType.S
+                    ),
+                ],
+                GlobalSecondaryIndexes =
+                [
+                    new GlobalSecondaryIndex
+                    {
+                        IndexName = "IdIndex",
+                        KeySchema =
+                        [
+                            new KeySchemaElement(
+                                "OrganizationId",
+                                KeyType.HASH
+                            ),
+                            new KeySchemaElement("Id", KeyType.RANGE),
+                        ],
+                        Projection = new Projection
+                        {
+                            ProjectionType = ProjectionType.ALL,
+                        },
+                    },
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+            }
+        );
+    }
+
+    private async Task CreateMappingTableAsync(
+        string tableName,
+        string partitionKeyName
+    )
+    {
+        await _client.CreateTableAsync(
+            new CreateTableRequest
+            {
+                TableName = tableName,
+                KeySchema =
+                [
+                    new KeySchemaElement(partitionKeyName, KeyType.HASH),
+                    new KeySchemaElement("ScenarioId", KeyType.RANGE),
+                ],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition(
+                        partitionKeyName,
+                        ScalarAttributeType.S
+                    ),
+                    new AttributeDefinition(
+                        "ScenarioId",
+                        ScalarAttributeType.S
+                    ),
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+            }
+        );
     }
 
     private async Task SeedOrganizationMembershipAsync(Guid userId)
     {
         var organizationId = Guid.CreateVersion7();
+        var now = DateTimeOffset.UtcNow;
         await _client.PutItemAsync(
             new PutItemRequest
             {
@@ -284,6 +370,15 @@ public sealed class ActivitiesControllerTests
                 Item = new Dictionary<string, AttributeValue>
                 {
                     ["Id"] = new(organizationId.ToString()),
+                    ["Name"] = new("Test Organization"),
+                    ["IsPersonal"] = new() { BOOL = true },
+                    ["CreatedByUserId"] = new(userId.ToString()),
+                    ["UpdatedByUserId"] = new(userId.ToString()),
+                    ["CreatedAt"] = new(now.ToString("O")),
+                    ["UpdatedAt"] = new(now.ToString("O")),
+                    ["LifecycleState"] = new(
+                        LifecycleState.Active.ToString()
+                    ),
                 },
             }
         );
@@ -295,7 +390,7 @@ public sealed class ActivitiesControllerTests
                 {
                     ["OrganizationId"] = new(organizationId.ToString()),
                     ["UserId"] = new(userId.ToString()),
-                    ["Role"] = new(Models.OrganizationRole.Owner.ToString()),
+                    ["Role"] = new(OrganizationRole.Owner.ToString()),
                     ["CreatedByUserId"] = new(userId.ToString()),
                     ["UpdatedByUserId"] = new(userId.ToString()),
                     ["CreatedAt"] = new(DateTimeOffset.UtcNow.ToString("O")),
@@ -311,11 +406,14 @@ public sealed class ActivitiesControllerTests
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey)),
             SecurityAlgorithms.HmacSha256
         );
-        var claims = new[] { new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()) };
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+        };
         var token = new JwtSecurityToken(
-            issuer: Issuer,
-            audience: Audience,
-            claims: claims,
+            Issuer,
+            Audience,
+            claims,
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: credentials
         );
@@ -325,10 +423,8 @@ public sealed class ActivitiesControllerTests
     private HttpClient CreateAuthenticatedClient(Guid userId)
     {
         var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            CreateAccessToken(userId)
-        );
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", CreateAccessToken(userId));
         return client;
     }
 
@@ -345,11 +441,15 @@ public sealed class ActivitiesControllerTests
             "/applications",
             new CreateApplicationRequest { Name = "Test App", Description = "" }
         );
-        var application = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
+        var application =
+            await response.Content.ReadFromJsonAsync<ApplicationResponse>();
         return application!.Id;
     }
 
-    private static async Task<Guid> CreateScenarioAsync(HttpClient client, Guid appId)
+    private static async Task<Guid> CreateScenarioAsync(
+        HttpClient client,
+        Guid appId
+    )
     {
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/scenarios",
@@ -361,11 +461,15 @@ public sealed class ActivitiesControllerTests
                 Tags = null,
             }
         );
-        var scenario = await response.Content.ReadFromJsonAsync<ScenarioResponse>();
+        var scenario =
+            await response.Content.ReadFromJsonAsync<ScenarioResponse>();
         return scenario!.Id;
     }
 
-    private static async Task<Guid> CreatePreconditionAsync(HttpClient client, Guid appId)
+    private static async Task<Guid> CreatePreconditionAsync(
+        HttpClient client,
+        Guid appId
+    )
     {
         var response = await client.PostAsJsonAsync(
             $"/applications/{appId}/preconditions",
@@ -376,7 +480,8 @@ public sealed class ActivitiesControllerTests
                 ExampleValue = "ORD-1",
             }
         );
-        var precondition = await response.Content.ReadFromJsonAsync<PreconditionResponse>();
+        var precondition =
+            await response.Content.ReadFromJsonAsync<PreconditionResponse>();
         return precondition!.Id;
     }
 
@@ -402,7 +507,8 @@ public sealed class ActivitiesControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
-        var created = await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
+        var created =
+            await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
         Assert.NotNull(created);
         Assert.Equal("Add item to cart", created.Description);
         Assert.Equal(0, created.Order);
@@ -421,15 +527,20 @@ public sealed class ActivitiesControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
-        var updated = await patchResponse.Content.ReadFromJsonAsync<ActivityResponse>();
+        var updated =
+            await patchResponse.Content.ReadFromJsonAsync<ActivityResponse>();
         Assert.Equal("Updated step", updated!.Description);
         Assert.Empty(updated.PreconditionIds);
 
         // test
-        var listResponse = await client.GetAsync($"/scenarios/{scenarioId}/activities");
+        var listResponse = await client.GetAsync(
+            $"/scenarios/{scenarioId}/activities"
+        );
 
         // verify
-        var list = await listResponse.Content.ReadFromJsonAsync<List<ActivityResponse>>();
+        var list = await listResponse.Content.ReadFromJsonAsync<
+            List<ActivityResponse>
+        >();
         Assert.Equal(updated.Description, Assert.Single(list!).Description);
     }
 
@@ -473,19 +584,18 @@ public sealed class ActivitiesControllerTests
     }
 
     [Fact]
-    public async Task Create_WhenScenarioAlreadyHasMaxActivities_ReturnsBadRequest()
+    public async Task
+        Create_WhenScenarioAlreadyHasMaxActivities_ReturnsBadRequest()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
         var appId = await CreateApplicationAsync(client);
         var scenarioId = await CreateScenarioAsync(client, appId);
         for (var i = 0; i < 90; i++)
-        {
             await client.PostAsJsonAsync(
                 $"/scenarios/{scenarioId}/activities",
                 new CreateActivityRequest { Description = "Step" }
             );
-        }
 
         // test
         var response = await client.PostAsJsonAsync(
@@ -498,7 +608,8 @@ public sealed class ActivitiesControllerTests
     }
 
     [Fact]
-    public async Task List_WhenMultipleActivitiesExist_ReturnsOrderedByCreationOrder()
+    public async Task
+        List_WhenMultipleActivitiesExist_ReturnsOrderedByCreationOrder()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -514,10 +625,14 @@ public sealed class ActivitiesControllerTests
         );
 
         // test
-        var response = await client.GetAsync($"/scenarios/{scenarioId}/activities");
+        var response = await client.GetAsync(
+            $"/scenarios/{scenarioId}/activities"
+        );
 
         // verify
-        var list = await response.Content.ReadFromJsonAsync<List<ActivityResponse>>();
+        var list = await response.Content.ReadFromJsonAsync<
+            List<ActivityResponse>
+        >();
         Assert.Equal(["First", "Second"], list!.Select(a => a.Description));
         Assert.Equal([0, 1], list!.Select(a => a.Order));
     }
@@ -549,7 +664,8 @@ public sealed class ActivitiesControllerTests
             $"/scenarios/{scenarioId}/activities",
             new CreateActivityRequest { Description = "Step" }
         );
-        var created = await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
+        var created =
+            await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
 
         // test
         var response = await client.PatchAsJsonAsync(
@@ -577,22 +693,31 @@ public sealed class ActivitiesControllerTests
             $"/scenarios/{scenarioId}/activities",
             new CreateActivityRequest { Description = "First" }
         );
-        var first = (await firstResponse.Content.ReadFromJsonAsync<ActivityResponse>())!;
+        var first = (
+            await firstResponse.Content.ReadFromJsonAsync<ActivityResponse>()
+        )!;
         var secondResponse = await client.PostAsJsonAsync(
             $"/scenarios/{scenarioId}/activities",
             new CreateActivityRequest { Description = "Second" }
         );
-        var second = (await secondResponse.Content.ReadFromJsonAsync<ActivityResponse>())!;
+        var second = (
+            await secondResponse.Content.ReadFromJsonAsync<ActivityResponse>()
+        )!;
 
         // test
         var response = await client.PatchAsJsonAsync(
             $"/scenarios/{scenarioId}/activities/order",
-            new ReorderActivitiesRequest { OrderedActivityIds = [second.Id, first.Id] }
+            new ReorderActivitiesRequest
+            {
+                OrderedActivityIds = [second.Id, first.Id],
+            }
         );
 
         // verify
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var reordered = await response.Content.ReadFromJsonAsync<List<ActivityResponse>>();
+        var reordered = await response.Content.ReadFromJsonAsync<
+            List<ActivityResponse>
+        >();
         Assert.Equal([second.Id, first.Id], reordered!.Select(a => a.Id));
     }
 
@@ -611,7 +736,10 @@ public sealed class ActivitiesControllerTests
         // test
         var response = await client.PatchAsJsonAsync(
             $"/scenarios/{scenarioId}/activities/order",
-            new ReorderActivitiesRequest { OrderedActivityIds = [Guid.CreateVersion7()] }
+            new ReorderActivitiesRequest
+            {
+                OrderedActivityIds = [Guid.CreateVersion7()],
+            }
         );
 
         // verify
@@ -638,10 +766,11 @@ public sealed class ActivitiesControllerTests
     [InlineData(2000, HttpStatusCode.OK)]
     [InlineData(2001, HttpStatusCode.BadRequest)]
     [InlineData(0, HttpStatusCode.BadRequest)]
-    public async Task Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
-        int descriptionLength,
-        HttpStatusCode expectedStatus
-    )
+    public async Task
+        Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
+            int descriptionLength,
+            HttpStatusCode expectedStatus
+        )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -651,7 +780,10 @@ public sealed class ActivitiesControllerTests
         // test
         var response = await client.PostAsJsonAsync(
             $"/scenarios/{scenarioId}/activities",
-            new CreateActivityRequest { Description = new string('a', descriptionLength) }
+            new CreateActivityRequest
+            {
+                Description = new string('a', descriptionLength),
+            }
         );
 
         // verify
@@ -661,10 +793,11 @@ public sealed class ActivitiesControllerTests
     [Theory]
     [InlineData(15, HttpStatusCode.OK)]
     [InlineData(16, HttpStatusCode.BadRequest)]
-    public async Task Create_WhenPreconditionIdCountAtBoundary_EnforcesCountLimit(
-        int preconditionCount,
-        HttpStatusCode expectedStatus
-    )
+    public async Task
+        Create_WhenPreconditionIdCountAtBoundary_EnforcesCountLimit(
+            int preconditionCount,
+            HttpStatusCode expectedStatus
+        )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -672,14 +805,16 @@ public sealed class ActivitiesControllerTests
         var scenarioId = await CreateScenarioAsync(client, appId);
         var preconditionIds = new List<Guid>();
         for (var i = 0; i < preconditionCount; i++)
-        {
             preconditionIds.Add(await CreatePreconditionAsync(client, appId));
-        }
 
         // test
         var response = await client.PostAsJsonAsync(
             $"/scenarios/{scenarioId}/activities",
-            new CreateActivityRequest { Description = "Step", PreconditionIds = preconditionIds }
+            new CreateActivityRequest
+            {
+                Description = "Step",
+                PreconditionIds = preconditionIds,
+            }
         );
 
         // verify
@@ -687,10 +822,17 @@ public sealed class ActivitiesControllerTests
     }
 
     [Theory]
-    [InlineData("""{"preconditionIds":null,"evidenceIds":null}""")] // description missing entirely
-    [InlineData("""{"description":null,"preconditionIds":null,"evidenceIds":null}""")] // description explicitly null
-    [InlineData("""{"description":123,"preconditionIds":null,"evidenceIds":null}""")] // description wrong type
-    public async Task Create_WhenRequestHasInvalidShape_ReturnsBadRequest(string rawJson)
+    [InlineData(
+        """{"preconditionIds":null,"evidenceIds":null}""")] // description missing entirely
+    [InlineData(
+        """{"description":null,"preconditionIds":null,"evidenceIds":null}"""
+    )] // description explicitly null
+    [InlineData(
+        """{"description":123,"preconditionIds":null,"evidenceIds":null}"""
+    )] // description wrong type
+    public async Task Create_WhenRequestHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();

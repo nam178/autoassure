@@ -30,7 +30,9 @@ public class DynamoDbApplicationRepository(
                                 TableName = OrganizationTableName,
                                 Key = new Dictionary<string, AttributeValue>
                                 {
-                                    ["Id"] = new(application.OrganizationId.ToString()),
+                                    ["Id"] = new(
+                                        application.OrganizationId.ToString()
+                                    ),
                                 },
                                 ConditionExpression = "attribute_exists(Id)",
                             },
@@ -54,7 +56,10 @@ public class DynamoDbApplicationRepository(
         }
     }
 
-    public async Task<Application?> GetByIdAsync(Guid organizationId, Guid applicationId)
+    public async Task<Application?> GetByIdAsync(
+        Guid organizationId,
+        Guid applicationId
+    )
     {
         var response = await client.GetItemAsync(
             new GetItemRequest
@@ -72,14 +77,19 @@ public class DynamoDbApplicationRepository(
         return response.IsItemSet ? response.Item.ToApplication() : null;
     }
 
-    public async Task<IReadOnlyList<Application>> ListByOrganizationAsync(Guid organizationId)
+    public async Task<IReadOnlyList<Application>> ListByOrganizationAsync(
+        Guid organizationId
+    )
     {
         var response = await client.QueryAsync(
             new QueryRequest
             {
                 TableName = TableName,
                 KeyConditionExpression = "OrganizationId = :organizationId",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":organizationId"] = new(organizationId.ToString()),
                 },

@@ -6,14 +6,18 @@ using Microsoft.Extensions.Options;
 
 namespace A2.Server.Repositories;
 
-public class DynamoDbUserRepository(IAmazonDynamoDB client, IOptions<DynamoDbOptions> options)
-    : IUserRepository
+public class DynamoDbUserRepository(
+    IAmazonDynamoDB client,
+    IOptions<DynamoDbOptions> options
+) : IUserRepository
 {
     private const string GoogleUserIdIndexName = "GoogleUserIdIndex";
 
     private string TableName => options.Value.UserTableName;
     private string OrganizationTableName => options.Value.OrganizationTableName;
-    private string OrganizationUserTableName => options.Value.OrganizationUserTableName;
+
+    private string OrganizationUserTableName =>
+        options.Value.OrganizationUserTableName;
 
     public async Task<User?> GetByGoogleUserIdAsync(string googleUserId)
     {
@@ -23,7 +27,10 @@ public class DynamoDbUserRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpt
                 TableName = TableName,
                 IndexName = GoogleUserIdIndexName,
                 KeyConditionExpression = "GoogleUserId = :googleUserId",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
                 {
                     [":googleUserId"] = new(googleUserId),
                 },
@@ -54,10 +61,13 @@ public class DynamoDbUserRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpt
                                 Item = new Dictionary<string, AttributeValue>
                                 {
                                     ["Id"] = new(
-                                        GenerateDidSyncGoogleUserLockId(user.GoogleUserId)
+                                        GenerateDidSyncGoogleUserLockId(
+                                            user.GoogleUserId
+                                        )
                                     ),
                                 },
-                                ConditionExpression = "attribute_not_exists(Id)",
+                                ConditionExpression =
+                                    "attribute_not_exists(Id)",
                             },
                         },
                         new TransactWriteItem
@@ -66,7 +76,8 @@ public class DynamoDbUserRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpt
                             {
                                 TableName = TableName,
                                 Item = user.ToDynamoDbRow(),
-                                ConditionExpression = "attribute_not_exists(Id)",
+                                ConditionExpression =
+                                    "attribute_not_exists(Id)",
                             },
                         },
                     ],
@@ -80,7 +91,10 @@ public class DynamoDbUserRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpt
         }
     }
 
-    public async Task<bool> TryUpdateAsync(Guid userId, UserUpdatableFields fields)
+    public async Task<bool> TryUpdateAsync(
+        Guid userId,
+        UserUpdatableFields fields
+    )
     {
         try
         {
@@ -96,12 +110,18 @@ public class DynamoDbUserRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpt
                         "SET FirstName = :firstName, LastName = :lastName, Email = :email, "
                         + "EmailVerified = :emailVerified",
                     ConditionExpression = "attribute_exists(Id)",
-                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    ExpressionAttributeValues = new Dictionary<
+                        string,
+                        AttributeValue
+                    >
                     {
                         [":firstName"] = new(fields.FirstName),
                         [":lastName"] = new(fields.LastName),
                         [":email"] = new(fields.Email),
-                        [":emailVerified"] = new() { BOOL = fields.EmailVerified },
+                        [":emailVerified"] = new()
+                        {
+                            BOOL = fields.EmailVerified,
+                        },
                     },
                 }
             );
@@ -144,7 +164,8 @@ public class DynamoDbUserRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpt
                                         )
                                     ),
                                 },
-                                ConditionExpression = "attribute_not_exists(Id)",
+                                ConditionExpression =
+                                    "attribute_not_exists(Id)",
                             },
                         },
                         new TransactWriteItem
@@ -174,9 +195,17 @@ public class DynamoDbUserRepository(IAmazonDynamoDB client, IOptions<DynamoDbOpt
         }
     }
 
-    private static string GenerateDidSyncGoogleUserLockId(string googleUserId) =>
-        $"{googleUserId}_DidSyncGoogleUser";
+    private static string GenerateDidSyncGoogleUserLockId(
+        string googleUserId
+    )
+    {
+        return $"{googleUserId}_DidSyncGoogleUser";
+    }
 
-    private static string GenerateDidCreatePersonalOrganizationLockId(Guid userId) =>
-        $"{userId}_DidCreatePersonalOrg";
+    private static string GenerateDidCreatePersonalOrganizationLockId(
+        Guid userId
+    )
+    {
+        return $"{userId}_DidCreatePersonalOrg";
+    }
 }
