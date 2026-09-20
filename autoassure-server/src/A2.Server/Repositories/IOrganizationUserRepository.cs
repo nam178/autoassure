@@ -33,6 +33,9 @@ public interface IOrganizationUserRepository
     ///     All Organizations this User belongs to. Ordering: by the Organization's
     ///     creation
     ///     time, newest first -- not the order the memberships were created.
+    ///
+    /// It is guaranteed that the returned organizations are unique (meaning,
+    /// no users in an organization has multiple memberships).
     /// </summary>
     Task<IReadOnlyList<OrganizationUser>> ListByUserAsync(Guid userId);
 }
