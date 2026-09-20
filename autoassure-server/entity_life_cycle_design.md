@@ -53,9 +53,3 @@ the entity itself is deleted.
 | RunningRun row                 | no      | no              |
 | Scenario folder / tag mappings | no      | no              |
 
-# Implementation details
-
-## 1. Archiving an Organization
-
-Moved out into its own goal document: [archiving_organization.md](./archiving_organization.md). It holds the four
-tasks, the commands that prove each one, and the checklists.
