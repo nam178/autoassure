@@ -15,6 +15,5 @@ public static class DesignTimeBuild
     ///     build fails.
     /// </summary>
     public static bool IsActive =>
-        Assembly.GetEntryAssembly()?.GetName().Name
-        != "A2.Server";
+        Assembly.GetEntryAssembly()?.GetName().Name != "A2.Server";
 }

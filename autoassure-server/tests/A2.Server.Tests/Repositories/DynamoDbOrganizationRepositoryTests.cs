@@ -83,8 +83,7 @@ public sealed class DynamoDbOrganizationRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        GetByIdAsync_WhenOrganizationIsPersonal_RoundTripsIsPersonal()
+    public async Task GetByIdAsync_WhenOrganizationIsPersonal_RoundTripsIsPersonal()
     {
         // setup
         var organization = new Organization

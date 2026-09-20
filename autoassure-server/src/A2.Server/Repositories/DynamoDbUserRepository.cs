@@ -195,9 +195,7 @@ public class DynamoDbUserRepository(
         }
     }
 
-    private static string GenerateDidSyncGoogleUserLockId(
-        string googleUserId
-    )
+    private static string GenerateDidSyncGoogleUserLockId(string googleUserId)
     {
         return $"{googleUserId}_DidSyncGoogleUser";
     }

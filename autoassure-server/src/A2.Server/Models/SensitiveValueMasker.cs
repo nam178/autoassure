@@ -46,7 +46,7 @@ public static class SensitiveValueMasker
     {
         return value.Length >= MinimumLengthToReveal
             ? value[..VisibleLength]
-              + new string('*', MaskedLength - VisibleLength)
+                + new string('*', MaskedLength - VisibleLength)
             : new string('*', MaskedLength);
     }
 }

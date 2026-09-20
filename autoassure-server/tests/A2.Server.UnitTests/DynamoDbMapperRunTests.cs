@@ -81,9 +81,7 @@ public sealed class DynamoDbMapperRunTests
         };
     }
 
-    private static RunScenarioSnapshot SampleScenarioSnapshot(
-        Guid scenarioId
-    )
+    private static RunScenarioSnapshot SampleScenarioSnapshot(Guid scenarioId)
     {
         return new RunScenarioSnapshot
         {
@@ -183,8 +181,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void
-        HeaderRow_WhenOptionalFieldsAreNull_MapsToAbsentAttributesAndBackToNull()
+    public void HeaderRow_WhenOptionalFieldsAreNull_MapsToAbsentAttributesAndBackToNull()
     {
         // setup: a freshly-Pending run has none of the fields that only get set once execution starts.
         var run = new Run
@@ -306,8 +303,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void
-        EnvironmentRow_WhenRoundTripped_KeepsASensitiveVariableUnmasked()
+    public void EnvironmentRow_WhenRoundTripped_KeepsASensitiveVariableUnmasked()
     {
         // setup: nothing masks on the way into storage -- a Run is created holding real credentials, and
         // only Start Run overwrites them.
@@ -327,8 +323,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void
-        EnvironmentRow_WhenMapped_UsesTheRunIdWithA2000SuffixAsItsRowKey()
+    public void EnvironmentRow_WhenMapped_UsesTheRunIdWithA2000SuffixAsItsRowKey()
     {
         // setup
         var runId = Guid.NewGuid();
@@ -364,8 +359,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void
-        RunEnvironmentRowKey_SortsBetweenTheHeaderKeyAndTheStatusUpdatePrefix()
+    public void RunEnvironmentRowKey_SortsBetweenTheHeaderKeyAndTheStatusUpdatePrefix()
     {
         // setup: Get Run reads the header, the Environment row and every Scenario row with one BETWEEN
         // query bounded by the header key and the status-update prefix. That only works while the
@@ -405,8 +399,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void
-        ScenarioRow_WhenMapped_UsesTheRunAndScenarioIdWithA3000SuffixAsItsRowKey()
+    public void ScenarioRow_WhenMapped_UsesTheRunAndScenarioIdWithA3000SuffixAsItsRowKey()
     {
         // setup
         var runId = Guid.NewGuid();
@@ -473,8 +466,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void
-        StatusUpdateRow_WhenContinuationReasoningIsNull_MapsToAnAbsentAttributeAndBackToNull()
+    public void StatusUpdateRow_WhenContinuationReasoningIsNull_MapsToAnAbsentAttributeAndBackToNull()
     {
         // setup
         var update = new RunStatusUpdate
@@ -535,8 +527,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void
-        StatusUpdateRow_WhenMapped_UsesTheRunIdAndPaddedSeqWithA4000SuffixAsItsRowKey()
+    public void StatusUpdateRow_WhenMapped_UsesTheRunIdAndPaddedSeqWithA4000SuffixAsItsRowKey()
     {
         // setup
         var runId = Guid.NewGuid();
@@ -565,8 +556,7 @@ public sealed class DynamoDbMapperRunTests
     // ----- The padding function, and why it matters -----
 
     [Fact]
-    public void
-        RunStatusUpdateRowKey_WhenSequencesAreSortedAsStrings_SortsInNumericOrder()
+    public void RunStatusUpdateRowKey_WhenSequencesAreSortedAsStrings_SortsInNumericOrder()
     {
         // setup: 1, 9, 10 and 100 built into row keys for the same run. An unpadded scheme would sort
         // "#4000#10" before "#4000#9" as plain strings, silently reordering a poll cursor's results
@@ -589,8 +579,7 @@ public sealed class DynamoDbMapperRunTests
     }
 
     [Fact]
-    public void
-        RunStatusUpdateRowKey_WhenGivenASequenceNumber_PadsItToTwelveDigits()
+    public void RunStatusUpdateRowKey_WhenGivenASequenceNumber_PadsItToTwelveDigits()
     {
         // setup
         var runId = Guid.NewGuid();

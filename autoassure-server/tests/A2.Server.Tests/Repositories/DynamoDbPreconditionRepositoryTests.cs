@@ -154,8 +154,7 @@ public sealed class DynamoDbPreconditionRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TrySaveAsync_WhenApplicationExists_RoundTripsThroughGetById()
+    public async Task TrySaveAsync_WhenApplicationExists_RoundTripsThroughGetById()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -239,8 +238,7 @@ public sealed class DynamoDbPreconditionRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryUpdateAsync_WhenPreconditionDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
+    public async Task TryUpdateAsync_WhenPreconditionDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -293,8 +291,7 @@ public sealed class DynamoDbPreconditionRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByApplicationAsync_WhenMultiplePreconditionsExist_ReturnsAllScopedToOrganizationAndApplication()
+    public async Task ListByApplicationAsync_WhenMultiplePreconditionsExist_ReturnsAllScopedToOrganizationAndApplication()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -324,8 +321,7 @@ public sealed class DynamoDbPreconditionRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByApplicationAsync_WhenNoPreconditionsExist_ReturnsEmpty()
+    public async Task ListByApplicationAsync_WhenNoPreconditionsExist_ReturnsEmpty()
     {
         // setup
         var organizationId = Guid.CreateVersion7();

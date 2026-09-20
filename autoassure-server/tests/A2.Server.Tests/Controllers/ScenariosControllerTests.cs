@@ -41,24 +41,25 @@ public sealed class ScenariosControllerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration((_, config) =>
-                config.AddInMemoryCollection(
-                    new Dictionary<string, string?>
-                    {
-                        ["Auth:SigningKey"] = SigningKey,
-                        ["DynamoDb:ApplicationTableName"] = "Applications",
-                        ["DynamoDb:ScenarioTableName"] = "Scenarios",
-                        ["DynamoDb:ScenariosByFolderTableName"] =
-                            "ScenariosByFolder",
-                        ["DynamoDb:ScenariosByTagTableName"] =
-                            "ScenariosByTag",
-                        ["DynamoDb:ActivityTableName"] = "Activities",
-                        ["DynamoDb:OrganizationTableName"] =
-                            "Organizations",
-                        ["DynamoDb:OrganizationUserTableName"] =
-                            "OrganizationUsers",
-                    }
-                )
+            builder.ConfigureAppConfiguration(
+                (_, config) =>
+                    config.AddInMemoryCollection(
+                        new Dictionary<string, string?>
+                        {
+                            ["Auth:SigningKey"] = SigningKey,
+                            ["DynamoDb:ApplicationTableName"] = "Applications",
+                            ["DynamoDb:ScenarioTableName"] = "Scenarios",
+                            ["DynamoDb:ScenariosByFolderTableName"] =
+                                "ScenariosByFolder",
+                            ["DynamoDb:ScenariosByTagTableName"] =
+                                "ScenariosByTag",
+                            ["DynamoDb:ActivityTableName"] = "Activities",
+                            ["DynamoDb:OrganizationTableName"] =
+                                "Organizations",
+                            ["DynamoDb:OrganizationUserTableName"] =
+                                "OrganizationUsers",
+                        }
+                    )
             );
             builder.ConfigureServices(services =>
             {
@@ -321,9 +322,7 @@ public sealed class ScenariosControllerTests
                     ["UpdatedByUserId"] = new(userId.ToString()),
                     ["CreatedAt"] = new(now.ToString("O")),
                     ["UpdatedAt"] = new(now.ToString("O")),
-                    ["LifecycleState"] = new(
-                        LifecycleState.Active.ToString()
-                    ),
+                    ["LifecycleState"] = new(LifecycleState.Active.ToString()),
                 },
             }
         );
@@ -451,8 +450,7 @@ public sealed class ScenariosControllerTests
     }
 
     [Fact]
-    public async Task
-        Create_WhenTagIsEmptyString_RoundTripsAsEmptyStringInTagsList()
+    public async Task Create_WhenTagIsEmptyString_RoundTripsAsEmptyStringInTagsList()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -533,8 +531,7 @@ public sealed class ScenariosControllerTests
     }
 
     [Fact]
-    public async Task
-        Update_WhenFolderChanges_MovesScenarioWithNoIntermediateDuplicateOrGap()
+    public async Task Update_WhenFolderChanges_MovesScenarioWithNoIntermediateDuplicateOrGap()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -658,8 +655,7 @@ public sealed class ScenariosControllerTests
     }
 
     [Fact]
-    public async Task
-        Update_WhenScenarioDoesNotExistInCallersOrganization_ReturnsNotFound()
+    public async Task Update_WhenScenarioDoesNotExistInCallersOrganization_ReturnsNotFound()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -843,11 +839,10 @@ public sealed class ScenariosControllerTests
     [InlineData(2000, HttpStatusCode.OK)]
     [InlineData(2001, HttpStatusCode.BadRequest)]
     [InlineData(0, HttpStatusCode.BadRequest)]
-    public async Task
-        Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
-            int descriptionLength,
-            HttpStatusCode expectedStatus
-        )
+    public async Task Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
+        int descriptionLength,
+        HttpStatusCode expectedStatus
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -991,16 +986,14 @@ public sealed class ScenariosControllerTests
     }
 
     [Theory]
-    [InlineData(
-        """{"description":"Description","folder":null,"tags":null}""")] // title missing entirely
+    [InlineData("""{"description":"Description","folder":null,"tags":null}""")] // title missing entirely
     [InlineData(
         """{"title":null,"description":"Description","folder":null,"tags":null}"""
     )] // title explicitly null
     [InlineData(
         """{"title":123,"description":"Description","folder":null,"tags":null}"""
     )] // title wrong type
-    [InlineData(
-        """{"title":"Title","folder":null,"tags":null}""")] // description missing entirely
+    [InlineData("""{"title":"Title","folder":null,"tags":null}""")] // description missing entirely
     [InlineData(
         """{"title":"Title","description":null,"folder":null,"tags":null}"""
     )] // description explicitly null

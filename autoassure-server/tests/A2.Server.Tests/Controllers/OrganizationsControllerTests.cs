@@ -40,17 +40,18 @@ public sealed class OrganizationsControllerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration((_, config) =>
-                config.AddInMemoryCollection(
-                    new Dictionary<string, string?>
-                    {
-                        ["Auth:SigningKey"] = SigningKey,
-                        ["DynamoDb:OrganizationTableName"] =
-                            "Organizations",
-                        ["DynamoDb:OrganizationUserTableName"] =
-                            "OrganizationUsers",
-                    }
-                )
+            builder.ConfigureAppConfiguration(
+                (_, config) =>
+                    config.AddInMemoryCollection(
+                        new Dictionary<string, string?>
+                        {
+                            ["Auth:SigningKey"] = SigningKey,
+                            ["DynamoDb:OrganizationTableName"] =
+                                "Organizations",
+                            ["DynamoDb:OrganizationUserTableName"] =
+                                "OrganizationUsers",
+                        }
+                    )
             );
             builder.ConfigureServices(services =>
             {
@@ -232,8 +233,7 @@ public sealed class OrganizationsControllerTests
             List<OrganizationResponse>
         >();
         Assert.NotNull(organizations);
-        Assert.Empty(
-            organizations); // Should not appear in active organizations
+        Assert.Empty(organizations); // Should not appear in active organizations
     }
 
     [Fact]
@@ -320,8 +320,7 @@ public sealed class OrganizationsControllerTests
         );
 
         // verify
-        Assert.Equal(HttpStatusCode.NoContent,
-            response2.StatusCode); // Idempotent returns 204
+        Assert.Equal(HttpStatusCode.NoContent, response2.StatusCode); // Idempotent returns 204
     }
 
     [Fact]
@@ -461,8 +460,7 @@ public sealed class OrganizationsControllerTests
     }
 
     [Fact]
-    public async Task
-        ListArchivedOrganizations_ReturnsOnlyArchivedOrganizations()
+    public async Task ListArchivedOrganizations_ReturnsOnlyArchivedOrganizations()
     {
         // setup
         var userId = Guid.CreateVersion7();
@@ -512,8 +510,7 @@ public sealed class OrganizationsControllerTests
     }
 
     [Fact]
-    public async Task
-        UnarchiveOrganization_ProvesThatAllowArchivedOrganizationAttributeIsWired()
+    public async Task UnarchiveOrganization_ProvesThatAllowArchivedOrganizationAttributeIsWired()
     {
         // setup
         var userId = Guid.CreateVersion7();
@@ -536,8 +533,7 @@ public sealed class OrganizationsControllerTests
             List<OrganizationResponse>
         >();
         Assert.NotNull(organizations);
-        Assert.Empty(
-            organizations); // Should be filtered out by RequireActiveOrganizationFilter
+        Assert.Empty(organizations); // Should be filtered out by RequireActiveOrganizationFilter
 
         // test - unarchive should still work despite the filter (proves [AllowArchivedOrganization] is wired)
         var response = await client.PostAsync(

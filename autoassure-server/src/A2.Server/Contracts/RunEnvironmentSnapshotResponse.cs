@@ -12,6 +12,5 @@ public record RunEnvironmentSnapshotResponse
     public required string Name { get; init; }
     public required EnvironmentClassification Classification { get; init; }
 
-    public required IReadOnlyList<RunEnvironmentVariableSnapshotResponse>
-        Variables { get; init; }
+    public required IReadOnlyList<RunEnvironmentVariableSnapshotResponse> Variables { get; init; }
 }

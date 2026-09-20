@@ -84,8 +84,8 @@ public class DynamoDbActivityRepository(
 
             if (
                 reasons
-                .Skip(1)
-                .Any(reason => reason.Code == "ConditionalCheckFailed")
+                    .Skip(1)
+                    .Any(reason => reason.Code == "ConditionalCheckFailed")
             )
                 return ActivitySaveResult.PreconditionOrEvidenceNotFound;
 
@@ -134,8 +134,8 @@ public class DynamoDbActivityRepository(
 
             if (
                 reasons
-                .Skip(1)
-                .Any(reason => reason.Code == "ConditionalCheckFailed")
+                    .Skip(1)
+                    .Any(reason => reason.Code == "ConditionalCheckFailed")
             )
                 return ActivityUpdateResult.PreconditionOrEvidenceNotFound;
 
@@ -265,10 +265,10 @@ public class DynamoDbActivityRepository(
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
-                  && reasons.Any(reason =>
-                      reason.Code == "ConditionalCheckFailed"
-                  )
-                 )
+                && reasons.Any(reason =>
+                    reason.Code == "ConditionalCheckFailed"
+                )
+            )
         {
             return false;
         }

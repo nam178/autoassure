@@ -98,7 +98,8 @@ public class EvidenceDefinitionsController(
             organizationId,
             evidenceDefinitionId
         );
-        if (existing is null) return NotFound();
+        if (existing is null)
+            return NotFound();
 
         var fields = new EvidenceDefinitionUpdatableFields
         {
@@ -114,7 +115,8 @@ public class EvidenceDefinitionsController(
             evidenceDefinitionId,
             fields
         );
-        if (!updateSucceeded) return NotFound();
+        if (!updateSucceeded)
+            return NotFound();
         var updated = existing with
         {
             Name = fields.Name,

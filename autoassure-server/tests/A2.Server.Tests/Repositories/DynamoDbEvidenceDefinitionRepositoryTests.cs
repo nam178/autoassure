@@ -156,8 +156,7 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TrySaveAsync_WhenApplicationExists_RoundTripsThroughGetById()
+    public async Task TrySaveAsync_WhenApplicationExists_RoundTripsThroughGetById()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -241,8 +240,7 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryUpdateAsync_WhenEvidenceDefinitionDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
+    public async Task TryUpdateAsync_WhenEvidenceDefinitionDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -295,8 +293,7 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        GetByIdAsync_WhenScopedToDifferentOrganization_ReturnsNull()
+    public async Task GetByIdAsync_WhenScopedToDifferentOrganization_ReturnsNull()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -317,8 +314,7 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByApplicationAsync_WhenMultipleEvidenceDefinitionsExist_ReturnsOnlyThoseForApplication()
+    public async Task ListByApplicationAsync_WhenMultipleEvidenceDefinitionsExist_ReturnsOnlyThoseForApplication()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -350,8 +346,7 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByApplicationAsync_WhenNoEvidenceDefinitionsExist_ReturnsEmpty()
+    public async Task ListByApplicationAsync_WhenNoEvidenceDefinitionsExist_ReturnsEmpty()
     {
         // setup
         var organizationId = Guid.CreateVersion7();

@@ -119,7 +119,8 @@ public class DynamoDbRunRepository(
         );
 
         var headerRow = rows.Find(row => row["RowKey"].S == headerRowKey);
-        if (headerRow is null) return null;
+        if (headerRow is null)
+            return null;
 
         var environmentRow = rows.Find(row =>
             row["RowKey"].S == environmentRowKey
@@ -168,7 +169,8 @@ public class DynamoDbRunRepository(
             ),
         };
         var triggerPlaceholders = triggers
-            .Select((trigger, index) =>
+            .Select(
+                (trigger, index) =>
                 {
                     var placeholder = $":trigger{index}";
                     expressionAttributeValues[placeholder] = new AttributeValue(
@@ -284,8 +286,8 @@ public class DynamoDbRunRepository(
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
-                  && reasons[0].Code == "ConditionalCheckFailed"
-                 )
+                && reasons[0].Code == "ConditionalCheckFailed"
+            )
         {
             return null;
         }
@@ -306,7 +308,7 @@ public class DynamoDbRunRepository(
         )
             throw new ArgumentException(
                 $"{terminalStatus} is not a terminal state End Run can write -- only Completed, "
-                + "Cancelled or Abandoned.",
+                    + "Cancelled or Abandoned.",
                 nameof(terminalStatus)
             );
 
@@ -362,8 +364,8 @@ public class DynamoDbRunRepository(
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 0 } reasons
-                  && reasons[0].Code == "ConditionalCheckFailed"
-                 )
+                && reasons[0].Code == "ConditionalCheckFailed"
+            )
         {
             return false;
         }
@@ -385,8 +387,9 @@ public class DynamoDbRunRepository(
         if (fields.HeartbeatAt is { } heartbeatAt)
         {
             setClauses.Add("LastHeartbeatAt = :heartbeatAt");
-            attributeValues[":heartbeatAt"] =
-                new AttributeValue(heartbeatAt.ToString("O"));
+            attributeValues[":heartbeatAt"] = new AttributeValue(
+                heartbeatAt.ToString("O")
+            );
         }
 
         if (fields.TotalActivityCount is { } total)
@@ -552,9 +555,9 @@ public class DynamoDbRunRepository(
         }
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons?.Any(reason =>
-                      reason.Code == "ConditionalCheckFailed"
-                  ) == true
-                 )
+                    reason.Code == "ConditionalCheckFailed"
+                ) == true
+            )
         {
             return false;
         }
@@ -582,7 +585,8 @@ public class DynamoDbRunRepository(
                 "limit must be positive."
             );
 
-        if (afterSeq == long.MaxValue) return [];
+        if (afterSeq == long.MaxValue)
+            return [];
 
         var response = await client.QueryAsync(
             new QueryRequest

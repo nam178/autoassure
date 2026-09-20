@@ -53,7 +53,8 @@ public class ActivitiesController(
             organizationId,
             scenarioId
         );
-        if (scenario is null) return NotFound();
+        if (scenario is null)
+            return NotFound();
 
         var preconditionIds = request.PreconditionIds ?? [];
         var evidenceIds = request.EvidenceIds ?? [];
@@ -145,7 +146,8 @@ public class ActivitiesController(
             organizationId,
             activityId
         );
-        if (existing is null) return NotFound();
+        if (existing is null)
+            return NotFound();
 
         var preconditionIds = request.PreconditionIds ?? [];
         var evidenceIds = request.EvidenceIds ?? [];
@@ -178,7 +180,8 @@ public class ActivitiesController(
                 $"Unhandled {nameof(ActivityUpdateResult)}: {result}"
             ),
         };
-        if (failure is not null) return failure;
+        if (failure is not null)
+            return failure;
 
         var updated = existing with
         {
@@ -246,13 +249,14 @@ public class ActivitiesController(
             scenarioId,
             request.OrderedActivityIds
         );
-        if (!succeeded) return NotFound();
+        if (!succeeded)
+            return NotFound();
 
         // The write only touches each Activity's Order field, so the response can be built from
         // `current` (fetched pre-write) plus the new order, avoiding a redundant re-fetch.
         var byId = current.ToDictionary(a => a.Id);
-        var reordered = request.OrderedActivityIds.Select((id, index) =>
-            byId[id] with { Order = index }
+        var reordered = request.OrderedActivityIds.Select(
+            (id, index) => byId[id] with { Order = index }
         );
         return Ok(reordered.Select(a => a.ToResponse()).ToList());
     }

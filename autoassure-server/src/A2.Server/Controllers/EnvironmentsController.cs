@@ -98,7 +98,8 @@ public class EnvironmentsController(
             organizationId,
             environmentId
         );
-        if (environment is null) return NotFound();
+        if (environment is null)
+            return NotFound();
 
         return Ok(await ToResponseAsync(environment));
     }
@@ -122,7 +123,8 @@ public class EnvironmentsController(
             organizationId,
             environmentId
         );
-        if (existing is null) return NotFound();
+        if (existing is null)
+            return NotFound();
 
         var fields = new EnvironmentUpdatableFields
         {
@@ -137,7 +139,8 @@ public class EnvironmentsController(
             environmentId,
             fields
         );
-        if (!updateSucceeded) return NotFound();
+        if (!updateSucceeded)
+            return NotFound();
         var updated = existing with
         {
             Name = fields.Name,
@@ -164,8 +167,7 @@ public class EnvironmentsController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> SetVariable(
         Guid environmentId,
-        [MaxLength(200)] [RegularExpression("^[A-Za-z0-9_]+$")]
-        string key,
+        [MaxLength(200)] [RegularExpression("^[A-Za-z0-9_]+$")] string key,
         SetEnvironmentVariableRequest request
     )
     {
@@ -176,7 +178,8 @@ public class EnvironmentsController(
             organizationId,
             environmentId
         );
-        if (environment is null) return NotFound();
+        if (environment is null)
+            return NotFound();
 
         // The Environment existed above but may have been deleted since -- still the same
         // client-facing resource the caller asked for, so this is a 404, same as the check above.

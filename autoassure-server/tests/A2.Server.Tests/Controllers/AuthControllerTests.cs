@@ -23,34 +23,33 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
         return factory
             .WithWebHostBuilder(builder =>
                 builder
-                    .ConfigureAppConfiguration((_, config) =>
-                        config.AddInMemoryCollection(
-                            new Dictionary<string, string?>
-                            {
-                                ["Auth:SigningKey"] =
-                                    "test-signing-key-at-least-32-bytes-long",
-                            }
-                        )
+                    .ConfigureAppConfiguration(
+                        (_, config) =>
+                            config.AddInMemoryCollection(
+                                new Dictionary<string, string?>
+                                {
+                                    ["Auth:SigningKey"] =
+                                        "test-signing-key-at-least-32-bytes-long",
+                                }
+                            )
                     )
                     .ConfigureServices(services =>
                     {
                         services.Replace(
-                            ServiceDescriptor
-                                .Scoped<IGoogleTokenExchangeService>(_ =>
-                                    new FakeGoogleTokenExchangeService(
-                                        fakeIdentity
-                                    )
+                            ServiceDescriptor.Scoped<IGoogleTokenExchangeService>(
+                                _ => new FakeGoogleTokenExchangeService(
+                                    fakeIdentity
                                 )
+                            )
                         );
                         services.Replace(
-                            ServiceDescriptor
-                                .Scoped<IGoogleUserSyncService>(_ =>
-                                    new FakeGoogleUserSyncService()
-                                )
+                            ServiceDescriptor.Scoped<IGoogleUserSyncService>(
+                                _ => new FakeGoogleUserSyncService()
+                            )
                         );
                         services.Replace(
-                            ServiceDescriptor.Scoped<IAuthTokenService>(_ =>
-                                new FakeAuthTokenService(fakeTokens)
+                            ServiceDescriptor.Scoped<IAuthTokenService>(
+                                _ => new FakeAuthTokenService(fakeTokens)
                             )
                         );
                     })
@@ -94,8 +93,7 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
     }
 
     [Fact]
-    public async Task
-        PostAuthGoogleToken_WhenExchangeFails_ReturnsUnauthorized()
+    public async Task PostAuthGoogleToken_WhenExchangeFails_ReturnsUnauthorized()
     {
         // setup
         var unusedTokens = new IssuedTokens(
@@ -173,10 +171,9 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
     [InlineData("""{"codeVerifier":"v"}""")] // code missing entirely
     [InlineData("""{"code":null,"codeVerifier":"v"}""")] // code explicitly null
     [InlineData("""{"code":123,"codeVerifier":"v"}""")] // code wrong type
-    public async Task
-        PostAuthGoogleToken_WhenCodeHasInvalidShape_ReturnsBadRequest(
-            string rawJson
-        )
+    public async Task PostAuthGoogleToken_WhenCodeHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // test
         var response = await CreateClient(null, null)
@@ -191,21 +188,17 @@ public class AuthControllerTests(WebApplicationFactory<Program> factory)
 
     [Theory]
     [InlineData("{}")] // refreshTokenSecret missing entirely
-    [InlineData(
-        """{"refreshTokenSecret":null}""")] // refreshTokenSecret explicitly null
-    [InlineData(
-        """{"refreshTokenSecret":123}""")] // refreshTokenSecret wrong type
-    public async Task
-        PostAuthRefresh_WhenRefreshTokenSecretHasInvalidShape_ReturnsBadRequest(
-            string rawJson
-        )
+    [InlineData("""{"refreshTokenSecret":null}""")] // refreshTokenSecret explicitly null
+    [InlineData("""{"refreshTokenSecret":123}""")] // refreshTokenSecret wrong type
+    public async Task PostAuthRefresh_WhenRefreshTokenSecretHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // test
         var response = await CreateClient(null, null)
             .PostAsync(
                 "/auth/refresh",
-                new StringContent(rawJson, Encoding.UTF8,
-                    "application/json")
+                new StringContent(rawJson, Encoding.UTF8, "application/json")
             );
 
         // verify

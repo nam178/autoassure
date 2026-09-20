@@ -6,11 +6,12 @@ namespace A2.Server.Controllers;
 /// <summary>Mapping between Application Contracts and domain Models.</summary>
 public static partial class ContractMapper
 {
-    public static ApplicationResponse ToResponse(
-        this Application application
-    )
+    public static ApplicationResponse ToResponse(this Application application)
     {
-        return new ApplicationResponse(application.Id, application.Name,
-            application.Description);
+        return new ApplicationResponse(
+            application.Id,
+            application.Name,
+            application.Description
+        );
     }
 }

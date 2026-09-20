@@ -32,8 +32,7 @@ public class GoogleTokenExchangeServiceTests
     }
 
     [Fact]
-    public async Task
-        ExchangeCodeAsync_WhenGoogleReturnsValidToken_ReturnsIdentity()
+    public async Task ExchangeCodeAsync_WhenGoogleReturnsValidToken_ReturnsIdentity()
     {
         // setup
         var payload = new GoogleJsonWebSignature.Payload

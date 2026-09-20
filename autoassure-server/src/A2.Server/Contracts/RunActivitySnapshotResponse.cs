@@ -13,12 +13,7 @@ public record RunActivitySnapshotResponse
     public required int Order { get; init; }
     public required string Description { get; init; }
 
-    public required IReadOnlyList<RunPreconditionSnapshotResponse> Preconditions
-    {
-        get;
-        init;
-    }
+    public required IReadOnlyList<RunPreconditionSnapshotResponse> Preconditions { get; init; }
 
-    public required IReadOnlyList<RunEvidenceDefinitionSnapshotResponse>
-        EvidenceDefinitions { get; init; }
+    public required IReadOnlyList<RunEvidenceDefinitionSnapshotResponse> EvidenceDefinitions { get; init; }
 }

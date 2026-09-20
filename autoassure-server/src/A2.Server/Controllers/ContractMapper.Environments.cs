@@ -1,10 +1,8 @@
 using A2.Server.Contracts;
 using A2.Server.Models;
-using ContractEnvironmentClassification =
-    A2.Server.Contracts.EnvironmentClassification;
+using ContractEnvironmentClassification = A2.Server.Contracts.EnvironmentClassification;
 using Environment = A2.Server.Models.Environment;
-using ModelEnvironmentClassification =
-    A2.Server.Models.EnvironmentClassification;
+using ModelEnvironmentClassification = A2.Server.Models.EnvironmentClassification;
 
 namespace A2.Server.Controllers;
 

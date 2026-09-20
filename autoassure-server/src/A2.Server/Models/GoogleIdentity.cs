@@ -30,10 +30,12 @@ public record GoogleIdentity(
     public bool IsEmailReallyVerified()
     {
         return EmailVerified
-               && (
-                   HostedDomain is not null
-                   || Email.EndsWith("@gmail.com",
-                       StringComparison.OrdinalIgnoreCase)
-               );
+            && (
+                HostedDomain is not null
+                || Email.EndsWith(
+                    "@gmail.com",
+                    StringComparison.OrdinalIgnoreCase
+                )
+            );
     }
 }

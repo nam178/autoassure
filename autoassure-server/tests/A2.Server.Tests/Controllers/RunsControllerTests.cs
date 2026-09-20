@@ -51,33 +51,34 @@ public sealed class RunsControllerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration((_, config) =>
-                config.AddInMemoryCollection(
-                    new Dictionary<string, string?>
-                    {
-                        ["Auth:SigningKey"] = SigningKey,
-                        ["DynamoDb:ApplicationTableName"] = "Applications",
-                        ["DynamoDb:EnvironmentTableName"] = "Environments",
-                        ["DynamoDb:EnvironmentVariableTableName"] =
-                            "EnvironmentVariables",
-                        ["DynamoDb:PreconditionTableName"] =
-                            "Preconditions",
-                        ["DynamoDb:EvidenceDefinitionTableName"] =
-                            "EvidenceDefinitions",
-                        ["DynamoDb:ScenarioTableName"] = "Scenarios",
-                        ["DynamoDb:ScenariosByFolderTableName"] =
-                            "ScenariosByFolder",
-                        ["DynamoDb:ScenariosByTagTableName"] =
-                            "ScenariosByTag",
-                        ["DynamoDb:ActivityTableName"] = "Activities",
-                        ["DynamoDb:RunTableName"] = "Runs",
-                        ["DynamoDb:RunningRunTableName"] = "RunningRuns",
-                        ["DynamoDb:OrganizationTableName"] =
-                            "Organizations",
-                        ["DynamoDb:OrganizationUserTableName"] =
-                            "OrganizationUsers",
-                    }
-                )
+            builder.ConfigureAppConfiguration(
+                (_, config) =>
+                    config.AddInMemoryCollection(
+                        new Dictionary<string, string?>
+                        {
+                            ["Auth:SigningKey"] = SigningKey,
+                            ["DynamoDb:ApplicationTableName"] = "Applications",
+                            ["DynamoDb:EnvironmentTableName"] = "Environments",
+                            ["DynamoDb:EnvironmentVariableTableName"] =
+                                "EnvironmentVariables",
+                            ["DynamoDb:PreconditionTableName"] =
+                                "Preconditions",
+                            ["DynamoDb:EvidenceDefinitionTableName"] =
+                                "EvidenceDefinitions",
+                            ["DynamoDb:ScenarioTableName"] = "Scenarios",
+                            ["DynamoDb:ScenariosByFolderTableName"] =
+                                "ScenariosByFolder",
+                            ["DynamoDb:ScenariosByTagTableName"] =
+                                "ScenariosByTag",
+                            ["DynamoDb:ActivityTableName"] = "Activities",
+                            ["DynamoDb:RunTableName"] = "Runs",
+                            ["DynamoDb:RunningRunTableName"] = "RunningRuns",
+                            ["DynamoDb:OrganizationTableName"] =
+                                "Organizations",
+                            ["DynamoDb:OrganizationUserTableName"] =
+                                "OrganizationUsers",
+                        }
+                    )
             );
             builder.ConfigureServices(services =>
             {
@@ -550,9 +551,7 @@ public sealed class RunsControllerTests
                     ["UpdatedByUserId"] = new(userId.ToString()),
                     ["CreatedAt"] = new(now.ToString("O")),
                     ["UpdatedAt"] = new(now.ToString("O")),
-                    ["LifecycleState"] = new(
-                        LifecycleState.Active.ToString()
-                    ),
+                    ["LifecycleState"] = new(LifecycleState.Active.ToString()),
                 },
             }
         );
@@ -705,7 +704,7 @@ public sealed class RunsControllerTests
         Guid AppId,
         Guid EnvironmentId,
         Guid ScenarioId
-        )> SeedRunnableAppAsync(
+    )> SeedRunnableAppAsync(
         HttpClient client,
         string scenarioTitle = "Checkout completes"
     )
@@ -741,8 +740,7 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task
-        Create_WhenValidRequest_CreatesPendingRunWithSnapshotAndCountedActivities()
+    public async Task Create_WhenValidRequest_CreatesPendingRunWithSnapshotAndCountedActivities()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -770,8 +768,7 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task
-        Create_WhenEnvironmentHasSensitiveVariable_MasksItInTheResponse()
+    public async Task Create_WhenEnvironmentHasSensitiveVariable_MasksItInTheResponse()
     {
         // setup -- storage now holds the real value at Create time (this change removed masking there),
         // but the response must still mask it by default -- Create is not the one caller that gets the
@@ -807,8 +804,7 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task
-        GetById_WhenRunIsStillPendingWithSensitiveVariable_MasksItInTheResponse()
+    public async Task GetById_WhenRunIsStillPendingWithSensitiveVariable_MasksItInTheResponse()
     {
         // setup -- a Pending Run's storage still holds the real value (Start Run has not run yet, so
         // nothing has overwritten it), but Get Run must mask it regardless of what storage holds.
@@ -872,8 +868,7 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task
-        GetById_WhenRunBelongsToAnotherApplication_ReturnsNotFound()
+    public async Task GetById_WhenRunBelongsToAnotherApplication_ReturnsNotFound()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -953,8 +948,7 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task
-        Create_CopiesReferencedPreconditionsAndEvidenceDefinitionsWhole()
+    public async Task Create_CopiesReferencedPreconditionsAndEvidenceDefinitionsWhole()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -972,8 +966,7 @@ public sealed class RunsControllerTests
             }
         );
         var precondition = (
-            await preconditionResponse.Content
-                .ReadFromJsonAsync<PreconditionResponse>()
+            await preconditionResponse.Content.ReadFromJsonAsync<PreconditionResponse>()
         )!;
 
         var evidenceResponse = await client.PostAsJsonAsync(
@@ -986,8 +979,7 @@ public sealed class RunsControllerTests
             }
         );
         var evidence = (
-            await evidenceResponse.Content
-                .ReadFromJsonAsync<EvidenceDefinitionResponse>()
+            await evidenceResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>()
         )!;
 
         var activityId = await CreateActivityAsync(
@@ -1132,8 +1124,7 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task
-        Start_WhenEnvironmentHasSensitiveVariable_ReturnsTheRealValueUnmasked()
+    public async Task Start_WhenEnvironmentHasSensitiveVariable_ReturnsTheRealValueUnmasked()
     {
         // setup -- a sensitive variable set before the Run is created, so Create's own snapshot
         // (unmasked as of this change) carries the real value into storage.
@@ -1181,10 +1172,7 @@ public sealed class RunsControllerTests
             fetched!.Environment.Variables,
             v => v.Key == "API_KEY"
         );
-        Assert.Equal(
-            SensitiveValueMasker.Mask(secret),
-            fetchedVariable.Value
-        );
+        Assert.Equal(SensitiveValueMasker.Mask(secret), fetchedVariable.Value);
     }
 
     [Fact]
@@ -1442,11 +1430,10 @@ public sealed class RunsControllerTests
     [Theory]
     [InlineData(0, HttpStatusCode.BadRequest)]
     [InlineData(1, HttpStatusCode.OK)]
-    public async Task
-        Create_WhenScenarioIdsCountAtLowerBoundary_EnforcesMinCount(
-            int scenarioCount,
-            HttpStatusCode expectedStatus
-        )
+    public async Task Create_WhenScenarioIdsCountAtLowerBoundary_EnforcesMinCount(
+        int scenarioCount,
+        HttpStatusCode expectedStatus
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -1500,8 +1487,7 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task
-        Create_WhenScenarioIdsCountExceedsUpperBoundary_ReturnsBadRequest()
+    public async Task Create_WhenScenarioIdsCountExceedsUpperBoundary_ReturnsBadRequest()
     {
         // setup -- one past Quota.MaxScenariosPerRun, so [MaxLength] rejects this before any id is looked
         // up -- the ids need not reference real Scenarios.
@@ -1551,8 +1537,7 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task
-        Create_WhenScenarioIdBelongsToAnotherApplication_ReturnsBadRequest()
+    public async Task Create_WhenScenarioIdBelongsToAnotherApplication_ReturnsBadRequest()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -1575,8 +1560,7 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task
-        Create_WhenEnvironmentBelongsToAnotherApplication_ReturnsBadRequest()
+    public async Task Create_WhenEnvironmentBelongsToAnotherApplication_ReturnsBadRequest()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -1622,10 +1606,8 @@ public sealed class RunsControllerTests
     }
 
     [Theory]
-    [InlineData(
-        """{"environmentId":"11111111-1111-1111-1111-111111111111"}""")] // scenarioIds missing
-    [InlineData(
-        """{"scenarioIds":["11111111-1111-1111-1111-111111111111"]}""")] // environmentId missing
+    [InlineData("""{"environmentId":"11111111-1111-1111-1111-111111111111"}""")] // scenarioIds missing
+    [InlineData("""{"scenarioIds":["11111111-1111-1111-1111-111111111111"]}""")] // environmentId missing
     public async Task Create_WhenRequestHasInvalidShape_ReturnsBadRequest(
         string rawJson
     )
@@ -1716,8 +1698,7 @@ public sealed class RunsControllerTests
     }
 
     [Fact]
-    public async Task
-        UpdateStats_WhenCountExceedsUpperBoundary_ReturnsBadRequest()
+    public async Task UpdateStats_WhenCountExceedsUpperBoundary_ReturnsBadRequest()
     {
         // setup -- one past Quota.MaxActivityCountPerRun, more activities than a Run can ever contain.
         var client = await CreateClientWithMembershipAsync();
@@ -1785,8 +1766,7 @@ public sealed class RunsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         var fetched = await (
-            await client.GetAsync(
-                $"/applications/{appId}/runs/{created.Id}")
+            await client.GetAsync($"/applications/{appId}/runs/{created.Id}")
         ).Content.ReadFromJsonAsync<RunResponse>();
         Assert.Equal(1, fetched!.PassedActivityCount);
     }
@@ -1896,8 +1876,7 @@ public sealed class RunsControllerTests
         // test
         var response = await _factory
             .CreateClient()
-            .GetAsync(
-                $"/applications/{Guid.CreateVersion7()}/runs/running");
+            .GetAsync($"/applications/{Guid.CreateVersion7()}/runs/running");
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

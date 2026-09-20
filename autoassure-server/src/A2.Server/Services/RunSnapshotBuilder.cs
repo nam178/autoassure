@@ -80,10 +80,9 @@ public class RunSnapshotBuilder(
                                 evidenceDefinitionsById.ContainsKey
                             )
                             .Select(id =>
-                                RunEvidenceDefinitionSnapshot
-                                    .FromEvidenceDefinition(
-                                        evidenceDefinitionsById[id]
-                                    )
+                                RunEvidenceDefinitionSnapshot.FromEvidenceDefinition(
+                                    evidenceDefinitionsById[id]
+                                )
                             )
                             .ToList()
                     )

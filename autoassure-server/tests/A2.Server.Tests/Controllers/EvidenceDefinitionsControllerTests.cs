@@ -40,20 +40,21 @@ public sealed class EvidenceDefinitionsControllerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration((_, config) =>
-                config.AddInMemoryCollection(
-                    new Dictionary<string, string?>
-                    {
-                        ["Auth:SigningKey"] = SigningKey,
-                        ["DynamoDb:ApplicationTableName"] = "Applications",
-                        ["DynamoDb:EvidenceDefinitionTableName"] =
-                            "EvidenceDefinitions",
-                        ["DynamoDb:OrganizationTableName"] =
-                            "Organizations",
-                        ["DynamoDb:OrganizationUserTableName"] =
-                            "OrganizationUsers",
-                    }
-                )
+            builder.ConfigureAppConfiguration(
+                (_, config) =>
+                    config.AddInMemoryCollection(
+                        new Dictionary<string, string?>
+                        {
+                            ["Auth:SigningKey"] = SigningKey,
+                            ["DynamoDb:ApplicationTableName"] = "Applications",
+                            ["DynamoDb:EvidenceDefinitionTableName"] =
+                                "EvidenceDefinitions",
+                            ["DynamoDb:OrganizationTableName"] =
+                                "Organizations",
+                            ["DynamoDb:OrganizationUserTableName"] =
+                                "OrganizationUsers",
+                        }
+                    )
             );
             builder.ConfigureServices(services =>
             {
@@ -223,9 +224,7 @@ public sealed class EvidenceDefinitionsControllerTests
                     ["UpdatedByUserId"] = new(userId.ToString()),
                     ["CreatedAt"] = new(now.ToString("O")),
                     ["UpdatedAt"] = new(now.ToString("O")),
-                    ["LifecycleState"] = new(
-                        LifecycleState.Active.ToString()
-                    ),
+                    ["LifecycleState"] = new(LifecycleState.Active.ToString()),
                 },
             }
         );
@@ -314,8 +313,7 @@ public sealed class EvidenceDefinitionsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
         var created =
-            await createResponse.Content
-                .ReadFromJsonAsync<EvidenceDefinitionResponse>();
+            await createResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>();
         Assert.NotNull(created);
         Assert.Equal("Order Confirmation ID", created.Name);
 
@@ -333,8 +331,7 @@ public sealed class EvidenceDefinitionsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
         var updated =
-            await patchResponse.Content
-                .ReadFromJsonAsync<EvidenceDefinitionResponse>();
+            await patchResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>();
         Assert.Equal("Order ID", updated!.Name);
         Assert.Equal("Updated description", updated.Description);
 
@@ -372,8 +369,7 @@ public sealed class EvidenceDefinitionsControllerTests
     }
 
     [Fact]
-    public async Task
-        Update_WhenEvidenceDefinitionDoesNotExistInCallersOrganization_ReturnsNotFound()
+    public async Task Update_WhenEvidenceDefinitionDoesNotExistInCallersOrganization_ReturnsNotFound()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -394,8 +390,7 @@ public sealed class EvidenceDefinitionsControllerTests
     }
 
     [Fact]
-    public async Task
-        List_WhenMultipleApplicationsExist_ReturnsOnlyCallersApplicationRows()
+    public async Task List_WhenMultipleApplicationsExist_ReturnsOnlyCallersApplicationRows()
     {
         // setup
         var clientA = await CreateClientWithMembershipAsync();
@@ -435,8 +430,7 @@ public sealed class EvidenceDefinitionsControllerTests
     }
 
     [Fact]
-    public async Task
-        Create_WhenDescriptionAndExampleValueAreEmpty_RoundTripsAsEmptyString()
+    public async Task Create_WhenDescriptionAndExampleValueAreEmpty_RoundTripsAsEmptyString()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -456,8 +450,7 @@ public sealed class EvidenceDefinitionsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
         var created =
-            await createResponse.Content
-                .ReadFromJsonAsync<EvidenceDefinitionResponse>();
+            await createResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>();
         Assert.Equal("", created!.Description);
         Assert.Equal("", created.ExampleValue);
 
@@ -476,8 +469,7 @@ public sealed class EvidenceDefinitionsControllerTests
     }
 
     [Fact]
-    public async Task
-        Update_WhenDescriptionAndExampleValueSetToEmpty_RoundTripsAsEmptyString()
+    public async Task Update_WhenDescriptionAndExampleValueSetToEmpty_RoundTripsAsEmptyString()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -492,8 +484,7 @@ public sealed class EvidenceDefinitionsControllerTests
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<EvidenceDefinitionResponse>()
+            await createResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>()
         )!;
 
         // test
@@ -510,8 +501,7 @@ public sealed class EvidenceDefinitionsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
         var updated =
-            await updateResponse.Content
-                .ReadFromJsonAsync<EvidenceDefinitionResponse>();
+            await updateResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>();
         Assert.Equal("", updated!.Description);
         Assert.Equal("", updated.ExampleValue);
 
@@ -638,8 +628,7 @@ public sealed class EvidenceDefinitionsControllerTests
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<EvidenceDefinitionResponse>()
+            await createResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>()
         )!;
 
         // test
@@ -660,11 +649,10 @@ public sealed class EvidenceDefinitionsControllerTests
     [Theory]
     [InlineData(500, HttpStatusCode.OK)]
     [InlineData(501, HttpStatusCode.BadRequest)]
-    public async Task
-        Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
-            int descriptionLength,
-            HttpStatusCode expectedStatus
-        )
+    public async Task Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
+        int descriptionLength,
+        HttpStatusCode expectedStatus
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -688,11 +676,10 @@ public sealed class EvidenceDefinitionsControllerTests
     [Theory]
     [InlineData(10000, HttpStatusCode.OK)]
     [InlineData(10001, HttpStatusCode.BadRequest)]
-    public async Task
-        Create_WhenExampleValueLengthAtBoundary_EnforcesLengthLimit(
-            int exampleValueLength,
-            HttpStatusCode expectedStatus
-        )
+    public async Task Create_WhenExampleValueLengthAtBoundary_EnforcesLengthLimit(
+        int exampleValueLength,
+        HttpStatusCode expectedStatus
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -714,12 +701,9 @@ public sealed class EvidenceDefinitionsControllerTests
     }
 
     [Theory]
-    [InlineData(
-        """{"description":"","exampleValue":""}""")] // name missing entirely
-    [InlineData(
-        """{"name":null,"description":"","exampleValue":""}""")] // name explicitly null
-    [InlineData(
-        """{"name":123,"description":"","exampleValue":""}""")] // name wrong type
+    [InlineData("""{"description":"","exampleValue":""}""")] // name missing entirely
+    [InlineData("""{"name":null,"description":"","exampleValue":""}""")] // name explicitly null
+    [InlineData("""{"name":123,"description":"","exampleValue":""}""")] // name wrong type
     public async Task Create_WhenNameHasInvalidShape_ReturnsBadRequest(
         string rawJson
     )
@@ -739,16 +723,12 @@ public sealed class EvidenceDefinitionsControllerTests
     }
 
     [Theory]
-    [InlineData(
-        """{"name":"X","exampleValue":""}""")] // description missing entirely
-    [InlineData(
-        """{"name":"X","description":null,"exampleValue":""}""")] // description explicitly null
-    [InlineData(
-        """{"name":"X","description":123,"exampleValue":""}""")] // description wrong type
-    public async Task
-        Create_WhenDescriptionHasInvalidShape_ReturnsBadRequest(
-            string rawJson
-        )
+    [InlineData("""{"name":"X","exampleValue":""}""")] // description missing entirely
+    [InlineData("""{"name":"X","description":null,"exampleValue":""}""")] // description explicitly null
+    [InlineData("""{"name":"X","description":123,"exampleValue":""}""")] // description wrong type
+    public async Task Create_WhenDescriptionHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -757,8 +737,7 @@ public sealed class EvidenceDefinitionsControllerTests
         // test
         var response = await client.PostAsync(
             $"/applications/{appId}/evidence-definitions",
-            new StringContent(rawJson, Encoding.UTF8,
-                "application/json")
+            new StringContent(rawJson, Encoding.UTF8, "application/json")
         );
 
         // verify
@@ -766,16 +745,12 @@ public sealed class EvidenceDefinitionsControllerTests
     }
 
     [Theory]
-    [InlineData(
-        """{"name":"X","description":""}""")] // exampleValue missing entirely
-    [InlineData(
-        """{"name":"X","description":"","exampleValue":null}""")] // exampleValue explicitly null
-    [InlineData(
-        """{"name":"X","description":"","exampleValue":123}""")] // exampleValue wrong type
-    public async Task
-        Create_WhenExampleValueHasInvalidShape_ReturnsBadRequest(
-            string rawJson
-        )
+    [InlineData("""{"name":"X","description":""}""")] // exampleValue missing entirely
+    [InlineData("""{"name":"X","description":"","exampleValue":null}""")] // exampleValue explicitly null
+    [InlineData("""{"name":"X","description":"","exampleValue":123}""")] // exampleValue wrong type
+    public async Task Create_WhenExampleValueHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -784,26 +759,20 @@ public sealed class EvidenceDefinitionsControllerTests
         // test
         var response = await client.PostAsync(
             $"/applications/{appId}/evidence-definitions",
-            new StringContent(rawJson, Encoding.UTF8,
-                "application/json")
+            new StringContent(rawJson, Encoding.UTF8, "application/json")
         );
 
         // verify
-        Assert.Equal(HttpStatusCode.BadRequest,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Theory]
-    [InlineData(
-        """{"description":"","exampleValue":""}""")] // name missing entirely
-    [InlineData(
-        """{"name":null,"description":"","exampleValue":""}""")] // name explicitly null
-    [InlineData(
-        """{"name":123,"description":"","exampleValue":""}""")] // name wrong type
-    public async Task
-        Update_WhenNameHasInvalidShape_ReturnsBadRequest(
-            string rawJson
-        )
+    [InlineData("""{"description":"","exampleValue":""}""")] // name missing entirely
+    [InlineData("""{"name":null,"description":"","exampleValue":""}""")] // name explicitly null
+    [InlineData("""{"name":123,"description":"","exampleValue":""}""")] // name wrong type
+    public async Task Update_WhenNameHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -818,19 +787,16 @@ public sealed class EvidenceDefinitionsControllerTests
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<EvidenceDefinitionResponse>()
+            await createResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>()
         )!;
 
         // test
         var response = await client.PatchAsync(
             $"/evidence-definitions/{created.Id}",
-            new StringContent(rawJson, Encoding.UTF8,
-                "application/json")
+            new StringContent(rawJson, Encoding.UTF8, "application/json")
         );
 
         // verify
-        Assert.Equal(HttpStatusCode.BadRequest,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }

@@ -77,7 +77,8 @@ public class RunStatusUpdatesController(
             applicationId,
             runId
         );
-        if (run is null) return NotFound();
+        if (run is null)
+            return NotFound();
 
         var update = request.ToModel(clock.UtcNow);
         var appended = await runRepository.TryAppendStatusUpdateAsync(

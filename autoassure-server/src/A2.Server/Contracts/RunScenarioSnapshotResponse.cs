@@ -15,9 +15,5 @@ public record RunScenarioSnapshotResponse
     public required string Folder { get; init; }
     public required IReadOnlyList<string> Tags { get; init; }
 
-    public required IReadOnlyList<RunActivitySnapshotResponse> Activities
-    {
-        get;
-        init;
-    }
+    public required IReadOnlyList<RunActivitySnapshotResponse> Activities { get; init; }
 }

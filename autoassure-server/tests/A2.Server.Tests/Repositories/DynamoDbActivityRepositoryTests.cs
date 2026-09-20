@@ -255,8 +255,7 @@ public sealed class DynamoDbActivityRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TrySaveAsync_WhenScenarioDoesNotExist_ReturnsScenarioNotFound()
+    public async Task TrySaveAsync_WhenScenarioDoesNotExist_ReturnsScenarioNotFound()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -276,8 +275,7 @@ public sealed class DynamoDbActivityRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TrySaveAsync_WhenReferencedPreconditionDoesNotExist_ReturnsReferenceNotFound()
+    public async Task TrySaveAsync_WhenReferencedPreconditionDoesNotExist_ReturnsReferenceNotFound()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -359,8 +357,7 @@ public sealed class DynamoDbActivityRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryUpdateAsync_WhenActivityDoesNotExist_ReturnsActivityNotFound()
+    public async Task TryUpdateAsync_WhenActivityDoesNotExist_ReturnsActivityNotFound()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -395,8 +392,7 @@ public sealed class DynamoDbActivityRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryUpdateAsync_WhenScenarioIdDoesNotMatchActivity_ReturnsActivityNotFound()
+    public async Task TryUpdateAsync_WhenScenarioIdDoesNotMatchActivity_ReturnsActivityNotFound()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -446,8 +442,7 @@ public sealed class DynamoDbActivityRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryUpdateAsync_WhenReferencedPreconditionDoesNotExist_ReturnsReferenceNotFound()
+    public async Task TryUpdateAsync_WhenReferencedPreconditionDoesNotExist_ReturnsReferenceNotFound()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -505,8 +500,7 @@ public sealed class DynamoDbActivityRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByScenarioAsync_WhenMultipleActivitiesExist_ReturnsAllOrderedByOrder()
+    public async Task ListByScenarioAsync_WhenMultipleActivitiesExist_ReturnsAllOrderedByOrder()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -519,11 +513,7 @@ public sealed class DynamoDbActivityRepositoryTests(
             scenarioId,
             1
         );
-        var first = CreateActivity(
-            organizationId,
-            applicationId,
-            scenarioId
-        );
+        var first = CreateActivity(organizationId, applicationId, scenarioId);
         await _repository.TrySaveAsync(second);
         await _repository.TrySaveAsync(first);
 
@@ -558,11 +548,7 @@ public sealed class DynamoDbActivityRepositoryTests(
         var applicationId = Guid.CreateVersion7();
         var scenarioId = Guid.CreateVersion7();
         await SeedScenarioAsync(organizationId, applicationId, scenarioId);
-        var first = CreateActivity(
-            organizationId,
-            applicationId,
-            scenarioId
-        );
+        var first = CreateActivity(organizationId, applicationId, scenarioId);
         var second = CreateActivity(
             organizationId,
             applicationId,

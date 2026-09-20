@@ -206,8 +206,7 @@ public sealed class GoogleUserSyncServiceTests(
     }
 
     [Fact]
-    public async Task
-        SyncAsync_WhenFirstSignIn_CreatesExactlyOnePersonalOrganizationAndOwnerMembership()
+    public async Task SyncAsync_WhenFirstSignIn_CreatesExactlyOnePersonalOrganizationAndOwnerMembership()
     {
         // setup
         var identity = new GoogleIdentity(
@@ -238,8 +237,7 @@ public sealed class GoogleUserSyncServiceTests(
     }
 
     [Fact]
-    public async Task
-        SyncAsync_WhenSignInTwice_DoesNotCreateDuplicatePersonalOrganization()
+    public async Task SyncAsync_WhenSignInTwice_DoesNotCreateDuplicatePersonalOrganization()
     {
         // setup
         var identity = new GoogleIdentity(
@@ -263,8 +261,7 @@ public sealed class GoogleUserSyncServiceTests(
     }
 
     [Fact]
-    public async Task
-        SyncAsync_WhenUserExistsWithoutPersonalOrganization_BackfillsOne()
+    public async Task SyncAsync_WhenUserExistsWithoutPersonalOrganization_BackfillsOne()
     {
         // setup: simulate a User who was created but whose personal Organization creation never
         // completed (e.g. a crash between the two steps).

@@ -25,12 +25,13 @@ public class RequestValidationOperationTransformer
         CancellationToken cancellationToken
     )
     {
-        var hasValidatedParam =
-            context.Description.ParameterDescriptions.Any(p =>
+        var hasValidatedParam = context.Description.ParameterDescriptions.Any(
+            p =>
                 p.ModelMetadata.ValidatorMetadata.OfType<ValidationAttribute>()
                     .Any()
-            );
-        if (!hasValidatedParam) return Task.CompletedTask;
+        );
+        if (!hasValidatedParam)
+            return Task.CompletedTask;
 
         operation.Responses ??= [];
         var response = operation.Responses.GetValueOrDefault("400");

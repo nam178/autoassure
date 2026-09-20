@@ -10,6 +10,4 @@ namespace A2.Server.Common;
 ///     endpoints.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
-public sealed class AllowArchivedOrganizationAttribute : Attribute
-{
-}
+public sealed class AllowArchivedOrganizationAttribute : Attribute { }

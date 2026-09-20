@@ -14,7 +14,8 @@ namespace A2.Server.Contracts;
 /// </summary>
 public record AppendRunStatusUpdateRequest
 {
-    [Range(1, long.MaxValue)] public required long Seq { get; init; }
+    [Range(1, long.MaxValue)]
+    public required long Seq { get; init; }
 
     public required ActivityResult ActivityResult { get; init; }
 }

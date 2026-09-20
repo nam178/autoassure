@@ -11,12 +11,9 @@ public sealed class SensitiveValueMaskerTests
 
     [Theory]
     [InlineData("", "**********")] // empty: nothing to reveal
-    [InlineData("abcdefg",
-        "**********")] // 7 characters: shorter than the 8-character reveal threshold
-    [InlineData("abcdefgh",
-        "ab********")] // 8 characters: exactly at the threshold, so the leading 2 show
-    [InlineData("abcdefghij",
-        "ab********")] // 10 characters: still just the leading 2
+    [InlineData("abcdefg", "**********")] // 7 characters: shorter than the 8-character reveal threshold
+    [InlineData("abcdefgh", "ab********")] // 8 characters: exactly at the threshold, so the leading 2 show
+    [InlineData("abcdefghij", "ab********")] // 10 characters: still just the leading 2
     [InlineData(
         "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz",
         "ab********"
@@ -61,8 +58,7 @@ public sealed class SensitiveValueMaskerTests
     }
 
     [Fact]
-    public void
-        Mask_WhenValueIsShorterThanTheRevealThreshold_HidesItCompletely()
+    public void Mask_WhenValueIsShorterThanTheRevealThreshold_HidesItCompletely()
     {
         // setup: a value one character short of the 8-character threshold that gates revealing any of
         // the real value -- revealing where its stars start would otherwise leak its exact length.
@@ -73,8 +69,7 @@ public sealed class SensitiveValueMaskerTests
     }
 
     [Fact]
-    public void
-        Mask_WhenValueMeetsTheRevealThreshold_NeverReturnsFullyVisibleOutput()
+    public void Mask_WhenValueMeetsTheRevealThreshold_NeverReturnsFullyVisibleOutput()
     {
         // setup
         var shortMasked = SensitiveValueMasker.Mask("shortpwd");
@@ -91,8 +86,7 @@ public sealed class SensitiveValueMaskerTests
     }
 
     [Theory]
-    [InlineData(
-        "a-value-well-past-the-reveal-threshold")] // long enough to reveal characters
+    [InlineData("a-value-well-past-the-reveal-threshold")] // long enough to reveal characters
     [InlineData("shortpw")] // short: fully starred
     [InlineData("abcdefgh")] // exactly at the 8-character reveal threshold
     public void Mask_WhenCalledOnAnAlreadyMaskedValue_ReturnsTheSameOutput(

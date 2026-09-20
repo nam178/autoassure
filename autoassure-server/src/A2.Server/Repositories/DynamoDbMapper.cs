@@ -20,15 +20,12 @@ public static partial class DynamoDbMapper
     ///     The attribute has no BOOL
     ///     value.
     /// </exception>
-    public static bool RequireBool(
-        this AttributeValue value,
-        string fieldName
-    )
+    public static bool RequireBool(this AttributeValue value, string fieldName)
     {
         return value.BOOL
-               ?? throw new CorruptedDynamoDbRowException(
-                   $"DynamoDB row is missing required boolean field '{fieldName}'."
-               );
+            ?? throw new CorruptedDynamoDbRowException(
+                $"DynamoDB row is missing required boolean field '{fieldName}'."
+            );
     }
 
     public static string ApplicationScopedPartitionKey(
@@ -51,7 +48,7 @@ public static partial class DynamoDbMapper
     public static (
         Guid OrganizationId,
         Guid ApplicationId
-        ) ParseApplicationScopedPartitionKey(string partitionKey)
+    ) ParseApplicationScopedPartitionKey(string partitionKey)
     {
         var parts = partitionKey.Split('_', 2);
         return (Guid.Parse(parts[0]), Guid.Parse(parts[1]));

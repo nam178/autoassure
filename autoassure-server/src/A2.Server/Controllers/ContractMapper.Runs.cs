@@ -75,7 +75,10 @@ public static partial class ContractMapper
     public static RunningRunResponse ToResponse(this RunningRun runningRun)
     {
         return new RunningRunResponse
-            { Id = runningRun.Id, StartedAt = runningRun.StartedAt };
+        {
+            Id = runningRun.Id,
+            StartedAt = runningRun.StartedAt,
+        };
     }
 
     public static RunStatusUpdateResponse ToResponse(
@@ -280,9 +283,7 @@ public static partial class ContractMapper
         };
     }
 
-    private static ContractRunTrigger ToContract(
-        this ModelRunTrigger trigger
-    )
+    private static ContractRunTrigger ToContract(this ModelRunTrigger trigger)
     {
         return trigger switch
         {

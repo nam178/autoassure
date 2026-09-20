@@ -98,7 +98,7 @@ public class RunsController(
             return BadRequest(
                 new ErrorResponse(
                     "ScenarioIds contains an id that does not reference a Scenario belonging to "
-                    + "this Application."
+                        + "this Application."
                 )
             );
 
@@ -245,7 +245,8 @@ public class RunsController(
             applicationId,
             runId
         );
-        if (run is null) return NotFound();
+        if (run is null)
+            return NotFound();
 
         var maskedEnvironment = run.Environment.Masked();
         var started = await runRepository.TryMarkAsStartedAsync(

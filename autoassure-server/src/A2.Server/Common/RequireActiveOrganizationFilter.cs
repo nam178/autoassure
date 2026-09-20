@@ -40,8 +40,7 @@ public class RequireActiveOrganizationFilter(
         // Check if the endpoint is marked to allow archived organizations
         var endpoint = context.HttpContext.GetEndpoint();
         var allowArchived =
-            endpoint?.Metadata
-                .GetMetadata<AllowArchivedOrganizationAttribute>();
+            endpoint?.Metadata.GetMetadata<AllowArchivedOrganizationAttribute>();
         if (allowArchived is not null)
         {
             await next();

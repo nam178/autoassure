@@ -132,8 +132,7 @@ public sealed class DynamoDbEnvironmentRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TrySaveAsync_WhenApplicationExists_ReturnsTrueAndPersists()
+    public async Task TrySaveAsync_WhenApplicationExists_ReturnsTrueAndPersists()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -189,8 +188,7 @@ public sealed class DynamoDbEnvironmentRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryUpdateAsync_WhenEnvironmentExists_UpdatesNameClassificationAndAuditFields()
+    public async Task TryUpdateAsync_WhenEnvironmentExists_UpdatesNameClassificationAndAuditFields()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -245,8 +243,7 @@ public sealed class DynamoDbEnvironmentRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryUpdateAsync_WhenEnvironmentDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
+    public async Task TryUpdateAsync_WhenEnvironmentDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -295,8 +292,7 @@ public sealed class DynamoDbEnvironmentRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByApplicationAsync_WhenMultipleEnvironmentsExist_ReturnsOnlyThoseScopedToApplication()
+    public async Task ListByApplicationAsync_WhenMultipleEnvironmentsExist_ReturnsOnlyThoseScopedToApplication()
     {
         // setup
         var organizationId = Guid.CreateVersion7();

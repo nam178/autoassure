@@ -40,7 +40,8 @@ public class ArchivedOrganizationOperationTransformer
         // Get the controller action descriptor to access attributes
         var controllerActionDescriptor =
             context.Description.ActionDescriptor as ControllerActionDescriptor;
-        if (controllerActionDescriptor == null) return Task.CompletedTask;
+        if (controllerActionDescriptor == null)
+            return Task.CompletedTask;
 
         // Check if the endpoint requires authentication
         var methodAuthAttributes =
@@ -53,13 +54,13 @@ public class ArchivedOrganizationOperationTransformer
         {
             // Also check controller-level authorization
             var controllerAuthAttributes =
-                controllerActionDescriptor.ControllerTypeInfo
-                    .GetCustomAttributes(
-                        typeof(AuthorizeAttribute),
-                        true
-                    );
+                controllerActionDescriptor.ControllerTypeInfo.GetCustomAttributes(
+                    typeof(AuthorizeAttribute),
+                    true
+                );
             hasAuthorize = controllerAuthAttributes.Length > 0;
-            if (!hasAuthorize) return Task.CompletedTask;
+            if (!hasAuthorize)
+                return Task.CompletedTask;
         }
 
         // Check if the endpoint is marked to allow archived organizations
@@ -68,7 +69,8 @@ public class ArchivedOrganizationOperationTransformer
                 typeof(AllowArchivedOrganizationAttribute),
                 true
             );
-        if (allowArchivedAttributes.Length > 0) return Task.CompletedTask;
+        if (allowArchivedAttributes.Length > 0)
+            return Task.CompletedTask;
 
         // Add or append the 403 response
         operation.Responses ??= [];

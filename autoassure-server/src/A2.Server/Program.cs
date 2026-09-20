@@ -148,7 +148,8 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment()) app.MapOpenApi();
+if (app.Environment.IsDevelopment())
+    app.MapOpenApi();
 
 app.UseHttpsRedirection();
 app.UseCors();
@@ -157,6 +158,4 @@ app.UseAuthorization();
 app.MapControllers();
 app.Run();
 
-public abstract partial class Program
-{
-}
+public abstract partial class Program { }

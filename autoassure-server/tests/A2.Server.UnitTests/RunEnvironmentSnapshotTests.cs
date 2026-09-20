@@ -119,8 +119,7 @@ public sealed class RunEnvironmentSnapshotTests
     }
 
     [Fact]
-    public void
-        Masked_WhenVariablesMixSensitiveAndPlain_MasksOnlyTheSensitiveOne()
+    public void Masked_WhenVariablesMixSensitiveAndPlain_MasksOnlyTheSensitiveOne()
     {
         // setup
         var snapshot = CreateSnapshotWithVariables(

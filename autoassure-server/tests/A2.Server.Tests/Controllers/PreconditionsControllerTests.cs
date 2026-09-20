@@ -41,20 +41,21 @@ public sealed class PreconditionsControllerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration((_, config) =>
-                config.AddInMemoryCollection(
-                    new Dictionary<string, string?>
-                    {
-                        ["Auth:SigningKey"] = SigningKey,
-                        ["DynamoDb:ApplicationTableName"] = "Applications",
-                        ["DynamoDb:PreconditionTableName"] =
-                            "Preconditions",
-                        ["DynamoDb:OrganizationTableName"] =
-                            "Organizations",
-                        ["DynamoDb:OrganizationUserTableName"] =
-                            "OrganizationUsers",
-                    }
-                )
+            builder.ConfigureAppConfiguration(
+                (_, config) =>
+                    config.AddInMemoryCollection(
+                        new Dictionary<string, string?>
+                        {
+                            ["Auth:SigningKey"] = SigningKey,
+                            ["DynamoDb:ApplicationTableName"] = "Applications",
+                            ["DynamoDb:PreconditionTableName"] =
+                                "Preconditions",
+                            ["DynamoDb:OrganizationTableName"] =
+                                "Organizations",
+                            ["DynamoDb:OrganizationUserTableName"] =
+                                "OrganizationUsers",
+                        }
+                    )
             );
             builder.ConfigureServices(services =>
             {
@@ -224,9 +225,7 @@ public sealed class PreconditionsControllerTests
                     ["UpdatedByUserId"] = new(userId.ToString()),
                     ["CreatedAt"] = new(now.ToString("O")),
                     ["UpdatedAt"] = new(now.ToString("O")),
-                    ["LifecycleState"] = new(
-                        LifecycleState.Active.ToString()
-                    ),
+                    ["LifecycleState"] = new(LifecycleState.Active.ToString()),
                 },
             }
         );
@@ -315,8 +314,7 @@ public sealed class PreconditionsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
         var created =
-            await createResponse.Content
-                .ReadFromJsonAsync<PreconditionResponse>();
+            await createResponse.Content.ReadFromJsonAsync<PreconditionResponse>();
         Assert.NotNull(created);
         Assert.Equal("Order Confirmation ID", created.Name);
 
@@ -334,8 +332,7 @@ public sealed class PreconditionsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
         var updated =
-            await patchResponse.Content
-                .ReadFromJsonAsync<PreconditionResponse>();
+            await patchResponse.Content.ReadFromJsonAsync<PreconditionResponse>();
         Assert.Equal("Order ID", updated!.Name);
         Assert.Equal(PreconditionValueSource.AskAtRunTime, updated.ValueSource);
 
@@ -372,8 +369,7 @@ public sealed class PreconditionsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
         var created =
-            await createResponse.Content
-                .ReadFromJsonAsync<PreconditionResponse>();
+            await createResponse.Content.ReadFromJsonAsync<PreconditionResponse>();
         Assert.Equal("", created!.ExampleValue);
 
         // test
@@ -390,8 +386,7 @@ public sealed class PreconditionsControllerTests
     }
 
     [Fact]
-    public async Task
-        Update_WhenExampleValueSetToEmpty_RoundTripsAsEmptyString()
+    public async Task Update_WhenExampleValueSetToEmpty_RoundTripsAsEmptyString()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -406,8 +401,7 @@ public sealed class PreconditionsControllerTests
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<PreconditionResponse>()
+            await createResponse.Content.ReadFromJsonAsync<PreconditionResponse>()
         )!;
 
         // test
@@ -424,8 +418,7 @@ public sealed class PreconditionsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
         var updated =
-            await updateResponse.Content
-                .ReadFromJsonAsync<PreconditionResponse>();
+            await updateResponse.Content.ReadFromJsonAsync<PreconditionResponse>();
         Assert.Equal("", updated!.ExampleValue);
 
         // test
@@ -463,8 +456,7 @@ public sealed class PreconditionsControllerTests
     }
 
     [Fact]
-    public async Task
-        Update_WhenPreconditionDoesNotExistInCallersOrganization_ReturnsNotFound()
+    public async Task Update_WhenPreconditionDoesNotExistInCallersOrganization_ReturnsNotFound()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -485,8 +477,7 @@ public sealed class PreconditionsControllerTests
     }
 
     [Fact]
-    public async Task
-        List_WhenMultipleApplicationsExist_ReturnsOnlyCallersApplicationRows()
+    public async Task List_WhenMultipleApplicationsExist_ReturnsOnlyCallersApplicationRows()
     {
         // setup
         var clientA = await CreateClientWithMembershipAsync();
@@ -632,8 +623,7 @@ public sealed class PreconditionsControllerTests
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<PreconditionResponse>()
+            await createResponse.Content.ReadFromJsonAsync<PreconditionResponse>()
         )!;
 
         // test
@@ -654,11 +644,10 @@ public sealed class PreconditionsControllerTests
     [Theory]
     [InlineData(10000, HttpStatusCode.OK)]
     [InlineData(10001, HttpStatusCode.BadRequest)]
-    public async Task
-        Create_WhenExampleValueLengthAtBoundary_EnforcesLengthLimit(
-            int exampleValueLength,
-            HttpStatusCode expectedStatus
-        )
+    public async Task Create_WhenExampleValueLengthAtBoundary_EnforcesLengthLimit(
+        int exampleValueLength,
+        HttpStatusCode expectedStatus
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -680,14 +669,10 @@ public sealed class PreconditionsControllerTests
     }
 
     [Theory]
-    [InlineData(
-        """{"valueSource":0,"exampleValue":""}""")] // name missing entirely
-    [InlineData(
-        """{"name":null,"valueSource":0,"exampleValue":""}""")] // name explicitly null
-    [InlineData(
-        """{"name":123,"valueSource":0,"exampleValue":""}""")] // name wrong type
-    [InlineData(
-        """{"name":"X","valueSource":99,"exampleValue":""}""")] // valueSource out of enum range
+    [InlineData("""{"valueSource":0,"exampleValue":""}""")] // name missing entirely
+    [InlineData("""{"name":null,"valueSource":0,"exampleValue":""}""")] // name explicitly null
+    [InlineData("""{"name":123,"valueSource":0,"exampleValue":""}""")] // name wrong type
+    [InlineData("""{"name":"X","valueSource":99,"exampleValue":""}""")] // valueSource out of enum range
     public async Task Create_WhenNameHasInvalidShape_ReturnsBadRequest(
         string rawJson
     )
@@ -707,16 +692,12 @@ public sealed class PreconditionsControllerTests
     }
 
     [Theory]
-    [InlineData(
-        """{"name":"X","valueSource":0}""")] // exampleValue missing entirely
-    [InlineData(
-        """{"name":"X","valueSource":0,"exampleValue":null}""")] // exampleValue explicitly null
-    [InlineData(
-        """{"name":"X","valueSource":0,"exampleValue":123}""")] // exampleValue wrong type
-    public async Task
-        Create_WhenExampleValueHasInvalidShape_ReturnsBadRequest(
-            string rawJson
-        )
+    [InlineData("""{"name":"X","valueSource":0}""")] // exampleValue missing entirely
+    [InlineData("""{"name":"X","valueSource":0,"exampleValue":null}""")] // exampleValue explicitly null
+    [InlineData("""{"name":"X","valueSource":0,"exampleValue":123}""")] // exampleValue wrong type
+    public async Task Create_WhenExampleValueHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -725,8 +706,7 @@ public sealed class PreconditionsControllerTests
         // test
         var response = await client.PostAsync(
             $"/applications/{appId}/preconditions",
-            new StringContent(rawJson, Encoding.UTF8,
-                "application/json")
+            new StringContent(rawJson, Encoding.UTF8, "application/json")
         );
 
         // verify
@@ -734,18 +714,13 @@ public sealed class PreconditionsControllerTests
     }
 
     [Theory]
-    [InlineData(
-        """{"valueSource":0,"exampleValue":""}""")] // name missing entirely
-    [InlineData(
-        """{"name":null,"valueSource":0,"exampleValue":""}""")] // name explicitly null
-    [InlineData(
-        """{"name":123,"valueSource":0,"exampleValue":""}""")] // name wrong type
-    [InlineData(
-        """{"name":"X","valueSource":99,"exampleValue":""}""")] // valueSource out of enum range
-    public async Task
-        Update_WhenNameHasInvalidShape_ReturnsBadRequest(
-            string rawJson
-        )
+    [InlineData("""{"valueSource":0,"exampleValue":""}""")] // name missing entirely
+    [InlineData("""{"name":null,"valueSource":0,"exampleValue":""}""")] // name explicitly null
+    [InlineData("""{"name":123,"valueSource":0,"exampleValue":""}""")] // name wrong type
+    [InlineData("""{"name":"X","valueSource":99,"exampleValue":""}""")] // valueSource out of enum range
+    public async Task Update_WhenNameHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -760,19 +735,16 @@ public sealed class PreconditionsControllerTests
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<PreconditionResponse>()
+            await createResponse.Content.ReadFromJsonAsync<PreconditionResponse>()
         )!;
 
         // test
         var response = await client.PatchAsync(
             $"/preconditions/{created.Id}",
-            new StringContent(rawJson, Encoding.UTF8,
-                "application/json")
+            new StringContent(rawJson, Encoding.UTF8, "application/json")
         );
 
         // verify
-        Assert.Equal(HttpStatusCode.BadRequest,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }

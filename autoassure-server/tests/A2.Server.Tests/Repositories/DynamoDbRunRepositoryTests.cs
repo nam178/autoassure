@@ -373,8 +373,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryCreateAsync_WhenApplicationAndEnvironmentExist_CreatesRunReadableWithAllScenarios()
+    public async Task TryCreateAsync_WhenApplicationAndEnvironmentExist_CreatesRunReadableWithAllScenarios()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -418,8 +417,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryCreateAsync_WhenRunAlreadyExists_ReturnsAlreadyExistsAndChangesNothing()
+    public async Task TryCreateAsync_WhenRunAlreadyExists_ReturnsAlreadyExistsAndChangesNothing()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -462,8 +460,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryCreateAsync_WhenApplicationDoesNotExist_ReturnsApplicationNotFoundAndWritesNothing()
+    public async Task TryCreateAsync_WhenApplicationDoesNotExist_ReturnsApplicationNotFoundAndWritesNothing()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -491,8 +488,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryCreateAsync_WhenSuccessful_WritesTheEnvironmentSnapshotOnItsOwnRow()
+    public async Task TryCreateAsync_WhenSuccessful_WritesTheEnvironmentSnapshotOnItsOwnRow()
     {
         // setup -- Environment is not a header attribute: it gets a row of its own, keyed so Get Run's
         // BETWEEN query still picks it up.
@@ -526,8 +522,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        GetByIdAsync_WhenTheEnvironmentRowIsGone_ThrowsCorruptedDynamoDbRowException()
+    public async Task GetByIdAsync_WhenTheEnvironmentRowIsGone_ThrowsCorruptedDynamoDbRowException()
     {
         // setup -- the Environment row is written in the same transaction as the header and nothing
         // ever deletes it on its own, so a header outliving it can only mean corrupted stored data.
@@ -566,8 +561,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        GetByIdAsync_WhenEveryScenarioRowIsGone_ReturnsRunWithNoScenarios()
+    public async Task GetByIdAsync_WhenEveryScenarioRowIsGone_ReturnsRunWithNoScenarios()
     {
         // setup -- a Run having at least one Scenario is a business rule enforced (or not) when the
         // Run is created, not a storage-format guarantee, so the repository doesn't re-validate it here.
@@ -614,8 +608,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        GetByIdAsync_WhenScenarioRowsSpanQueryPages_ReturnsAllScenariosComplete()
+    public async Task GetByIdAsync_WhenScenarioRowsSpanQueryPages_ReturnsAllScenariosComplete()
     {
         // setup -- enough Scenario rows, each padded well past DynamoDB's 1 MB single-page Query
         // limit in total, to force GetByIdAsync's LastEvaluatedKey loop to run more than once.
@@ -690,8 +683,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        GetByIdAsync_WhenRunHasStatusUpdateRowWrittenDirectly_ReturnsNoStatusUpdates()
+    public async Task GetByIdAsync_WhenRunHasStatusUpdateRowWrittenDirectly_ReturnsNoStatusUpdates()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -752,8 +744,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByApplicationAsync_WhenRunHasScenarios_ReturnsOneHeaderOnlySummary()
+    public async Task ListByApplicationAsync_WhenRunHasScenarios_ReturnsOneHeaderOnlySummary()
     {
         // setup -- a Run with several Scenario snapshots, so the table holds 4 rows for it (1 header +
         // 3 Scenario rows). Listing must still return exactly one entry, and it must be the header
@@ -789,8 +780,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByApplicationAsync_WhenRunIsRunning_IncludesLastHeartbeatAt()
+    public async Task ListByApplicationAsync_WhenRunIsRunning_IncludesLastHeartbeatAt()
     {
         // setup -- RunHeaderIndex's projection was widened to carry LastHeartbeatAt so a caller can
         // tell a Running Run apart from one whose worker died without anything having ended it yet;
@@ -825,8 +815,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByApplicationAsync_WhenRunBelongsToAnotherApplication_DoesNotReturnIt()
+    public async Task ListByApplicationAsync_WhenRunBelongsToAnotherApplication_DoesNotReturnIt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -864,8 +853,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByApplicationAsync_WhenTriggersExcludesScheduled_DoesNotReturnScheduledRuns()
+    public async Task ListByApplicationAsync_WhenTriggersExcludesScheduled_DoesNotReturnScheduledRuns()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -913,8 +901,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByApplicationAsync_WhenMultipleRuns_ReturnsNewestFirst()
+    public async Task ListByApplicationAsync_WhenMultipleRuns_ReturnsNewestFirst()
     {
         // setup -- three Runs created in sequence. Guid.CreateVersion7() ids are time-sortable, so
         // descending id order is newest first.
@@ -978,8 +965,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListRunningByApplicationAsync_WhenRunIsPending_DoesNotReturnIt()
+    public async Task ListRunningByApplicationAsync_WhenRunIsPending_DoesNotReturnIt()
     {
         // setup -- a Run that has never started, so it never had a RunningRuns row to begin with.
         var organizationId = Guid.CreateVersion7();
@@ -1005,10 +991,9 @@ public sealed class DynamoDbRunRepositoryTests(
     [InlineData(RunStatus.Completed)]
     [InlineData(RunStatus.Cancelled)]
     [InlineData(RunStatus.Abandoned)]
-    public async Task
-        ListRunningByApplicationAsync_WhenRunHasEnded_DoesNotReturnIt(
-            RunStatus terminalStatus
-        )
+    public async Task ListRunningByApplicationAsync_WhenRunHasEnded_DoesNotReturnIt(
+        RunStatus terminalStatus
+    )
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -1045,8 +1030,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListRunningByApplicationAsync_WhenRunBelongsToAnotherApplication_DoesNotReturnIt()
+    public async Task ListRunningByApplicationAsync_WhenRunBelongsToAnotherApplication_DoesNotReturnIt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -1155,8 +1139,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryMarkAsStartedAsync_WhenRunIsPending_SucceedsAndWritesRunningRunRow()
+    public async Task TryMarkAsStartedAsync_WhenRunIsPending_SucceedsAndWritesRunningRunRow()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -1199,8 +1182,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryMarkAsStartedAsync_WhenSucceeds_OverwritesStoredEnvironmentWithTheMaskedSnapshot()
+    public async Task TryMarkAsStartedAsync_WhenSucceeds_OverwritesStoredEnvironmentWithTheMaskedSnapshot()
     {
         // setup -- a Pending Run whose Environment snapshot carries the real (unmasked) value of a
         // sensitive variable, the way TryCreateAsync stores it since Create no longer masks at write
@@ -1279,10 +1261,9 @@ public sealed class DynamoDbRunRepositoryTests(
     [InlineData(RunStatus.Completed)]
     [InlineData(RunStatus.Cancelled)]
     [InlineData(RunStatus.Abandoned)]
-    public async Task
-        TryMarkAsStartedAsync_WhenRunIsNotPending_FailsAndChangesNothing(
-            RunStatus notPending
-        )
+    public async Task TryMarkAsStartedAsync_WhenRunIsNotPending_FailsAndChangesNothing(
+        RunStatus notPending
+    )
     {
         // setup -- claim the Run once to reach Running, then optionally end it, so its Status is
         // notPending before the real test call.
@@ -1339,8 +1320,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryMarkAsStartedAsync_WhenTwoStartsRaceTheSamePendingRun_ExactlyOneWins()
+    public async Task TryMarkAsStartedAsync_WhenTwoStartsRaceTheSamePendingRun_ExactlyOneWins()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -1379,10 +1359,9 @@ public sealed class DynamoDbRunRepositoryTests(
     [InlineData(RunStatus.Completed)]
     [InlineData(RunStatus.Cancelled)]
     [InlineData(RunStatus.Abandoned)]
-    public async Task
-        TryMarkAsEndedAsync_WhenRunIsRunning_SucceedsAndDeletesRunningRunRow(
-            RunStatus terminalStatus
-        )
+    public async Task TryMarkAsEndedAsync_WhenRunIsRunning_SucceedsAndDeletesRunningRunRow(
+        RunStatus terminalStatus
+    )
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -1433,10 +1412,9 @@ public sealed class DynamoDbRunRepositoryTests(
     [InlineData(RunStatus.Completed)]
     [InlineData(RunStatus.Cancelled)]
     [InlineData(RunStatus.Abandoned)]
-    public async Task
-        TryMarkAsEndedAsync_WhenRunIsNotRunning_FailsAndChangesNothing(
-            RunStatus notRunning
-        )
+    public async Task TryMarkAsEndedAsync_WhenRunIsNotRunning_FailsAndChangesNothing(
+        RunStatus notRunning
+    )
     {
         // setup -- reach notRunning by claiming the Run and, unless it must stay Pending, ending it once
         // with that status, so the real test call attempts to end a Run that is not Running.
@@ -1499,8 +1477,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryUpdateAsync_StatsWhenRunIsRunning_WritesAbsoluteCounts()
+    public async Task TryUpdateAsync_StatsWhenRunIsRunning_WritesAbsoluteCounts()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -1564,10 +1541,9 @@ public sealed class DynamoDbRunRepositoryTests(
     [InlineData(RunStatus.Completed)]
     [InlineData(RunStatus.Cancelled)]
     [InlineData(RunStatus.Abandoned)]
-    public async Task
-        TryUpdateAsync_StatsWhenRunIsNotRunning_FailsAndChangesNothing(
-            RunStatus notRunning
-        )
+    public async Task TryUpdateAsync_StatsWhenRunIsNotRunning_FailsAndChangesNothing(
+        RunStatus notRunning
+    )
     {
         // setup -- reach notRunning by claiming the Run and, unless it must stay Pending, ending it once
         // with that status, so the real test call attempts to update stats on a Run that is not Running.
@@ -1646,8 +1622,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryUpdateAsync_HeartbeatWhenRunIsRunning_MovesLastHeartbeatAt()
+    public async Task TryUpdateAsync_HeartbeatWhenRunIsRunning_MovesLastHeartbeatAt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -1684,10 +1659,9 @@ public sealed class DynamoDbRunRepositoryTests(
     [InlineData(RunStatus.Completed)]
     [InlineData(RunStatus.Cancelled)]
     [InlineData(RunStatus.Abandoned)]
-    public async Task
-        TryUpdateAsync_HeartbeatWhenRunIsNotRunning_FailsAndChangesNothing(
-            RunStatus notRunning
-        )
+    public async Task TryUpdateAsync_HeartbeatWhenRunIsNotRunning_FailsAndChangesNothing(
+        RunStatus notRunning
+    )
     {
         // setup -- reach notRunning by claiming the Run and, unless it must stay Pending, ending it once
         // with that status, so the real test call beats a Run that is not Running.
@@ -1747,8 +1721,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryAppendStatusUpdateAsync_WhenRunIsRunning_AddsOneRowAndMovesLastSeq()
+    public async Task TryAppendStatusUpdateAsync_WhenRunIsRunning_AddsOneRowAndMovesLastSeq()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -1788,8 +1761,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryAppendStatusUpdateAsync_WhenSameSeqAppendedTwice_LeavesOneRowAndOneLastSeq()
+    public async Task TryAppendStatusUpdateAsync_WhenSameSeqAppendedTwice_LeavesOneRowAndOneLastSeq()
     {
         // setup -- a retried append (at-least-once dispatch) targets the same Seq
         var organizationId = Guid.CreateVersion7();
@@ -1832,8 +1804,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryAppendStatusUpdateAsync_WhenSeqIsNotGreaterThanLastSeq_FailsAndChangesNothing()
+    public async Task TryAppendStatusUpdateAsync_WhenSeqIsNotGreaterThanLastSeq_FailsAndChangesNothing()
     {
         // setup -- LastSeq is already 5
         var organizationId = Guid.CreateVersion7();
@@ -1879,8 +1850,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryAppendStatusUpdateAsync_WhenRunHasEnded_FailsAndChangesNothing()
+    public async Task TryAppendStatusUpdateAsync_WhenRunHasEnded_FailsAndChangesNothing()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -1926,8 +1896,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListStatusUpdatesAsync_WhenReadingAfterCursor_ReturnsOnlyLaterUpdatesInOrder()
+    public async Task ListStatusUpdatesAsync_WhenReadingAfterCursor_ReturnsOnlyLaterUpdatesInOrder()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -1961,8 +1930,7 @@ public sealed class DynamoDbRunRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListStatusUpdatesAsync_WhenSequencesCrossTen_ReturnsExactlyTenElevenTwelve()
+    public async Task ListStatusUpdatesAsync_WhenSequencesCrossTen_ReturnsExactlyTenElevenTwelve()
     {
         // setup -- append Seq 1 through 12, crossing the point where zero-padding starts to matter:
         // an unpadded key would sort "#4000#10" before "#4000#9", which would corrupt this exact

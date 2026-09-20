@@ -119,8 +119,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TrySaveAsync_WhenEnvironmentExists_CreatesRowWithCreatedAndUpdatedFields()
+    public async Task TrySaveAsync_WhenEnvironmentExists_CreatesRowWithCreatedAndUpdatedFields()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -157,8 +156,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TrySaveAsync_WhenVariableAlreadyExists_UpdatesValueButKeepsCreatedFields()
+    public async Task TrySaveAsync_WhenVariableAlreadyExists_UpdatesValueButKeepsCreatedFields()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -219,8 +217,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByEnvironmentAsync_WhenMultipleVariablesExist_ReturnsSortedByKeyScopedToEnvironment()
+    public async Task ListByEnvironmentAsync_WhenMultipleVariablesExist_ReturnsSortedByKeyScopedToEnvironment()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -281,8 +278,7 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TrySaveAsync_WhenIsSensitiveTrue_StoresValueWholeAndUnmasked()
+    public async Task TrySaveAsync_WhenIsSensitiveTrue_StoresValueWholeAndUnmasked()
     {
         // setup
         var organizationId = Guid.CreateVersion7();

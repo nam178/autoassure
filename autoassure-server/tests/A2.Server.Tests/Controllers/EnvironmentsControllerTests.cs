@@ -41,21 +41,22 @@ public sealed class EnvironmentsControllerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration((_, config) =>
-                config.AddInMemoryCollection(
-                    new Dictionary<string, string?>
-                    {
-                        ["Auth:SigningKey"] = SigningKey,
-                        ["DynamoDb:ApplicationTableName"] = "Applications",
-                        ["DynamoDb:EnvironmentTableName"] = "Environments",
-                        ["DynamoDb:EnvironmentVariableTableName"] =
-                            "EnvironmentVariables",
-                        ["DynamoDb:OrganizationTableName"] =
-                            "Organizations",
-                        ["DynamoDb:OrganizationUserTableName"] =
-                            "OrganizationUsers",
-                    }
-                )
+            builder.ConfigureAppConfiguration(
+                (_, config) =>
+                    config.AddInMemoryCollection(
+                        new Dictionary<string, string?>
+                        {
+                            ["Auth:SigningKey"] = SigningKey,
+                            ["DynamoDb:ApplicationTableName"] = "Applications",
+                            ["DynamoDb:EnvironmentTableName"] = "Environments",
+                            ["DynamoDb:EnvironmentVariableTableName"] =
+                                "EnvironmentVariables",
+                            ["DynamoDb:OrganizationTableName"] =
+                                "Organizations",
+                            ["DynamoDb:OrganizationUserTableName"] =
+                                "OrganizationUsers",
+                        }
+                    )
             );
             builder.ConfigureServices(services =>
             {
@@ -250,9 +251,7 @@ public sealed class EnvironmentsControllerTests
                     ["UpdatedByUserId"] = new(userId.ToString()),
                     ["CreatedAt"] = new(now.ToString("O")),
                     ["UpdatedAt"] = new(now.ToString("O")),
-                    ["LifecycleState"] = new(
-                        LifecycleState.Active.ToString()
-                    ),
+                    ["LifecycleState"] = new(LifecycleState.Active.ToString()),
                 },
             }
         );
@@ -321,8 +320,7 @@ public sealed class EnvironmentsControllerTests
     }
 
     [Fact]
-    public async Task
-        Create_WhenValidRequest_ReturnsEnvironmentWithNoVariablesInList()
+    public async Task Create_WhenValidRequest_ReturnsEnvironmentWithNoVariablesInList()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -341,8 +339,7 @@ public sealed class EnvironmentsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
         var created =
-            await createResponse.Content
-                .ReadFromJsonAsync<EnvironmentResponse>();
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
         Assert.NotNull(created);
         Assert.Equal("Staging", created.Name);
         Assert.Empty(created.Variables);
@@ -375,8 +372,7 @@ public sealed class EnvironmentsControllerTests
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<EnvironmentResponse>()
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
         )!;
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_URL",
@@ -417,8 +413,7 @@ public sealed class EnvironmentsControllerTests
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<EnvironmentResponse>()
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
         )!;
         await client.PutAsJsonAsync(
             $"/environments/{created.Id}/variables/API_KEY",
@@ -444,8 +439,7 @@ public sealed class EnvironmentsControllerTests
     }
 
     [Fact]
-    public async Task
-        GetById_WhenEnvironmentInDifferentOrganization_ReturnsNotFound()
+    public async Task GetById_WhenEnvironmentInDifferentOrganization_ReturnsNotFound()
     {
         // setup
         var userA = Guid.CreateVersion7();
@@ -464,8 +458,7 @@ public sealed class EnvironmentsControllerTests
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<EnvironmentResponse>()
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
         )!;
 
         // test
@@ -490,8 +483,7 @@ public sealed class EnvironmentsControllerTests
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<EnvironmentResponse>()
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
         )!;
 
         // test
@@ -507,8 +499,7 @@ public sealed class EnvironmentsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.OK, patchResponse.StatusCode);
         var updated =
-            await patchResponse.Content
-                .ReadFromJsonAsync<EnvironmentResponse>();
+            await patchResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
         Assert.Equal("Production", updated!.Name);
         Assert.Equal(
             EnvironmentClassification.Production,
@@ -517,8 +508,7 @@ public sealed class EnvironmentsControllerTests
     }
 
     [Fact]
-    public async Task
-        SetVariable_WhenOverwritingExistingKey_DoesNotDisturbOtherVariables()
+    public async Task SetVariable_WhenOverwritingExistingKey_DoesNotDisturbOtherVariables()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -532,8 +522,7 @@ public sealed class EnvironmentsControllerTests
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<EnvironmentResponse>()
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
         )!;
 
         // test
@@ -601,8 +590,7 @@ public sealed class EnvironmentsControllerTests
     }
 
     [Fact]
-    public async Task
-        Create_WhenApplicationInDifferentOrganization_ReturnsNotFound()
+    public async Task Create_WhenApplicationInDifferentOrganization_ReturnsNotFound()
     {
         // setup
         var userA = Guid.CreateVersion7();
@@ -761,8 +749,7 @@ public sealed class EnvironmentsControllerTests
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<EnvironmentResponse>()
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
         )!;
 
         // test
@@ -800,8 +787,7 @@ public sealed class EnvironmentsControllerTests
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<EnvironmentResponse>()
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
         )!;
 
         // test
@@ -838,8 +824,7 @@ public sealed class EnvironmentsControllerTests
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<EnvironmentResponse>()
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
         )!;
 
         // test
@@ -860,8 +845,7 @@ public sealed class EnvironmentsControllerTests
     [InlineData("""{"classification":1}""")] // name missing entirely
     [InlineData("""{"name":null,"classification":1}""")] // name explicitly null
     [InlineData("""{"name":123,"classification":1}""")] // name wrong type
-    [InlineData(
-        """{"name":"Staging","classification":99}""")] // classification out of enum range
+    [InlineData("""{"name":"Staging","classification":99}""")] // classification out of enum range
     public async Task Create_WhenRequestHasInvalidShape_ReturnsBadRequest(
         string rawJson
     )
@@ -882,15 +866,12 @@ public sealed class EnvironmentsControllerTests
 
     [Theory]
     [InlineData("""{"classification":1}""")] // name missing entirely
-    [InlineData(
-        """{"name":null,"classification":1}""")] // name explicitly null
+    [InlineData("""{"name":null,"classification":1}""")] // name explicitly null
     [InlineData("""{"name":123,"classification":1}""")] // name wrong type
-    [InlineData(
-        """{"name":"Staging","classification":99}""")] // classification out of enum range
-    public async Task
-        Update_WhenRequestHasInvalidShape_ReturnsBadRequest(
-            string rawJson
-        )
+    [InlineData("""{"name":"Staging","classification":99}""")] // classification out of enum range
+    public async Task Update_WhenRequestHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -900,20 +881,17 @@ public sealed class EnvironmentsControllerTests
             new CreateEnvironmentRequest
             {
                 Name = "Staging",
-                Classification =
-                    EnvironmentClassification.NonProduction,
+                Classification = EnvironmentClassification.NonProduction,
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<EnvironmentResponse>()
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
         )!;
 
         // test
         var response = await client.PatchAsync(
             $"/environments/{created.Id}",
-            new StringContent(rawJson, Encoding.UTF8,
-                "application/json")
+            new StringContent(rawJson, Encoding.UTF8, "application/json")
         );
 
         // verify
@@ -924,10 +902,9 @@ public sealed class EnvironmentsControllerTests
     [InlineData("{}")] // value missing entirely
     [InlineData("""{"value":null}""")] // value explicitly null
     [InlineData("""{"value":123}""")] // value wrong type
-    public async Task
-        SetVariable_WhenValueHasInvalidShape_ReturnsBadRequest(
-            string rawJson
-        )
+    public async Task SetVariable_WhenValueHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -937,20 +914,17 @@ public sealed class EnvironmentsControllerTests
             new CreateEnvironmentRequest
             {
                 Name = "Staging",
-                Classification =
-                    EnvironmentClassification.NonProduction,
+                Classification = EnvironmentClassification.NonProduction,
             }
         );
         var created = (
-            await createResponse.Content
-                .ReadFromJsonAsync<EnvironmentResponse>()
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
         )!;
 
         // test
         var response = await client.PutAsync(
             $"/environments/{created.Id}/variables/API_URL",
-            new StringContent(rawJson, Encoding.UTF8,
-                "application/json")
+            new StringContent(rawJson, Encoding.UTF8, "application/json")
         );
 
         // verify

@@ -181,8 +181,7 @@ public sealed class DynamoDbUserRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TrySaveAsync_WhenGoogleUserIdIsNew_SavesUserAndReturnsTrue()
+    public async Task TrySaveAsync_WhenGoogleUserIdIsNew_SavesUserAndReturnsTrue()
     {
         // setup
         var user = CreateUser();
@@ -199,8 +198,7 @@ public sealed class DynamoDbUserRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TrySaveAsync_WhenGoogleUserIdWasAlreadySynced_ReturnsFalse()
+    public async Task TrySaveAsync_WhenGoogleUserIdWasAlreadySynced_ReturnsFalse()
     {
         // setup
         var user = CreateUser();
@@ -249,8 +247,7 @@ public sealed class DynamoDbUserRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryUpdateAsync_WhenUserDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
+    public async Task TryUpdateAsync_WhenUserDoesNotExist_ReturnsFalseAndDoesNotCreateIt()
     {
         // setup
         var id = Guid.CreateVersion7();
@@ -270,8 +267,7 @@ public sealed class DynamoDbUserRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryCreatePersonalOrganizationAsync_WhenNotYetCreated_SavesOrganizationAndMembershipAndReturnsTrue()
+    public async Task TryCreatePersonalOrganizationAsync_WhenNotYetCreated_SavesOrganizationAndMembershipAndReturnsTrue()
     {
         // setup
         var user = CreateUser();
@@ -326,8 +322,7 @@ public sealed class DynamoDbUserRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryCreatePersonalOrganizationAsync_WhenAlreadyCreatedForUser_ReturnsFalse()
+    public async Task TryCreatePersonalOrganizationAsync_WhenAlreadyCreatedForUser_ReturnsFalse()
     {
         // setup
         var user = CreateUser();

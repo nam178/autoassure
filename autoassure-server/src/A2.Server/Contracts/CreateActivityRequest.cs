@@ -13,7 +13,9 @@ public record CreateActivityRequest
     [MaxLength(2000)]
     public required string Description { get; init; }
 
-    [MaxLength(15)] public IReadOnlyList<Guid>? PreconditionIds { get; init; }
+    [MaxLength(15)]
+    public IReadOnlyList<Guid>? PreconditionIds { get; init; }
 
-    [MaxLength(15)] public IReadOnlyList<Guid>? EvidenceIds { get; init; }
+    [MaxLength(15)]
+    public IReadOnlyList<Guid>? EvidenceIds { get; init; }
 }

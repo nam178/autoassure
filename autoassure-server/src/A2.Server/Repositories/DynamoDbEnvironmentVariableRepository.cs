@@ -40,11 +40,10 @@ public class DynamoDbEnvironmentVariableRepository(
                                 Key = new Dictionary<string, AttributeValue>
                                 {
                                     ["OrganizationId_ApplicationId"] = new(
-                                        DynamoDbMapper
-                                            .ApplicationScopedPartitionKey(
-                                                organizationId,
-                                                applicationId
-                                            )
+                                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                                            organizationId,
+                                            applicationId
+                                        )
                                     ),
                                     ["Id"] = new(environmentId.ToString()),
                                 },

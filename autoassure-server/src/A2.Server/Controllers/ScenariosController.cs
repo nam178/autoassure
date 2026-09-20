@@ -121,16 +121,16 @@ public class ScenariosController(
                     applicationId,
                     folder
                 )
-                : !string.IsNullOrEmpty(tag)
-                    ? await scenarioRepository.ListByTagAsync(
-                        organizationId,
-                        applicationId,
-                        tag
-                    )
-                    : await scenarioRepository.ListByApplicationAsync(
-                        organizationId,
-                        applicationId
-                    );
+            : !string.IsNullOrEmpty(tag)
+                ? await scenarioRepository.ListByTagAsync(
+                    organizationId,
+                    applicationId,
+                    tag
+                )
+            : await scenarioRepository.ListByApplicationAsync(
+                organizationId,
+                applicationId
+            );
 
         return Ok(scenarios.Select(s => s.ToResponse()).ToList());
     }
@@ -183,7 +183,8 @@ public class ScenariosController(
             organizationId,
             scenarioId
         );
-        if (previous is null) return NotFound();
+        if (previous is null)
+            return NotFound();
 
         var tags = request.Tags ?? [];
         if (!TryValidateTags(tags, out var tagsError))

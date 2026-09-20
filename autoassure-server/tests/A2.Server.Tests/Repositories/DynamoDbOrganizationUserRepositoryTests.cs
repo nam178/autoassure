@@ -98,8 +98,7 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        SaveAsync_WhenMembershipHasAllFields_RoundTripsThroughListByUser()
+    public async Task SaveAsync_WhenMembershipHasAllFields_RoundTripsThroughListByUser()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -135,8 +134,7 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByUserAsync_WhenUserBelongsToMultipleOrganizations_ReturnsAllMemberships()
+    public async Task ListByUserAsync_WhenUserBelongsToMultipleOrganizations_ReturnsAllMemberships()
     {
         // setup
         var userId = Guid.CreateVersion7();
@@ -171,8 +169,7 @@ public sealed class DynamoDbOrganizationUserRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByUserAsync_WhenAnotherUserHasMembershipInSameOrganization_ExcludesIt()
+    public async Task ListByUserAsync_WhenAnotherUserHasMembershipInSameOrganization_ExcludesIt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();

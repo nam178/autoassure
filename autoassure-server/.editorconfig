@@ -2,3 +2,6 @@ root = true
 
 [*.cs]
 max_line_length = 80
+# XML doc settings: https://www.jetbrains.com/help/resharper/EditorConfig_XMLDOC_XmlDocCodeStylePageSchema.html
+resharper_xmldoc_indent_text = ZeroIndent
+resharper_xmldoc_max_line_length = 80

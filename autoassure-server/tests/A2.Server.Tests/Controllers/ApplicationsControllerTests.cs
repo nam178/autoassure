@@ -44,18 +44,19 @@ public sealed class ApplicationsControllerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration((_, config) =>
-                config.AddInMemoryCollection(
-                    new Dictionary<string, string?>
-                    {
-                        ["Auth:SigningKey"] = SigningKey,
-                        ["DynamoDb:ApplicationTableName"] = "Applications",
-                        ["DynamoDb:OrganizationTableName"] =
-                            "Organizations",
-                        ["DynamoDb:OrganizationUserTableName"] =
-                            "OrganizationUsers",
-                    }
-                )
+            builder.ConfigureAppConfiguration(
+                (_, config) =>
+                    config.AddInMemoryCollection(
+                        new Dictionary<string, string?>
+                        {
+                            ["Auth:SigningKey"] = SigningKey,
+                            ["DynamoDb:ApplicationTableName"] = "Applications",
+                            ["DynamoDb:OrganizationTableName"] =
+                                "Organizations",
+                            ["DynamoDb:OrganizationUserTableName"] =
+                                "OrganizationUsers",
+                        }
+                    )
             );
             builder.ConfigureServices(services =>
             {
@@ -259,8 +260,7 @@ public sealed class ApplicationsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
         var created =
-            await createResponse.Content
-                .ReadFromJsonAsync<ApplicationResponse>();
+            await createResponse.Content.ReadFromJsonAsync<ApplicationResponse>();
         Assert.NotNull(created);
         Assert.Equal("Checkout Service", created.Name);
 
@@ -295,8 +295,7 @@ public sealed class ApplicationsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.OK, createResponse.StatusCode);
         var created =
-            await createResponse.Content
-                .ReadFromJsonAsync<ApplicationResponse>();
+            await createResponse.Content.ReadFromJsonAsync<ApplicationResponse>();
         Assert.Equal("", created!.Description);
 
         // test
@@ -309,8 +308,7 @@ public sealed class ApplicationsControllerTests
     }
 
     [Fact]
-    public async Task
-        Create_WhenOrganizationDoesNotExist_ReturnsBadRequestWithMessage()
+    public async Task Create_WhenOrganizationDoesNotExist_ReturnsBadRequestWithMessage()
     {
         // setup
         var userId = Guid.CreateVersion7();
@@ -333,8 +331,7 @@ public sealed class ApplicationsControllerTests
     }
 
     [Fact]
-    public async Task
-        List_WhenMultipleOrganizationsExist_ReturnsOnlyCallersOrganizationApplications()
+    public async Task List_WhenMultipleOrganizationsExist_ReturnsOnlyCallersOrganizationApplications()
     {
         // setup
         var userA = Guid.CreateVersion7();
@@ -365,8 +362,7 @@ public sealed class ApplicationsControllerTests
     }
 
     [Fact]
-    public async Task
-        GetById_WhenApplicationInDifferentOrganization_ReturnsNotFound()
+    public async Task GetById_WhenApplicationInDifferentOrganization_ReturnsNotFound()
     {
         // setup
         var userA = Guid.CreateVersion7();
@@ -380,8 +376,7 @@ public sealed class ApplicationsControllerTests
             new CreateApplicationRequest { Name = "App A", Description = "" }
         );
         var created =
-            await createResponse.Content
-                .ReadFromJsonAsync<ApplicationResponse>();
+            await createResponse.Content.ReadFromJsonAsync<ApplicationResponse>();
 
         // test
         var getResponse = await clientB.GetAsync(
@@ -448,11 +443,10 @@ public sealed class ApplicationsControllerTests
     [Theory]
     [InlineData(1000, HttpStatusCode.OK)]
     [InlineData(1001, HttpStatusCode.BadRequest)]
-    public async Task
-        Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
-            int descriptionLength,
-            HttpStatusCode expectedStatus
-        )
+    public async Task Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
+        int descriptionLength,
+        HttpStatusCode expectedStatus
+    )
     {
         // setup
         var userId = Guid.CreateVersion7();
@@ -498,14 +492,11 @@ public sealed class ApplicationsControllerTests
 
     [Theory]
     [InlineData("""{"name":"App"}""")] // description missing entirely
-    [InlineData(
-        """{"name":"App","description":null}""")] // description explicitly null
-    [InlineData(
-        """{"name":"App","description":123}""")] // description wrong type
-    public async Task
-        Create_WhenDescriptionHasInvalidShape_ReturnsBadRequest(
-            string rawJson
-        )
+    [InlineData("""{"name":"App","description":null}""")] // description explicitly null
+    [InlineData("""{"name":"App","description":123}""")] // description wrong type
+    public async Task Create_WhenDescriptionHasInvalidShape_ReturnsBadRequest(
+        string rawJson
+    )
     {
         // setup
         var userId = Guid.CreateVersion7();

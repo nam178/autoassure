@@ -20,7 +20,8 @@ public partial class ConfigValidationHostedService(
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        if (DesignTimeBuild.IsActive) return Task.CompletedTask;
+        if (DesignTimeBuild.IsActive)
+            return Task.CompletedTask;
 
         var missingKeys = RequiredSecretKeys
             .Where(key => string.IsNullOrEmpty(configuration[key]))
@@ -47,8 +48,7 @@ public partial class ConfigValidationHostedService(
 
     [LoggerMessage(
         Level = LogLevel.Critical,
-        Message =
-            "Startup aborted: required configuration values are missing or empty: {MissingKeys}"
+        Message = "Startup aborted: required configuration values are missing or empty: {MissingKeys}"
     )]
     private static partial void LogMissingConfigurationKeys(
         ILogger logger,

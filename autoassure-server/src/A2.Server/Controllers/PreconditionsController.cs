@@ -97,7 +97,8 @@ public class PreconditionsController(
             organizationId,
             preconditionId
         );
-        if (existing is null) return NotFound();
+        if (existing is null)
+            return NotFound();
 
         var fields = new PreconditionUpdatableFields
         {
@@ -113,7 +114,8 @@ public class PreconditionsController(
             preconditionId,
             fields
         );
-        if (!updateSucceeded) return NotFound();
+        if (!updateSucceeded)
+            return NotFound();
         var updated = existing with
         {
             Name = fields.Name,

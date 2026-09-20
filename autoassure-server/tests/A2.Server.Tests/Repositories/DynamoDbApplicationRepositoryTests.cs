@@ -96,8 +96,7 @@ public sealed class DynamoDbApplicationRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TrySaveAsync_WhenOrganizationExists_ReturnsTrueAndPersists()
+    public async Task TrySaveAsync_WhenOrganizationExists_ReturnsTrueAndPersists()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -164,8 +163,7 @@ public sealed class DynamoDbApplicationRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByOrganizationAsync_WhenMultipleApplicationsExist_ReturnsOnlyThoseScopedToOrganization()
+    public async Task ListByOrganizationAsync_WhenMultipleApplicationsExist_ReturnsOnlyThoseScopedToOrganization()
     {
         // setup
         var organizationId = Guid.CreateVersion7();

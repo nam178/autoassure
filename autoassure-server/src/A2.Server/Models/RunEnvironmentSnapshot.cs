@@ -9,11 +9,7 @@ public record RunEnvironmentSnapshot
     public required string Name { get; init; }
     public required EnvironmentClassification Classification { get; init; }
 
-    public required IReadOnlyList<RunEnvironmentVariableSnapshot> Variables
-    {
-        get;
-        init;
-    }
+    public required IReadOnlyList<RunEnvironmentVariableSnapshot> Variables { get; init; }
 
     public static RunEnvironmentSnapshot FromEnvironment(
         Environment environment,

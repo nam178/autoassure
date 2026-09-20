@@ -20,7 +20,8 @@ public class GoogleUserSyncService(
         var memberships = await organizationUserRepository.ListByUserAsync(
             user.Id
         );
-        if (memberships.Count == 0) await CreatePersonalOrganizationAsync(user);
+        if (memberships.Count == 0)
+            await CreatePersonalOrganizationAsync(user);
 
         return user;
     }
@@ -71,7 +72,8 @@ public class GoogleUserSyncService(
             existing.Id,
             fields
         );
-        if (!updateSucceeded) return await SyncUserAsync(googleIdentity);
+        if (!updateSucceeded)
+            return await SyncUserAsync(googleIdentity);
 
         return existing with
         {

@@ -9,8 +9,7 @@ namespace A2.Server.UnitTests;
 public sealed class RunEvidenceDefinitionSnapshotTests
 {
     [Fact]
-    public void
-        FromEvidenceDefinition_WhenGivenALiveEvidenceDefinition_CopiesEveryField()
+    public void FromEvidenceDefinition_WhenGivenALiveEvidenceDefinition_CopiesEveryField()
     {
         // setup
         var evidenceDefinition = new EvidenceDefinition

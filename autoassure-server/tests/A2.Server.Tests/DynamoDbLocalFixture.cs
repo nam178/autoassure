@@ -76,7 +76,8 @@ public sealed class DynamoDbLocalFixture : IAsyncLifetime
     private async Task EnsureJarDownloadedAsync()
     {
         var jarPath = Path.Combine(CacheDirectory, "DynamoDBLocal.jar");
-        if (File.Exists(jarPath)) return;
+        if (File.Exists(jarPath))
+            return;
 
         Directory.CreateDirectory(CacheDirectory);
         await using var archiveStream = await _httpClient.GetStreamAsync(
@@ -86,11 +87,7 @@ public sealed class DynamoDbLocalFixture : IAsyncLifetime
             archiveStream,
             CompressionMode.Decompress
         );
-        await TarFile.ExtractToDirectoryAsync(
-            gzipStream,
-            CacheDirectory,
-            true
-        );
+        await TarFile.ExtractToDirectoryAsync(gzipStream, CacheDirectory, true);
     }
 
     private static int GetFreeTcpPort()

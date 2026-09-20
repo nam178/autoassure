@@ -65,8 +65,7 @@ public sealed class DynamoDbRefreshTokenRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        SaveAsync_WhenTokenHasAllFields_RoundTripsThroughGetByHash()
+    public async Task SaveAsync_WhenTokenHasAllFields_RoundTripsThroughGetByHash()
     {
         // setup
         var token = new RefreshToken(
@@ -97,8 +96,7 @@ public sealed class DynamoDbRefreshTokenRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        GetByHashAsync_WhenStoredTokenIsRevoked_RoundTripsRevokedAt()
+    public async Task GetByHashAsync_WhenStoredTokenIsRevoked_RoundTripsRevokedAt()
     {
         // setup
         var token = new RefreshToken(
@@ -141,8 +139,7 @@ public sealed class DynamoDbRefreshTokenRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryUpdateAsync_WhenTokenIsNotYetRevoked_SetsRevokedAtAndReturnsTrue()
+    public async Task TryUpdateAsync_WhenTokenIsNotYetRevoked_SetsRevokedAtAndReturnsTrue()
     {
         // setup
         var token = new RefreshToken(
@@ -166,8 +163,7 @@ public sealed class DynamoDbRefreshTokenRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryUpdateAsync_WhenTokenDoesNotExist_ReturnsFalseAndDoesNotCreateRow()
+    public async Task TryUpdateAsync_WhenTokenDoesNotExist_ReturnsFalseAndDoesNotCreateRow()
     {
         // test
         var result = await _repository.TryUpdateAsync(

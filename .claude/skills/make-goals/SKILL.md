@@ -84,6 +84,7 @@ Give every task a `### Task N — <short name>` heading and these parts:
 Then end every task with exactly this checklist, copied verbatim:
 
 ```
+- [ ] Code Formatted
 - [ ] Linting pass.
 - [ ] Build pass.
 - [ ] Tests pass

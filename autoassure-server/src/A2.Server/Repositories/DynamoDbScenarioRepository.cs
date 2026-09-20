@@ -61,8 +61,8 @@ public class DynamoDbScenarioRepository(
         // result.
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons
-                      is [{ Code: "ConditionalCheckFailed" }, ..]
-                 )
+                    is [{ Code: "ConditionalCheckFailed" }, ..]
+            )
         {
             return false;
         }
@@ -122,11 +122,11 @@ public class DynamoDbScenarioRepository(
         // propagate instead of being reported as a business result.
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 1 } reasons
-                  && (
-                      reasons[0].Code == "ConditionalCheckFailed"
-                      || reasons[1].Code == "ConditionalCheckFailed"
-                  )
-                 )
+                && (
+                    reasons[0].Code == "ConditionalCheckFailed"
+                    || reasons[1].Code == "ConditionalCheckFailed"
+                )
+            )
         {
             return reasons[0].Code == "ConditionalCheckFailed"
                 ? ScenarioUpdateResult.ApplicationNotFound
@@ -167,7 +167,8 @@ public class DynamoDbScenarioRepository(
         IReadOnlyList<Guid> scenarioIds
     )
     {
-        if (scenarioIds.Count == 0) return [];
+        if (scenarioIds.Count == 0)
+            return [];
 
         var partitionKey = DynamoDbMapper.ApplicationScopedPartitionKey(
             organizationId,
@@ -324,7 +325,8 @@ public class DynamoDbScenarioRepository(
         var scenarioIds = mappingResponse
             .Items.Select(item => item["ScenarioId"].S)
             .ToList();
-        if (scenarioIds.Count == 0) return [];
+        if (scenarioIds.Count == 0)
+            return [];
 
         // The Scenarios table's primary key is OrganizationId_ApplicationId + Id, so BatchGetItem
         // needs the full composite key for each row -- both are denormalized onto the mapping row.
@@ -342,12 +344,10 @@ public class DynamoDbScenarioRepository(
                             >
                             {
                                 ["OrganizationId_ApplicationId"] = new(
-                                    DynamoDbMapper
-                                        .ApplicationScopedPartitionKey(
-                                            Guid.Parse(item["OrganizationId"]
-                                                .S),
-                                            Guid.Parse(item["ApplicationId"].S)
-                                        )
+                                    DynamoDbMapper.ApplicationScopedPartitionKey(
+                                        Guid.Parse(item["OrganizationId"].S),
+                                        Guid.Parse(item["ApplicationId"].S)
+                                    )
                                 ),
                                 ["Id"] = new(item["ScenarioId"].S),
                             })
@@ -427,10 +427,7 @@ public class DynamoDbScenarioRepository(
         };
     }
 
-    private TransactWriteItem PutFolderMapping(
-        Scenario scenario,
-        string folder
-    )
+    private TransactWriteItem PutFolderMapping(Scenario scenario, string folder)
     {
         return new TransactWriteItem
         {
@@ -513,10 +510,7 @@ public class DynamoDbScenarioRepository(
         };
     }
 
-    private static string FolderPartitionKey(
-        Scenario scenario,
-        string folder
-    )
+    private static string FolderPartitionKey(Scenario scenario, string folder)
     {
         return $"{scenario.OrganizationId}_{scenario.ApplicationId}_{folder}";
     }

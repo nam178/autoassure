@@ -34,7 +34,8 @@ public class DynamoDbOrganizationRepository(
         IReadOnlyList<Guid> organizationIds
     )
     {
-        if (organizationIds.Count == 0) return [];
+        if (organizationIds.Count == 0)
+            return [];
 
         var requestItems = new Dictionary<string, KeysAndAttributes>
         {

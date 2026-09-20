@@ -10,8 +10,7 @@ namespace A2.Server.UnitTests;
 public sealed class RunEnvironmentVariableSnapshotTests
 {
     [Fact]
-    public void
-        FromEnvironmentVariable_WhenVariableIsNotSensitive_CopiesTheValueWhole()
+    public void FromEnvironmentVariable_WhenVariableIsNotSensitive_CopiesTheValueWhole()
     {
         // setup
         var variable = new EnvironmentVariable
@@ -43,8 +42,7 @@ public sealed class RunEnvironmentVariableSnapshotTests
     }
 
     [Fact]
-    public void
-        FromEnvironmentVariable_WhenVariableIsSensitive_StoresTheRealValueUnmasked()
+    public void FromEnvironmentVariable_WhenVariableIsSensitive_StoresTheRealValueUnmasked()
     {
         // setup
         var variable = new EnvironmentVariable

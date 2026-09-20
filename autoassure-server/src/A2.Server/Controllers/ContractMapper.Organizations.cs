@@ -10,7 +10,10 @@ public static partial class ContractMapper
         this Organization organization
     )
     {
-        return new OrganizationResponse(organization.Id, organization.Name,
-            organization.IsPersonal);
+        return new OrganizationResponse(
+            organization.Id,
+            organization.Name,
+            organization.IsPersonal
+        );
     }
 }

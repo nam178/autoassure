@@ -18,7 +18,10 @@ public record UpdateScenarioRequest
     [MaxLength(2000)]
     public required string Description { get; init; }
 
-    [Required] [MaxLength(300)] public required string Folder { get; init; }
+    [Required]
+    [MaxLength(300)]
+    public required string Folder { get; init; }
 
-    [MaxLength(20)] public IReadOnlyList<string>? Tags { get; init; }
+    [MaxLength(20)]
+    public IReadOnlyList<string>? Tags { get; init; }
 }

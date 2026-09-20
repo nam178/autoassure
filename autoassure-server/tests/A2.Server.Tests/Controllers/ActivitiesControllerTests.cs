@@ -41,28 +41,29 @@ public sealed class ActivitiesControllerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration((_, config) =>
-                config.AddInMemoryCollection(
-                    new Dictionary<string, string?>
-                    {
-                        ["Auth:SigningKey"] = SigningKey,
-                        ["DynamoDb:ApplicationTableName"] = "Applications",
-                        ["DynamoDb:PreconditionTableName"] =
-                            "Preconditions",
-                        ["DynamoDb:EvidenceDefinitionTableName"] =
-                            "EvidenceDefinitions",
-                        ["DynamoDb:ScenarioTableName"] = "Scenarios",
-                        ["DynamoDb:ScenariosByFolderTableName"] =
-                            "ScenariosByFolder",
-                        ["DynamoDb:ScenariosByTagTableName"] =
-                            "ScenariosByTag",
-                        ["DynamoDb:ActivityTableName"] = "Activities",
-                        ["DynamoDb:OrganizationTableName"] =
-                            "Organizations",
-                        ["DynamoDb:OrganizationUserTableName"] =
-                            "OrganizationUsers",
-                    }
-                )
+            builder.ConfigureAppConfiguration(
+                (_, config) =>
+                    config.AddInMemoryCollection(
+                        new Dictionary<string, string?>
+                        {
+                            ["Auth:SigningKey"] = SigningKey,
+                            ["DynamoDb:ApplicationTableName"] = "Applications",
+                            ["DynamoDb:PreconditionTableName"] =
+                                "Preconditions",
+                            ["DynamoDb:EvidenceDefinitionTableName"] =
+                                "EvidenceDefinitions",
+                            ["DynamoDb:ScenarioTableName"] = "Scenarios",
+                            ["DynamoDb:ScenariosByFolderTableName"] =
+                                "ScenariosByFolder",
+                            ["DynamoDb:ScenariosByTagTableName"] =
+                                "ScenariosByTag",
+                            ["DynamoDb:ActivityTableName"] = "Activities",
+                            ["DynamoDb:OrganizationTableName"] =
+                                "Organizations",
+                            ["DynamoDb:OrganizationUserTableName"] =
+                                "OrganizationUsers",
+                        }
+                    )
             );
             builder.ConfigureServices(services =>
             {
@@ -376,9 +377,7 @@ public sealed class ActivitiesControllerTests
                     ["UpdatedByUserId"] = new(userId.ToString()),
                     ["CreatedAt"] = new(now.ToString("O")),
                     ["UpdatedAt"] = new(now.ToString("O")),
-                    ["LifecycleState"] = new(
-                        LifecycleState.Active.ToString()
-                    ),
+                    ["LifecycleState"] = new(LifecycleState.Active.ToString()),
                 },
             }
         );
@@ -584,8 +583,7 @@ public sealed class ActivitiesControllerTests
     }
 
     [Fact]
-    public async Task
-        Create_WhenScenarioAlreadyHasMaxActivities_ReturnsBadRequest()
+    public async Task Create_WhenScenarioAlreadyHasMaxActivities_ReturnsBadRequest()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -608,8 +606,7 @@ public sealed class ActivitiesControllerTests
     }
 
     [Fact]
-    public async Task
-        List_WhenMultipleActivitiesExist_ReturnsOrderedByCreationOrder()
+    public async Task List_WhenMultipleActivitiesExist_ReturnsOrderedByCreationOrder()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -766,11 +763,10 @@ public sealed class ActivitiesControllerTests
     [InlineData(2000, HttpStatusCode.OK)]
     [InlineData(2001, HttpStatusCode.BadRequest)]
     [InlineData(0, HttpStatusCode.BadRequest)]
-    public async Task
-        Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
-            int descriptionLength,
-            HttpStatusCode expectedStatus
-        )
+    public async Task Create_WhenDescriptionLengthAtBoundary_EnforcesLengthLimit(
+        int descriptionLength,
+        HttpStatusCode expectedStatus
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -793,11 +789,10 @@ public sealed class ActivitiesControllerTests
     [Theory]
     [InlineData(15, HttpStatusCode.OK)]
     [InlineData(16, HttpStatusCode.BadRequest)]
-    public async Task
-        Create_WhenPreconditionIdCountAtBoundary_EnforcesCountLimit(
-            int preconditionCount,
-            HttpStatusCode expectedStatus
-        )
+    public async Task Create_WhenPreconditionIdCountAtBoundary_EnforcesCountLimit(
+        int preconditionCount,
+        HttpStatusCode expectedStatus
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -822,8 +817,7 @@ public sealed class ActivitiesControllerTests
     }
 
     [Theory]
-    [InlineData(
-        """{"preconditionIds":null,"evidenceIds":null}""")] // description missing entirely
+    [InlineData("""{"preconditionIds":null,"evidenceIds":null}""")] // description missing entirely
     [InlineData(
         """{"description":null,"preconditionIds":null,"evidenceIds":null}"""
     )] // description explicitly null

@@ -26,8 +26,7 @@ public static partial class DynamoDbMapper
 
     public static string RunStatusUpdateRowKey(Guid runId, long seq)
     {
-        return
-            $"{runId}#4000#{seq.ToString("D12", CultureInfo.InvariantCulture)}";
+        return $"{runId}#4000#{seq.ToString("D12", CultureInfo.InvariantCulture)}";
     }
 
     public static string RunStatusUpdateRowKeyPrefix(Guid runId)
@@ -88,8 +87,9 @@ public static partial class DynamoDbMapper
         };
 
         if (run.TriggeredByUserId is { } triggeredByUserId)
-            row["TriggeredByUserId"] =
-                new AttributeValue(triggeredByUserId.ToString());
+            row["TriggeredByUserId"] = new AttributeValue(
+                triggeredByUserId.ToString()
+            );
 
         if (run.StartedAt is { } startedAt)
             row["StartedAt"] = new AttributeValue(startedAt.ToString("O"));
@@ -98,8 +98,9 @@ public static partial class DynamoDbMapper
             row["CompletedAt"] = new AttributeValue(completedAt.ToString("O"));
 
         if (run.LastHeartbeatAt is { } lastHeartbeatAt)
-            row["LastHeartbeatAt"] =
-                new AttributeValue(lastHeartbeatAt.ToString("O"));
+            row["LastHeartbeatAt"] = new AttributeValue(
+                lastHeartbeatAt.ToString("O")
+            );
 
         return row;
     }
@@ -188,9 +189,7 @@ public static partial class DynamoDbMapper
     ///     this index could have
     ///     projected either.
     /// </summary>
-    public static RunInfo ToRunInfo(
-        this Dictionary<string, AttributeValue> row
-    )
+    public static RunInfo ToRunInfo(this Dictionary<string, AttributeValue> row)
     {
         return new RunInfo
         {
@@ -434,9 +433,7 @@ public static partial class DynamoDbMapper
         };
     }
 
-    private static RunSnapshotSource ToSnapshotSource(
-        this AttributeValue value
-    )
+    private static RunSnapshotSource ToSnapshotSource(this AttributeValue value)
     {
         return new RunSnapshotSource
         {
@@ -485,10 +482,9 @@ public static partial class DynamoDbMapper
         };
     }
 
-    private static RunEnvironmentVariableSnapshot
-        ToRunEnvironmentVariableSnapshot(
-            this AttributeValue value
-        )
+    private static RunEnvironmentVariableSnapshot ToRunEnvironmentVariableSnapshot(
+        this AttributeValue value
+    )
     {
         return new RunEnvironmentVariableSnapshot
         {
@@ -555,10 +551,9 @@ public static partial class DynamoDbMapper
         };
     }
 
-    private static RunEvidenceDefinitionSnapshot
-        ToRunEvidenceDefinitionSnapshot(
-            this AttributeValue value
-        )
+    private static RunEvidenceDefinitionSnapshot ToRunEvidenceDefinitionSnapshot(
+        this AttributeValue value
+    )
     {
         return new RunEvidenceDefinitionSnapshot
         {
@@ -653,8 +648,9 @@ public static partial class DynamoDbMapper
         };
 
         if (activityResult.ContinuationReasoning is { } continuationReasoning)
-            map["ContinuationReasoning"] =
-                new AttributeValue(continuationReasoning);
+            map["ContinuationReasoning"] = new AttributeValue(
+                continuationReasoning
+            );
 
         return new AttributeValue { M = map };
     }

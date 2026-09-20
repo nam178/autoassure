@@ -47,33 +47,34 @@ public sealed class RunStatusUpdatesControllerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration((_, config) =>
-                config.AddInMemoryCollection(
-                    new Dictionary<string, string?>
-                    {
-                        ["Auth:SigningKey"] = SigningKey,
-                        ["DynamoDb:ApplicationTableName"] = "Applications",
-                        ["DynamoDb:EnvironmentTableName"] = "Environments",
-                        ["DynamoDb:EnvironmentVariableTableName"] =
-                            "EnvironmentVariables",
-                        ["DynamoDb:PreconditionTableName"] =
-                            "Preconditions",
-                        ["DynamoDb:EvidenceDefinitionTableName"] =
-                            "EvidenceDefinitions",
-                        ["DynamoDb:ScenarioTableName"] = "Scenarios",
-                        ["DynamoDb:ScenariosByFolderTableName"] =
-                            "ScenariosByFolder",
-                        ["DynamoDb:ScenariosByTagTableName"] =
-                            "ScenariosByTag",
-                        ["DynamoDb:ActivityTableName"] = "Activities",
-                        ["DynamoDb:RunTableName"] = "Runs",
-                        ["DynamoDb:RunningRunTableName"] = "RunningRuns",
-                        ["DynamoDb:OrganizationTableName"] =
-                            "Organizations",
-                        ["DynamoDb:OrganizationUserTableName"] =
-                            "OrganizationUsers",
-                    }
-                )
+            builder.ConfigureAppConfiguration(
+                (_, config) =>
+                    config.AddInMemoryCollection(
+                        new Dictionary<string, string?>
+                        {
+                            ["Auth:SigningKey"] = SigningKey,
+                            ["DynamoDb:ApplicationTableName"] = "Applications",
+                            ["DynamoDb:EnvironmentTableName"] = "Environments",
+                            ["DynamoDb:EnvironmentVariableTableName"] =
+                                "EnvironmentVariables",
+                            ["DynamoDb:PreconditionTableName"] =
+                                "Preconditions",
+                            ["DynamoDb:EvidenceDefinitionTableName"] =
+                                "EvidenceDefinitions",
+                            ["DynamoDb:ScenarioTableName"] = "Scenarios",
+                            ["DynamoDb:ScenariosByFolderTableName"] =
+                                "ScenariosByFolder",
+                            ["DynamoDb:ScenariosByTagTableName"] =
+                                "ScenariosByTag",
+                            ["DynamoDb:ActivityTableName"] = "Activities",
+                            ["DynamoDb:RunTableName"] = "Runs",
+                            ["DynamoDb:RunningRunTableName"] = "RunningRuns",
+                            ["DynamoDb:OrganizationTableName"] =
+                                "Organizations",
+                            ["DynamoDb:OrganizationUserTableName"] =
+                                "OrganizationUsers",
+                        }
+                    )
             );
             builder.ConfigureServices(services =>
             {
@@ -544,9 +545,7 @@ public sealed class RunStatusUpdatesControllerTests
                     ["UpdatedByUserId"] = new(userId.ToString()),
                     ["CreatedAt"] = new(now.ToString("O")),
                     ["UpdatedAt"] = new(now.ToString("O")),
-                    ["LifecycleState"] = new(
-                        LifecycleState.Active.ToString()
-                    ),
+                    ["LifecycleState"] = new(LifecycleState.Active.ToString()),
                 },
             }
         );
@@ -673,7 +672,7 @@ public sealed class RunStatusUpdatesControllerTests
         Guid RunId,
         Guid ScenarioId,
         List<Guid> ActivityIds
-        )> SeedRunningRunAsync(HttpClient client)
+    )> SeedRunningRunAsync(HttpClient client)
     {
         var appId = await CreateApplicationAsync(client);
         var environmentId = await CreateEnvironmentAsync(client, appId);
@@ -732,8 +731,7 @@ public sealed class RunStatusUpdatesControllerTests
         // verify
         Assert.Equal(HttpStatusCode.OK, appendResponse.StatusCode);
         var appended =
-            await appendResponse.Content
-                .ReadFromJsonAsync<RunStatusUpdateResponse>();
+            await appendResponse.Content.ReadFromJsonAsync<RunStatusUpdateResponse>();
         Assert.Equal(1, appended!.Seq);
 
         var listResponse = await client.GetAsync(
@@ -793,11 +791,10 @@ public sealed class RunStatusUpdatesControllerTests
     [InlineData(ActivityResultStatus.Passed, HttpStatusCode.OK)]
     [InlineData(ActivityResultStatus.Failed, HttpStatusCode.OK)]
     [InlineData(ActivityResultStatus.Skipped, HttpStatusCode.OK)]
-    public async Task
-        Append_WhenActivityResultStatusIsPendingOrRunning_ReturnsBadRequest(
-            ActivityResultStatus status,
-            HttpStatusCode expectedStatus
-        )
+    public async Task Append_WhenActivityResultStatusIsPendingOrRunning_ReturnsBadRequest(
+        ActivityResultStatus status,
+        HttpStatusCode expectedStatus
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -912,11 +909,10 @@ public sealed class RunStatusUpdatesControllerTests
     [Theory]
     [InlineData(2000, HttpStatusCode.OK)]
     [InlineData(2001, HttpStatusCode.BadRequest)]
-    public async Task
-        Append_WhenContinuationReasoningLengthAtBoundary_EnforcesLengthLimit(
-            int continuationReasoningLength,
-            HttpStatusCode expectedStatus
-        )
+    public async Task Append_WhenContinuationReasoningLengthAtBoundary_EnforcesLengthLimit(
+        int continuationReasoningLength,
+        HttpStatusCode expectedStatus
+    )
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -999,8 +995,7 @@ public sealed class RunStatusUpdatesControllerTests
     }
 
     [Fact]
-    public async Task
-        FullRoundTrip_CreateStartAppendPollEnd_ClientFoldsTheLogItAppended()
+    public async Task FullRoundTrip_CreateStartAppendPollEnd_ClientFoldsTheLogItAppended()
     {
         // setup -- this walks the exact flow fix_run_design.md section 7 describes: Create, keep the id;
         // List Run Status Updates from 0 and fold; poll again from the last sequence held; End Run.

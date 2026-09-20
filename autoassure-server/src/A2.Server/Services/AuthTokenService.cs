@@ -45,7 +45,8 @@ public class AuthTokenService(
             refreshTokenSecretHash,
             clock.UtcNow
         );
-        if (!claimed) return null;
+        if (!claimed)
+            return null;
 
         var accessToken = GenerateNewAccessToken(stored.UserId, stored.Email);
         var newRefreshTokenSecret = await CreateRefreshTokenSecretAsync(
@@ -122,6 +123,7 @@ public class AuthTokenService(
     private static string Hash(string value)
     {
         return Convert.ToHexString(
-            SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+            SHA256.HashData(Encoding.UTF8.GetBytes(value))
+        );
     }
 }

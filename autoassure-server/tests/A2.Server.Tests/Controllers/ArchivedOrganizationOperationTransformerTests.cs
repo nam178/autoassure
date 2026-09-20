@@ -24,14 +24,15 @@ public sealed class ArchivedOrganizationOperationTransformerTests
     {
         _factory = factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureAppConfiguration((_, config) =>
-                config.AddInMemoryCollection(
-                    new Dictionary<string, string?>
-                    {
-                        ["Auth:SigningKey"] =
-                            "test-signing-key-at-least-32-bytes-long",
-                    }
-                )
+            builder.ConfigureAppConfiguration(
+                (_, config) =>
+                    config.AddInMemoryCollection(
+                        new Dictionary<string, string?>
+                        {
+                            ["Auth:SigningKey"] =
+                                "test-signing-key-at-least-32-bytes-long",
+                        }
+                    )
             );
         });
     }
@@ -91,8 +92,7 @@ public sealed class ArchivedOrganizationOperationTransformerTests
     }
 
     [Fact]
-    public async Task
-        ArchivedOrganizationOperationTransformer_AddsForbiddenResponseToPostEndpoints()
+    public async Task ArchivedOrganizationOperationTransformer_AddsForbiddenResponseToPostEndpoints()
     {
         // Get the OpenAPI document
         var document = await GetOpenApiDocumentAsync();
@@ -123,8 +123,7 @@ public sealed class ArchivedOrganizationOperationTransformerTests
     }
 
     [Fact]
-    public async Task
-        ArchivedOrganizationOperationTransformer_DoesNotAddForbiddenToGetEndpoints()
+    public async Task ArchivedOrganizationOperationTransformer_DoesNotAddForbiddenToGetEndpoints()
     {
         // Get the OpenAPI document
         var document = await GetOpenApiDocumentAsync();
@@ -143,8 +142,7 @@ public sealed class ArchivedOrganizationOperationTransformerTests
     }
 
     [Fact]
-    public async Task
-        ArchivedOrganizationOperationTransformer_DoesNotApplyToAllowArchivedOrganizationEndpoints()
+    public async Task ArchivedOrganizationOperationTransformer_DoesNotApplyToAllowArchivedOrganizationEndpoints()
     {
         // Get the OpenAPI document
         var document = await GetOpenApiDocumentAsync();
@@ -171,8 +169,7 @@ public sealed class ArchivedOrganizationOperationTransformerTests
     }
 
     [Fact]
-    public async Task
-        ArchivedOrganizationOperationTransformer_AppendsToExistingForbiddenResponses()
+    public async Task ArchivedOrganizationOperationTransformer_AppendsToExistingForbiddenResponses()
     {
         // Get the OpenAPI document
         var document = await GetOpenApiDocumentAsync();

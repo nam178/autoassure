@@ -28,11 +28,7 @@ public record RunResponse
     public required RunEnvironmentSnapshotResponse Environment { get; init; }
 
     /// <summary>One snapshot per Scenario the Run ran, in no particular order.</summary>
-    public required IReadOnlyList<RunScenarioSnapshotResponse> Scenarios
-    {
-        get;
-        init;
-    }
+    public required IReadOnlyList<RunScenarioSnapshotResponse> Scenarios { get; init; }
 
     /// <summary>
     ///     The highest sequence number appended to this Run's status update log so

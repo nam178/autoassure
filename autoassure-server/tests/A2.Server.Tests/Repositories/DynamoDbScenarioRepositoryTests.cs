@@ -209,8 +209,7 @@ public sealed class DynamoDbScenarioRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TrySaveAsync_WhenApplicationExists_RoundTripsThroughGetById()
+    public async Task TrySaveAsync_WhenApplicationExists_RoundTripsThroughGetById()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -251,8 +250,7 @@ public sealed class DynamoDbScenarioRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryUpdateAsync_WhenFolderChanges_MovesScenarioBetweenFolderMappings()
+    public async Task TryUpdateAsync_WhenFolderChanges_MovesScenarioBetweenFolderMappings()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -292,8 +290,7 @@ public sealed class DynamoDbScenarioRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryUpdateAsync_WhenApplicationDoesNotExist_ReturnsApplicationNotFound()
+    public async Task TryUpdateAsync_WhenApplicationDoesNotExist_ReturnsApplicationNotFound()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -308,8 +305,7 @@ public sealed class DynamoDbScenarioRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        TryUpdateAsync_WhenScenarioDoesNotExist_ReturnsScenarioNotFoundAndDoesNotCreateIt()
+    public async Task TryUpdateAsync_WhenScenarioDoesNotExist_ReturnsScenarioNotFoundAndDoesNotCreateIt()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -343,8 +339,7 @@ public sealed class DynamoDbScenarioRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByApplicationAsync_WhenMultipleScenariosExist_ReturnsAllForThatApplication()
+    public async Task ListByApplicationAsync_WhenMultipleScenariosExist_ReturnsAllForThatApplication()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -372,8 +367,7 @@ public sealed class DynamoDbScenarioRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByFolderAsync_WhenScenariosInFolder_ReturnsOnlyMatchingScenarios()
+    public async Task ListByFolderAsync_WhenScenariosInFolder_ReturnsOnlyMatchingScenarios()
     {
         // setup
         var organizationId = Guid.CreateVersion7();
@@ -405,8 +399,7 @@ public sealed class DynamoDbScenarioRepositoryTests(
     }
 
     [Fact]
-    public async Task
-        ListByTagAsync_WhenScenariosCarryTag_ReturnsOnlyMatchingScenarios()
+    public async Task ListByTagAsync_WhenScenariosCarryTag_ReturnsOnlyMatchingScenarios()
     {
         // setup
         var organizationId = Guid.CreateVersion7();

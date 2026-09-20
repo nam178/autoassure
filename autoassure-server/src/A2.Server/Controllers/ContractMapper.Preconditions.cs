@@ -20,9 +20,7 @@ public static partial class ContractMapper
         );
     }
 
-    public static ModelValueSource ToModel(
-        this ContractValueSource valueSource
-    )
+    public static ModelValueSource ToModel(this ContractValueSource valueSource)
     {
         return valueSource switch
         {

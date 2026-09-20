@@ -42,14 +42,13 @@ public class GoogleTokenExchangeService(
         );
 
         var body =
-            await response.Content
-                .ReadFromJsonAsync<GoogleTokenEndpointResponse>();
+            await response.Content.ReadFromJsonAsync<GoogleTokenEndpointResponse>();
 
         if (!response.IsSuccessStatusCode || body?.IdToken is null)
             throw new GoogleTokenExchangeException(
                 body?.ErrorDescription
-                ?? body?.Error
-                ?? "Google token exchange failed."
+                    ?? body?.Error
+                    ?? "Google token exchange failed."
             );
 
         var payload = await idTokenValidator.ValidateAsync(
@@ -68,15 +67,12 @@ public class GoogleTokenExchangeService(
     }
 
     private sealed record GoogleTokenEndpointResponse(
-        [property: JsonPropertyName("id_token")]
-        string? IdToken,
-        [property: JsonPropertyName("expires_in")]
-        int? ExpiresIn,
-        [property: JsonPropertyName("token_type")]
-        string? TokenType,
+        [property: JsonPropertyName("id_token")] string? IdToken,
+        [property: JsonPropertyName("expires_in")] int? ExpiresIn,
+        [property: JsonPropertyName("token_type")] string? TokenType,
         [property: JsonPropertyName("scope")] string? Scope,
         [property: JsonPropertyName("error")] string? Error,
         [property: JsonPropertyName("error_description")]
-        string? ErrorDescription
+            string? ErrorDescription
     );
 }

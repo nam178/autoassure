@@ -33,8 +33,7 @@ public class AuthTokenServiceTests
     }
 
     [Fact]
-    public async Task
-        IssueAsync_WhenCalled_ProducesJwtWithExpectedClaimsAndExpiry()
+    public async Task IssueAsync_WhenCalled_ProducesJwtWithExpectedClaimsAndExpiry()
     {
         // setup
         var now = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
@@ -216,9 +215,7 @@ public class AuthTokenServiceTests
         public RefreshToken? Stored { get; private set; }
         public string? RevokedHash { get; private set; }
 
-        public Task<RefreshToken?> GetByHashAsync(
-            string refreshTokenSecretHash
-        )
+        public Task<RefreshToken?> GetByHashAsync(string refreshTokenSecretHash)
         {
             return Task.FromResult(
                 Stored?.RefreshTokenSecretHash == refreshTokenSecretHash
