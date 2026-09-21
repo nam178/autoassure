@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using A2.Server.Common;
 using A2.Server.Contracts;
 using A2.Server.Models;
@@ -179,5 +180,83 @@ public class OrganizationsController(
             .ToList();
 
         return Ok(archivedOrganizations.Select(o => o.ToResponse()).ToList());
+    }
+
+    /// <response code="400">
+    ///     The target Organization is not the caller's own Organization, the
+    ///     Organization is personal, or the caller is the last Owner.
+    /// </response>
+    /// <response code="403">The caller is not an Owner.</response>
+    /// <response code="404">The target User is not a member of the Organization.</response>
+    [HttpDelete(
+        "{organizationId:guid}/members/{userId:guid}",
+        Name = "RemoveOrganizationMember"
+    )]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(
+        typeof(ErrorResponse),
+        StatusCodes.Status400BadRequest
+    )]
+    [ProducesResponseType(
+        typeof(ErrorResponse),
+        StatusCodes.Status403Forbidden
+    )]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoveOrganizationMember(
+        Guid organizationId,
+        Guid userId
+    )
+    {
+        var callerOrganization =
+            await callerOrganizationService.GetCallerOrganizationAsync();
+        var callerId = User.GetUserId();
+
+        if (organizationId != callerOrganization.Id)
+            return BadRequest(
+                new ErrorResponse(
+                    "Organization could not be found or has been deleted."
+                )
+            );
+
+        var callerMembership = await organizationUserRepository.GetAsync(
+            callerOrganization.Id,
+            callerId
+        );
+        if (callerMembership?.Role != OrganizationRole.Owner)
+            return StatusCode(StatusCodes.Status403Forbidden);
+
+        if (callerOrganization.IsPersonal)
+            return BadRequest(
+                new ErrorResponse(
+                    "Cannot remove members from a personal Organization."
+                )
+            );
+
+        var targetMembership = await organizationUserRepository.GetAsync(
+            callerOrganization.Id,
+            userId
+        );
+        if (targetMembership is null)
+            return NotFound();
+
+        var outcome = await organizationUserRepository.TryDeleteAsync(
+            callerOrganization.Id,
+            userId,
+            targetMembership.Role
+        );
+
+        return outcome switch
+        {
+            RemoveMembershipOutcome.Removed => NoContent(),
+            RemoveMembershipOutcome.NotFound => NotFound(),
+            RemoveMembershipOutcome.CannotDeleteLastOwner => BadRequest(
+                new ErrorResponse(
+                    "You are the only owner. Make someone else an owner before leaving."
+                )
+            ),
+            _ => throw new UnreachableException(
+                $"Unhandled {nameof(RemoveMembershipOutcome)}: {outcome}"
+            ),
+        };
     }
 }

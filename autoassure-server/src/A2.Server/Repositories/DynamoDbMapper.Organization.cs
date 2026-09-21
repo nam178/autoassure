@@ -20,6 +20,12 @@ public static partial class DynamoDbMapper
             ["CreatedAt"] = new(organization.CreatedAt.ToString("O")),
             ["UpdatedAt"] = new(organization.UpdatedAt.ToString("O")),
             ["LifecycleState"] = new(organization.LifecycleState.ToString()),
+            ["OwnerCount"] = new()
+            {
+                N = organization.OwnerCount.ToString(
+                    CultureInfo.InvariantCulture
+                ),
+            },
         };
     }
 
@@ -48,6 +54,9 @@ public static partial class DynamoDbMapper
             )
                 ? Enum.Parse<LifecycleState>(lifecycleState.S)
                 : LifecycleState.Active,
+            OwnerCount = row.TryGetValue("OwnerCount", out var ownerCount)
+                ? int.Parse(ownerCount.N, CultureInfo.InvariantCulture)
+                : 0,
         };
     }
 

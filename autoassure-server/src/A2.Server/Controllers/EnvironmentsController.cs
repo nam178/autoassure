@@ -198,6 +198,47 @@ public class EnvironmentsController(
         return NoContent();
     }
 
+    /// <param name="key">
+    ///     Variable name. Must be 1-200 characters, using only letters, digits, and
+    ///     underscores.
+    /// </param>
+    /// <response code="404">
+    ///     No Environment with the given environmentId exists in the caller's
+    ///     Organization, or the Environment has no variable with the given key.
+    /// </response>
+    /// <response code="204">Variable was deleted.</response>
+    [HttpDelete(
+        "environments/{environmentId:guid}/variables/{key}",
+        Name = "DeleteEnvironmentVariable"
+    )]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> DeleteEnvironmentVariable(
+        Guid environmentId,
+        [MaxLength(200)] [RegularExpression("^[A-Za-z0-9_]+$")] string key
+    )
+    {
+        var callerOrganization =
+            await callerOrganizationService.GetCallerOrganizationAsync();
+        var organizationId = callerOrganization.Id;
+        var environment = await environmentRepository.GetByIdAsync(
+            organizationId,
+            environmentId
+        );
+        if (environment is null)
+            return NotFound();
+
+        if (
+            !await environmentVariableRepository.TryDeleteAsync(
+                organizationId,
+                environmentId,
+                key
+            )
+        )
+            return NotFound();
+        return NoContent();
+    }
+
     private async Task<EnvironmentResponse> ToResponseAsync(
         Environment environment
     )

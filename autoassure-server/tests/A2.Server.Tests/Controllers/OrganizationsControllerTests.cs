@@ -544,4 +544,30 @@ public sealed class OrganizationsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
+
+    [Fact]
+    public async Task RemoveOrganizationMember_WhenOrganizationIsArchived_ReturnsForbidden()
+    {
+        // setup
+        var ownerId = Guid.CreateVersion7();
+        var organizationId = await SeedOrganizationWithUserAsync(
+            ownerId,
+            false,
+            OrganizationRole.Owner
+        );
+        var client = CreateAuthenticatedClient(ownerId);
+        var archiveResponse = await client.PostAsync(
+            $"/organizations/{organizationId}/archive",
+            null
+        );
+        Assert.Equal(HttpStatusCode.NoContent, archiveResponse.StatusCode);
+
+        // test
+        var response = await client.DeleteAsync(
+            $"/organizations/{organizationId}/members/{Guid.CreateVersion7()}"
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
 }

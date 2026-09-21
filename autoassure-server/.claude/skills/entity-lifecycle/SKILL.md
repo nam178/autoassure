@@ -5,7 +5,8 @@ description: Load when implementing deletion, listing, addition, or updates of e
 
 ## Lifecycle States
 
-Each business entity in AutoAssure has three possible `LifecycleState`s.
+Most business entities in AutoAssure carry a `LifecycleState` field with three
+possible values. Not all of them do, see below.
 
 **Active**
 
@@ -25,6 +26,10 @@ Each business entity in AutoAssure has three possible `LifecycleState`s.
 - Deletion is processed in a background queue.
 - Once complete, the entity is physically deleted.
 - No new entities should reference deleting entities.
+
+## Entities With No Lifecycle State
+
+A leaf entity — one that nothing else points at — may skip the field entirely, if archive is not needed.
 
 ## Adding Rows
 
@@ -46,7 +51,8 @@ using a condition.
 
 ## Listing Rows
 
-Repository methods must support an option to exclude archived or deleting rows.
+For entities that have a `LifecycleState`, repository methods must support an
+option to exclude archived or deleting rows.
 
 ## Deleting Rows
 
@@ -54,7 +60,8 @@ The deletion strategy depends on the entity's role:
 
 **Leaf entity** (nothing references it)
 
-- Delete immediately.
+- Delete immediately. One write, no worker queue.
+- If the leaf has no `LifecycleState`, there is nothing else to do.
 
 **Parent entity** (other entities reference it)
 

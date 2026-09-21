@@ -274,6 +274,87 @@ public class DynamoDbActivityRepository(
         }
     }
 
+    public async Task<bool> TryDeleteAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid scenarioId,
+        Guid activityId
+    )
+    {
+        var scenarioPartitionKey = DynamoDbMapper.ApplicationScopedPartitionKey(
+            organizationId,
+            applicationId
+        );
+        var activityPartitionKey = DynamoDbMapper.ScenarioScopedPartitionKey(
+            organizationId,
+            scenarioId
+        );
+        var transactItems = new List<TransactWriteItem>
+        {
+            new()
+            {
+                Delete = new Delete
+                {
+                    TableName = TableName,
+                    Key = new Dictionary<string, AttributeValue>
+                    {
+                        ["OrganizationId_ScenarioId"] = new(
+                            activityPartitionKey
+                        ),
+                        ["Id"] = new(activityId.ToString()),
+                    },
+                    ConditionExpression = "attribute_exists(Id)",
+                },
+            },
+            new()
+            {
+                Update = new Update
+                {
+                    TableName = ScenarioTableName,
+                    Key = new Dictionary<string, AttributeValue>
+                    {
+                        ["OrganizationId_ApplicationId"] = new(
+                            scenarioPartitionKey
+                        ),
+                        ["Id"] = new(scenarioId.ToString()),
+                    },
+                    UpdateExpression = "ADD ActivityCount :minusOne",
+                    ConditionExpression =
+                        "attribute_exists(Id) AND ActivityCount > :zero",
+                    ExpressionAttributeValues = new Dictionary<
+                        string,
+                        AttributeValue
+                    >
+                    {
+                        [":minusOne"] = new() { N = "-1" },
+                        [":zero"] = new() { N = "0" },
+                    },
+                },
+            },
+        };
+
+        // When TransactWriteItemsAsync is cancelled due to the Activity Delete (index 0) failing,
+        // Then return false (Activity already deleted). When it's cancelled due to the Scenario
+        // Update (index 1) failing, Then the Scenario vanished or its counter is already at zero,
+        // which is a broken invariant: rethrow.
+        try
+        {
+            await client.TransactWriteItemsAsync(
+                new TransactWriteItemsRequest { TransactItems = transactItems }
+            );
+            return true;
+        }
+        catch (TransactionCanceledException ex)
+            when (ex.CancellationReasons is { Count: > 0 })
+        {
+            var reasons = ex.CancellationReasons;
+            if (reasons[0].Code == "ConditionalCheckFailed")
+                return false;
+
+            throw;
+        }
+    }
+
     // Only used to disambiguate why IncrementScenarioActivityCount's combined condition failed --
     // not part of the transaction itself.
     private async Task<bool> ScenarioExistsAsync(

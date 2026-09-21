@@ -23,4 +23,7 @@ public record Organization
     ///     so <see cref="LifecycleState.Deleting" /> does not apply.
     /// </summary>
     public required LifecycleState LifecycleState { get; init; }
+
+    /// <summary>Number of Owners currently in this Organization.</summary>
+    public required int OwnerCount { get; init; }
 }

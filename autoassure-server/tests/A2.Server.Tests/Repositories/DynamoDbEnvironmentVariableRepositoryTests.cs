@@ -307,4 +307,166 @@ public sealed class DynamoDbEnvironmentVariableRepositoryTests(
         Assert.True(variable.IsSensitive);
         Assert.Equal("super-secret-value", variable.Value);
     }
+
+    [Fact]
+    public async Task TryDeleteAsync_WhenVariableExists_RemovesItCompletely()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
+        await _repository.TrySaveAsync(
+            organizationId,
+            applicationId,
+            environmentId,
+            "API_KEY",
+            "some-value",
+            false,
+            Guid.CreateVersion7()
+        );
+
+        // test
+        var deleted = await _repository.TryDeleteAsync(
+            organizationId,
+            environmentId,
+            "API_KEY"
+        );
+        var result = await _repository.ListByEnvironmentAsync(
+            organizationId,
+            environmentId
+        );
+
+        // verify
+        Assert.True(deleted);
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task TryDeleteAsync_WhenMultipleVariablesExist_LeavesOthersUntouched()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
+        var updatedByUserId = Guid.CreateVersion7();
+        await _repository.TrySaveAsync(
+            organizationId,
+            applicationId,
+            environmentId,
+            "API_KEY",
+            "api-value",
+            false,
+            updatedByUserId
+        );
+        await _repository.TrySaveAsync(
+            organizationId,
+            applicationId,
+            environmentId,
+            "DB_URL",
+            "db-value",
+            false,
+            updatedByUserId
+        );
+
+        // test
+        var deleted = await _repository.TryDeleteAsync(
+            organizationId,
+            environmentId,
+            "API_KEY"
+        );
+        var result = await _repository.ListByEnvironmentAsync(
+            organizationId,
+            environmentId
+        );
+
+        // verify
+        Assert.True(deleted);
+        var variable = Assert.Single(result);
+        Assert.Equal("DB_URL", variable.Key);
+        Assert.Equal("db-value", variable.Value);
+    }
+
+    [Fact]
+    public async Task TryDeleteAsync_WhenVariableNeverExisted_ReturnsFalse()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId = Guid.CreateVersion7();
+        await PutEnvironmentAsync(organizationId, applicationId, environmentId);
+
+        // test
+        var deleted = await _repository.TryDeleteAsync(
+            organizationId,
+            environmentId,
+            "NONEXISTENT_KEY"
+        );
+
+        // verify
+        Assert.False(deleted);
+    }
+
+    [Fact]
+    public async Task TryDeleteAsync_WhenSameKeyExistsInAnotherOrganization_LeavesItUntouched()
+    {
+        // setup
+        var organizationId1 = Guid.CreateVersion7();
+        var organizationId2 = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var environmentId1 = Guid.CreateVersion7();
+        var environmentId2 = Guid.CreateVersion7();
+        await PutEnvironmentAsync(
+            organizationId1,
+            applicationId,
+            environmentId1
+        );
+        await PutEnvironmentAsync(
+            organizationId2,
+            applicationId,
+            environmentId2
+        );
+        var updatedByUserId = Guid.CreateVersion7();
+        await _repository.TrySaveAsync(
+            organizationId1,
+            applicationId,
+            environmentId1,
+            "API_KEY",
+            "value1",
+            false,
+            updatedByUserId
+        );
+        await _repository.TrySaveAsync(
+            organizationId2,
+            applicationId,
+            environmentId2,
+            "API_KEY",
+            "value2",
+            false,
+            updatedByUserId
+        );
+
+        // test
+        var deleted = await _repository.TryDeleteAsync(
+            organizationId1,
+            environmentId1,
+            "API_KEY"
+        );
+        var result1 = await _repository.ListByEnvironmentAsync(
+            organizationId1,
+            environmentId1
+        );
+        var result2 = await _repository.ListByEnvironmentAsync(
+            organizationId2,
+            environmentId2
+        );
+
+        // verify
+        Assert.True(deleted);
+        Assert.Empty(result1);
+        var variable = Assert.Single(result2);
+        Assert.Equal("API_KEY", variable.Key);
+        Assert.Equal("value2", variable.Value);
+    }
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using A2.Server.Common;
 using A2.Server.Models;
 using A2.Server.Repositories;
@@ -598,5 +599,207 @@ public sealed class DynamoDbActivityRepositoryTests(
 
         // verify
         Assert.False(result);
+    }
+
+    [Fact]
+    public async Task TryDeleteAsync_WhenActivityExists_RemovesItAndDecrementsCount()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var scenarioId = Guid.CreateVersion7();
+        await SeedScenarioAsync(organizationId, applicationId, scenarioId);
+        var activity = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
+        await _repository.TrySaveAsync(activity);
+
+        // test
+        var result = await _repository.TryDeleteAsync(
+            organizationId,
+            applicationId,
+            scenarioId,
+            activity.Id
+        );
+        var remaining = await _repository.ListByScenarioAsync(
+            organizationId,
+            scenarioId
+        );
+        var activityCount = await GetScenarioActivityCountAsync(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
+
+        // verify
+        Assert.True(result);
+        Assert.Empty(remaining);
+        Assert.Equal(0, activityCount);
+    }
+
+    [Fact]
+    public async Task TryDeleteAsync_WhenCalledTwice_SecondReturnsFalseAndCountUnchanged()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var scenarioId = Guid.CreateVersion7();
+        await SeedScenarioAsync(organizationId, applicationId, scenarioId);
+        var activity = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
+        await _repository.TrySaveAsync(activity);
+
+        // test
+        var firstDelete = await _repository.TryDeleteAsync(
+            organizationId,
+            applicationId,
+            scenarioId,
+            activity.Id
+        );
+        var secondDelete = await _repository.TryDeleteAsync(
+            organizationId,
+            applicationId,
+            scenarioId,
+            activity.Id
+        );
+        var activityCount = await GetScenarioActivityCountAsync(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
+
+        // verify
+        Assert.True(firstDelete);
+        Assert.False(secondDelete);
+        Assert.Equal(0, activityCount);
+    }
+
+    [Fact]
+    public async Task TryDeleteAsync_WhenMultipleActivitiesExist_LeavesOtherOrderValuesIntact()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var scenarioId = Guid.CreateVersion7();
+        await SeedScenarioAsync(organizationId, applicationId, scenarioId);
+        var first = CreateActivity(organizationId, applicationId, scenarioId);
+        var second = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId,
+            1
+        );
+        var third = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId,
+            2
+        );
+        await _repository.TrySaveAsync(first);
+        await _repository.TrySaveAsync(second);
+        await _repository.TrySaveAsync(third);
+
+        // test: delete the middle one
+        var result = await _repository.TryDeleteAsync(
+            organizationId,
+            applicationId,
+            scenarioId,
+            second.Id
+        );
+        var remaining = await _repository.ListByScenarioAsync(
+            organizationId,
+            scenarioId
+        );
+
+        // verify: order values should be 0 and 2 (gap is expected, not renumbered)
+        Assert.True(result);
+        Assert.Equal(2, remaining.Count);
+        Assert.Equal([0, 2], remaining.Select(a => a.Order));
+        Assert.Equal([first.Id, third.Id], remaining.Select(a => a.Id));
+    }
+
+    [Fact]
+    public async Task TryDeleteAsync_WhenScenarioHasNoActivityCountAttribute_ThrowsToPreventNegativeCount()
+    {
+        // setup: Scenario with no ActivityCount attribute (legacy row)
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var scenarioId = Guid.CreateVersion7();
+        await SeedScenarioAsync(organizationId, applicationId, scenarioId);
+        var activity = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
+        await _repository.TrySaveAsync(activity);
+
+        // Delete the ActivityCount attribute to simulate a legacy Scenario
+        await _client.UpdateItemAsync(
+            new UpdateItemRequest
+            {
+                TableName = ScenarioTableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    ["OrganizationId_ApplicationId"] = new(
+                        $"{organizationId}_{applicationId}"
+                    ),
+                    ["Id"] = new(scenarioId.ToString()),
+                },
+                UpdateExpression = "REMOVE ActivityCount",
+            }
+        );
+
+        // test & verify: deletion should throw because scenario has no ActivityCount
+        // (the condition check fails, which is a broken invariant)
+        await Assert.ThrowsAsync<TransactionCanceledException>(() =>
+            _repository.TryDeleteAsync(
+                organizationId,
+                applicationId,
+                scenarioId,
+                activity.Id
+            )
+        );
+
+        // verify: ActivityCount attribute should still not exist (count did not become -1)
+        var activityCount = await GetScenarioActivityCountAsync(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
+        Assert.Equal(0, activityCount);
+    }
+
+    private async Task<int> GetScenarioActivityCountAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid scenarioId
+    )
+    {
+        var response = await _client.GetItemAsync(
+            new GetItemRequest
+            {
+                TableName = ScenarioTableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    ["OrganizationId_ApplicationId"] = new(
+                        $"{organizationId}_{applicationId}"
+                    ),
+                    ["Id"] = new(scenarioId.ToString()),
+                },
+                ConsistentRead = true,
+            }
+        );
+
+        if (!response.IsItemSet)
+            throw new InvalidOperationException("Scenario not found");
+
+        return response.Item.TryGetValue("ActivityCount", out var count)
+            ? int.Parse(count.N, CultureInfo.InvariantCulture)
+            : 0;
     }
 }

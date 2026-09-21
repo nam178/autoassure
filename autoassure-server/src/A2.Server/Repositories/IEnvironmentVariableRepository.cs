@@ -40,4 +40,14 @@ public interface IEnvironmentVariableRepository
         Guid organizationId,
         Guid environmentId
     );
+
+    /// <summary>
+    ///     Deletes a single variable by key. Deletion is immediate; the row is
+    ///     removed completely. Returns false if no variable with this key exists.
+    /// </summary>
+    Task<bool> TryDeleteAsync(
+        Guid organizationId,
+        Guid environmentId,
+        string variableKey
+    );
 }

@@ -139,6 +139,37 @@ public class DynamoDbEnvironmentVariableRepository(
             .ToList();
     }
 
+    public async Task<bool> TryDeleteAsync(
+        Guid organizationId,
+        Guid environmentId,
+        string variableKey
+    )
+    {
+        try
+        {
+            await client.DeleteItemAsync(
+                new DeleteItemRequest
+                {
+                    TableName = TableName,
+                    Key = new Dictionary<string, AttributeValue>
+                    {
+                        ["OrganizationId_EnvironmentId"] = new(
+                            GetPartitionKey(organizationId, environmentId)
+                        ),
+                        ["Key"] = new(variableKey),
+                    },
+                    ConditionExpression =
+                        "attribute_exists(OrganizationId_EnvironmentId)",
+                }
+            );
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
+
     private static string GetPartitionKey(
         Guid organizationId,
         Guid environmentId

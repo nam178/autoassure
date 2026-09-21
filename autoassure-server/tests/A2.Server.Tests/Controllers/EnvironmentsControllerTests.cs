@@ -930,4 +930,205 @@ public sealed class EnvironmentsControllerTests
         // verify
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task DeleteVariable_WhenVariableExists_Returns204AndVariableNoLongerListed()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/environments",
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
+        await client.PutAsJsonAsync(
+            $"/environments/{created.Id}/variables/API_URL",
+            new SetEnvironmentVariableRequest
+            {
+                Value = "https://staging.example.com",
+                IsSensitive = false,
+            }
+        );
+
+        // test
+        var deleteResponse = await client.DeleteAsync(
+            $"/environments/{created.Id}/variables/API_URL"
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+        var getResponse = await client.GetAsync($"/environments/{created.Id}");
+        var environment =
+            await getResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
+        Assert.NotNull(environment);
+        Assert.Empty(environment.Variables);
+    }
+
+    [Fact]
+    public async Task DeleteVariable_WhenVariableDoesNotExist_Returns404()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/environments",
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
+
+        // test
+        var deleteResponse = await client.DeleteAsync(
+            $"/environments/{created.Id}/variables/NONEXISTENT"
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, deleteResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteVariable_WhenEnvironmentUnknown_Returns404()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+
+        // test
+        var deleteResponse = await client.DeleteAsync(
+            $"/environments/{Guid.CreateVersion7()}/variables/API_URL"
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, deleteResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteVariable_WhenVariableInAnotherOrganization_Returns404AndVariableUnchanged()
+    {
+        // setup
+        var userA = Guid.CreateVersion7();
+        var userB = Guid.CreateVersion7();
+        await SeedOrganizationMembershipAsync(userA);
+        await SeedOrganizationMembershipAsync(userB);
+        var clientA = CreateAuthenticatedClient(userA);
+        var clientB = CreateAuthenticatedClient(userB);
+        var appIdA = await CreateApplicationAsync(clientA);
+        var createResponse = await clientA.PostAsJsonAsync(
+            $"/applications/{appIdA}/environments",
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
+        await clientA.PutAsJsonAsync(
+            $"/environments/{created.Id}/variables/API_URL",
+            new SetEnvironmentVariableRequest
+            {
+                Value = "value-a",
+                IsSensitive = false,
+            }
+        );
+
+        // test
+        var deleteResponse = await clientB.DeleteAsync(
+            $"/environments/{created.Id}/variables/API_URL"
+        );
+
+        // verify: clientB gets 404, variable in clientA's org is untouched
+        Assert.Equal(HttpStatusCode.NotFound, deleteResponse.StatusCode);
+        var getResponse = await clientA.GetAsync($"/environments/{created.Id}");
+        var environment =
+            await getResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
+        Assert.NotNull(environment);
+        var variable = Assert.Single(environment.Variables);
+        Assert.Equal("API_URL", variable.Key);
+    }
+
+    [Theory]
+    [InlineData(200, HttpStatusCode.NotFound)]
+    [InlineData(201, HttpStatusCode.BadRequest)]
+    public async Task DeleteVariable_WhenKeyLengthAtBoundary_EnforcesLengthLimit(
+        int keyLength,
+        HttpStatusCode expectedStatus
+    )
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/environments",
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
+
+        // test
+        var response = await client.DeleteAsync(
+            $"/environments/{created.Id}/variables/{new string('k', keyLength)}"
+        );
+
+        // verify
+        Assert.Equal(expectedStatus, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteVariable_WhenKeyHasInvalidCharacters_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/environments",
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
+
+        // test
+        var response = await client.DeleteAsync(
+            $"/environments/{created.Id}/variables/API KEY"
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteVariable_WhenNoAccessToken_ReturnsUnauthorized()
+    {
+        // test
+        var response = await _factory
+            .CreateClient()
+            .DeleteAsync(
+                $"/environments/{Guid.CreateVersion7()}/variables/API_URL"
+            );
+
+        // verify
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 }

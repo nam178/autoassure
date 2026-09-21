@@ -23,6 +23,7 @@ public sealed class DynamoDbMapperOrganizationTests
             CreatedAt = DateTimeOffset.Parse("2026-01-01T00:00:00Z"),
             UpdatedAt = DateTimeOffset.Parse("2026-01-02T00:00:00Z"),
             LifecycleState = LifecycleState.Active,
+            OwnerCount = 1,
         };
     }
 
@@ -67,6 +68,7 @@ public sealed class DynamoDbMapperOrganizationTests
             CreatedAt = DateTimeOffset.Parse("2026-01-01T00:00:00Z"),
             UpdatedAt = DateTimeOffset.Parse("2026-01-02T00:00:00Z"),
             LifecycleState = LifecycleState.Archived,
+            OwnerCount = 1,
         };
 
         // test

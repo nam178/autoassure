@@ -62,4 +62,18 @@ public interface IActivityRepository
         Guid scenarioId,
         IReadOnlyList<Guid> orderedActivityIds
     );
+
+    /// <summary>
+    /// Deletes an Activity and atomically decrements the Scenario's
+    /// ActivityCount in the same transaction.
+    ///
+    /// Returns false if the Activity no longer exists. Throws if the Scenario
+    /// vanished or its counter is already at  zero, indicating a bug in the application.
+    /// </summary>
+    Task<bool> TryDeleteAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid scenarioId,
+        Guid activityId
+    );
 }

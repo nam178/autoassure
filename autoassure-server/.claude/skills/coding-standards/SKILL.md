@@ -73,6 +73,7 @@ public DateTimeOffset? WorkferClaimedAt;
     and document the fields being changed. Better, use typed args:
     FooUpdatableFields. MUST use conditional check and return false or any value
     to indicate the object was not exist.
+  - TryDeleteX() - returns false when object does not exist
   - GetX (), ListX ()..
 - If an entity has a relationship, like Scenario belongs to App, MUST check if
   the other entity exist when insert/updating with ConditionExpression.

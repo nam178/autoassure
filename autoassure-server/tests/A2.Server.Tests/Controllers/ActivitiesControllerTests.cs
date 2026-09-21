@@ -899,4 +899,114 @@ public sealed class ActivitiesControllerTests
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Delete_WhenActivityExists_Returns204AndCountDrops()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Step" }
+        );
+        var activity =
+            await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
+
+        // test
+        var deleteResponse = await client.DeleteAsync(
+            $"/activities/{activity!.Id}"
+        );
+
+        // verify: delete succeeds
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        // verify: scenario's count dropped by one
+        var listResponse = await client.GetAsync(
+            $"/scenarios/{scenarioId}/activities"
+        );
+        var activities = await listResponse.Content.ReadFromJsonAsync<
+            List<ActivityResponse>
+        >();
+        Assert.Empty(activities!);
+    }
+
+    [Fact]
+    public async Task Delete_WhenDeletedTwice_SecondReturns404()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Step" }
+        );
+        var activity =
+            await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
+
+        // test
+        var firstDelete = await client.DeleteAsync(
+            $"/activities/{activity!.Id}"
+        );
+        var secondDelete = await client.DeleteAsync(
+            $"/activities/{activity.Id}"
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NoContent, firstDelete.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, secondDelete.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_WhenActivityInAnotherOrganization_Returns404AndActivityUnchanged()
+    {
+        // setup
+        var userA = Guid.CreateVersion7();
+        var userB = Guid.CreateVersion7();
+        await SeedOrganizationMembershipAsync(userA);
+        await SeedOrganizationMembershipAsync(userB);
+        var clientA = CreateAuthenticatedClient(userA);
+        var clientB = CreateAuthenticatedClient(userB);
+        var appIdA = await CreateApplicationAsync(clientA);
+        var scenarioIdA = await CreateScenarioAsync(clientA, appIdA);
+        var createResponse = await clientA.PostAsJsonAsync(
+            $"/scenarios/{scenarioIdA}/activities",
+            new CreateActivityRequest { Description = "Step" }
+        );
+        var activity =
+            await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
+
+        // test: clientB tries to delete activity from clientA's org
+        var deleteResponse = await clientB.DeleteAsync(
+            $"/activities/{activity!.Id}"
+        );
+
+        // verify: clientB gets 404
+        Assert.Equal(HttpStatusCode.NotFound, deleteResponse.StatusCode);
+
+        // verify: activity still exists in clientA's org
+        var listResponse = await clientA.GetAsync(
+            $"/scenarios/{scenarioIdA}/activities"
+        );
+        var activities = await listResponse.Content.ReadFromJsonAsync<
+            List<ActivityResponse>
+        >();
+        Assert.NotNull(activities);
+        Assert.Single(activities);
+        Assert.Equal(activity.Id, activities[0].Id);
+    }
+
+    [Fact]
+    public async Task Delete_WhenNoAccessToken_ReturnsUnauthorized()
+    {
+        // test
+        var response = await _factory
+            .CreateClient()
+            .DeleteAsync($"/activities/{Guid.CreateVersion7()}");
+
+        // verify
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 }

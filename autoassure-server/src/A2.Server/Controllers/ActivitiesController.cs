@@ -260,4 +260,38 @@ public class ActivitiesController(
         );
         return Ok(reordered.Select(a => a.ToResponse()).ToList());
     }
+
+    /// <response code="404">
+    ///     No Activity with the given activityId exists in the caller's
+    ///     Organization. An Activity created milliseconds ago may not be in the
+    ///     IdIndex yet and an immediate delete can 404 — a retry fixes it. A
+    ///     just-deleted Activity can still appear in the index briefly, so a rapid
+    ///     double delete may reach the repository twice; the repository's condition
+    ///     expression keeps the counter honest.
+    /// </response>
+    [HttpDelete("activities/{activityId:guid}", Name = "DeleteActivity")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> DeleteActivity(Guid activityId)
+    {
+        var callerOrganization =
+            await callerOrganizationService.GetCallerOrganizationAsync();
+        var organizationId = callerOrganization.Id;
+        var activity = await activityRepository.GetByIdAsync(
+            organizationId,
+            activityId
+        );
+        if (activity is null)
+            return NotFound();
+
+        var succeeded = await activityRepository.TryDeleteAsync(
+            organizationId,
+            activity.ApplicationId,
+            activity.ScenarioId,
+            activityId
+        );
+        if (!succeeded)
+            return NotFound();
+        return NoContent();
+    }
 }

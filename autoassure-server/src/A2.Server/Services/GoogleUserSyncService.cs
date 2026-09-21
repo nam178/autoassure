@@ -98,6 +98,7 @@ public class GoogleUserSyncService(
             CreatedAt = now,
             UpdatedAt = now,
             LifecycleState = LifecycleState.Active,
+            OwnerCount = 1,
         };
         var membership = new OrganizationUser
         {
