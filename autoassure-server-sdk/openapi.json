@@ -64,7 +64,7 @@
             }
           },
           "400": {
-            "description": "PreconditionIds/EvidenceIds do not reference existing library rows in\n    the Scenario's Application, or the Scenario already has the maximum number of\n    Activities. Returns 400 when the request fails a validation constraint.",
+            "description": "PreconditionIds/EvidenceIds do not reference existing library rows in\nthe Scenario's Application, or the Scenario already has the maximum number\nof\nActivities. Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -84,7 +84,7 @@
             }
           },
           "404": {
-            "description": "No Scenario with the given scenarioId exists in the caller's\n    Organization, or it no longer exists (deleted after this request started).",
+            "description": "No Scenario with the given scenarioId exists in the caller's\nOrganization, or it no longer exists (deleted after this request started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -216,7 +216,7 @@
             }
           },
           "400": {
-            "description": "PreconditionIds/EvidenceIds do not reference existing library rows in\n    the Scenario's Application. Returns 400 when the request fails a validation constraint.",
+            "description": "PreconditionIds/EvidenceIds do not reference existing library rows in\nthe Scenario's Application. Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -236,7 +236,52 @@
             }
           },
           "404": {
-            "description": "No Activity with the given activityId exists in the caller's\n    Organization.",
+            "description": "No Activity with the given activityId exists in the caller's\nOrganization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Activities"
+        ],
+        "operationId": "DeleteActivity",
+        "parameters": [
+          {
+            "name": "activityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "No Activity with the given activityId exists in the caller's\nOrganization. An Activity created milliseconds ago may not be in the\nIdIndex yet and an immediate delete can 404 — a retry fixes it. A\njust-deleted Activity can still appear in the index briefly, so a rapid\ndouble delete may reach the repository twice; the repository's condition\nexpression keeps the counter honest.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -329,7 +374,7 @@
             }
           },
           "400": {
-            "description": "OrderedActivityIds is not exactly a permutation of the Scenario's\n    current Activity ids. Returns 400 when the request fails a validation constraint.",
+            "description": "OrderedActivityIds is not exactly a permutation of the Scenario's\ncurrent Activity ids. Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -349,7 +394,7 @@
             }
           },
           "404": {
-            "description": "No Scenario with the given scenarioId exists in the caller's\n    Organization.",
+            "description": "No Scenario with the given scenarioId exists in the caller's\nOrganization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -422,7 +467,7 @@
             }
           },
           "400": {
-            "description": "The caller's Organization could not be found or has been deleted. Returns 400 when the request fails a validation constraint.",
+            "description": "The caller's Organization could not be found or has been\ndeleted. Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -523,7 +568,7 @@
             }
           },
           "404": {
-            "description": "No Application with the given applicationId exists in the caller's\n    Organization.",
+            "description": "No Application with the given applicationId exists in the caller's\nOrganization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -593,7 +638,7 @@
             }
           },
           "401": {
-            "description": "The Google authorization code or PKCE verifier is invalid or expired.",
+            "description": "The Google authorization code or PKCE verifier is invalid\nor expired.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -750,7 +795,7 @@
             }
           },
           "404": {
-            "description": "No Application with the given applicationId exists in the caller's Organization.",
+            "description": "No Application with the given applicationId exists in the\ncaller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -865,7 +910,7 @@
             }
           },
           "404": {
-            "description": "No Environment with the given environmentId exists in the caller's\n    Organization.",
+            "description": "No Environment with the given environmentId exists in the caller's\nOrganization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -944,7 +989,7 @@
             }
           },
           "404": {
-            "description": "No Environment with the given environmentId exists in the caller's\n    Organization.",
+            "description": "No Environment with the given environmentId exists in the caller's\nOrganization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -991,7 +1036,7 @@
           {
             "name": "key",
             "in": "path",
-            "description": "Variable name. Must be 1-200 characters, using only letters, digits, and\n    underscores.",
+            "description": "Variable name. Must be 1-200 characters, using only letters, digits, and\nunderscores.",
             "required": true,
             "schema": {
               "maxLength": 200,
@@ -1025,7 +1070,66 @@
             "description": "No Content"
           },
           "404": {
-            "description": "No Environment with the given environmentId exists in the caller's\n    Organization, or it no longer exists (deleted after this request started).",
+            "description": "No Environment with the given environmentId exists in the caller's\nOrganization, or it no longer exists (deleted after this request started).",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Returns 400 when the request fails a validation constraint."
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Environments"
+        ],
+        "operationId": "DeleteEnvironmentVariable",
+        "parameters": [
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "description": "Variable name. Must be 1-200 characters, using only letters, digits, and\nunderscores.",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "pattern": "^[A-Za-z0-9_]+$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Variable was deleted."
+          },
+          "404": {
+            "description": "No Environment with the given environmentId exists in the caller's\nOrganization, or the Environment has no variable with the given key.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1112,7 +1216,7 @@
             }
           },
           "404": {
-            "description": "No Application with the given applicationId exists in the caller's Organization.",
+            "description": "No Application with the given applicationId exists in the\ncaller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1247,7 +1351,7 @@
             }
           },
           "404": {
-            "description": "No EvidenceDefinition with the given evidenceDefinitionId exists in the\n    caller's Organization.",
+            "description": "No EvidenceDefinition with the given evidenceDefinitionId exists in the\ncaller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1297,7 +1401,7 @@
             "description": "No Content"
           },
           "400": {
-            "description": "The caller's Organization could not be found, has been deleted, or is a personal organization.",
+            "description": "The caller's Organization could not be found, has been\ndeleted, or is a personal organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1332,6 +1436,26 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Organization does not exist.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -1361,7 +1485,7 @@
             "description": "No Content"
           },
           "400": {
-            "description": "The caller's Organization could not be found or has been deleted.",
+            "description": "The caller's Organization could not be found or has been\ndeleted.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1396,6 +1520,26 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The Organization does not exist.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -1483,6 +1627,99 @@
         }
       }
     },
+    "/organizations/{organizationId}/members/{userId}": {
+      "delete": {
+        "tags": [
+          "Organizations"
+        ],
+        "operationId": "RemoveOrganizationMember",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "The target Organization is not the caller's own Organization, the\nOrganization is personal, or the caller is the last Owner.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller is not an Owner. Returns 403 when the caller's Organization is archived.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The target User is not a member of the Organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/applications/{applicationId}/preconditions": {
       "post": {
         "tags": [
@@ -1542,7 +1779,7 @@
             }
           },
           "404": {
-            "description": "No Application with the given applicationId exists in the caller's Organization.",
+            "description": "No Application with the given applicationId exists in the\ncaller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1677,7 +1914,7 @@
             }
           },
           "404": {
-            "description": "No Precondition with the given preconditionId exists in the caller's\n    Organization.",
+            "description": "No Precondition with the given preconditionId exists in the caller's\nOrganization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1764,7 +2001,7 @@
             }
           },
           "400": {
-            "description": "EnvironmentId does not reference an Environment belonging to this\n    Application, ScenarioIds contains a duplicate, or ScenarioIds contains an id that does not\n    reference a Scenario belonging to this Application. Returns 400 when the request fails a validation constraint.",
+            "description": "EnvironmentId does not reference an Environment belonging to this\nApplication, ScenarioIds contains a duplicate, or ScenarioIds contains an\nid that does not\nreference a Scenario belonging to this Application. Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1784,7 +2021,7 @@
             }
           },
           "404": {
-            "description": "No Application with the given applicationId exists in the caller's Organization, or\n    it no longer exists (deleted after this request started).",
+            "description": "No Application with the given applicationId exists in the caller's\nOrganization, or\nit no longer exists (deleted after this request started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1862,7 +2099,7 @@
         "tags": [
           "Runs"
         ],
-        "summary": "Lists the Runs currently Running for this Application, strongly consistent -- a Run that\n    just started is never briefly missing from this result, unlike Task&lt;ActionResult&lt;IReadOnlyList&lt;RunSummaryResponse&gt;&gt;&gt; RunsController.List(Guid applicationId).",
+        "summary": "Lists the Runs currently Running for this Application, strongly consistent\n-- a Run that\njust started is never briefly missing from this result, unlike\nTask&lt;ActionResult&lt;IReadOnlyList&lt;RunSummaryResponse&gt;&gt;&gt; RunsController.List(Guid applicationId).",
         "operationId": "ListRunningRuns",
         "parameters": [
           {
@@ -1956,7 +2193,7 @@
             }
           },
           "404": {
-            "description": "No Run with the given runId exists in this Application, in the caller's\n    Organization.",
+            "description": "No Run with the given runId exists in this Application, in the caller's\nOrganization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1983,7 +2220,7 @@
         "tags": [
           "Runs"
         ],
-        "summary": "Starts a Run and returns it with Environment variable values unmasked -- the last\n    chance to see them unmasked. After the Run starts, every response masks them, for\n    security.",
+        "summary": "Starts a Run and returns it with Environment variable values unmasked --\nthe last\nchance to see them unmasked. After the Run starts, every response masks\nthem, for\nsecurity.",
         "operationId": "StartRun",
         "parameters": [
           {
@@ -2027,7 +2264,7 @@
             }
           },
           "404": {
-            "description": "No Run with the given runId exists in this Application, in the caller's\n    Organization.",
+            "description": "No Run with the given runId exists in this Application, in the caller's\nOrganization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2143,7 +2380,7 @@
             }
           },
           "404": {
-            "description": "No Run with the given runId exists in this Application, in the caller's\n    Organization.",
+            "description": "No Run with the given runId exists in this Application, in the caller's\nOrganization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2219,7 +2456,7 @@
             "description": "No Content"
           },
           "404": {
-            "description": "No Run with the given runId exists in this Application, in the caller's\n    Organization.",
+            "description": "No Run with the given runId exists in this Application, in the caller's\nOrganization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2315,7 +2552,7 @@
             "description": "No Content"
           },
           "404": {
-            "description": "No Run with the given runId exists in this Application, in the caller's\n    Organization.",
+            "description": "No Run with the given runId exists in this Application, in the caller's\nOrganization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2451,7 +2688,7 @@
             }
           },
           "404": {
-            "description": "No Run with the given runId exists in this Application, in the caller's\n    Organization.",
+            "description": "No Run with the given runId exists in this Application, in the caller's\nOrganization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2471,7 +2708,7 @@
             }
           },
           "409": {
-            "description": "Seq is not greater than the Run's current LastSeq, or the Run's Status is not\n    Running.",
+            "description": "Seq is not greater than the Run's current LastSeq, or the Run's Status is\nnot\nRunning.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2522,7 +2759,7 @@
           {
             "name": "after",
             "in": "query",
-            "description": "Return only updates with a higher Seq than this. Pass 0 (the default) to read\n    from the start of the log.",
+            "description": "Return only updates with a higher Seq than this. Pass 0 (the default) to\nread\nfrom the start of the log.",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": [
@@ -2666,7 +2903,7 @@
             }
           },
           "404": {
-            "description": "No Application with the given applicationId exists in the caller's Organization,\n    or it no longer exists (deleted after this request started).",
+            "description": "No Application with the given applicationId exists in the caller's\nOrganization,\nor it no longer exists (deleted after this request started).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2751,7 +2988,7 @@
             }
           },
           "400": {
-            "description": "Both folder and tag were provided; they are mutually exclusive.",
+            "description": "Both folder and tag were provided; they are mutually\nexclusive.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2812,7 +3049,7 @@
             }
           },
           "404": {
-            "description": "No Scenario with the given scenarioId exists in the caller's\n    Organization.",
+            "description": "No Scenario with the given scenarioId exists in the caller's\nOrganization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2911,7 +3148,7 @@
             }
           },
           "404": {
-            "description": "No Scenario with the given scenarioId exists in the caller's\n    Organization.",
+            "description": "No Scenario with the given scenarioId exists in the caller's\nOrganization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -2931,7 +3168,7 @@
             }
           },
           "409": {
-            "description": "The Scenario's Application no longer exists (deleted after this request\n    started).",
+            "description": "The Scenario's Application no longer exists (deleted after this request\nstarted).",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3071,14 +3308,14 @@
               "null",
               "string"
             ],
-            "description": "Why this Activity was chosen for execution despite an earlier Activity failing."
+            "description": "Why this Activity was chosen for execution despite an earlier Activity\nfailing."
           }
         },
-        "description": "The outcome of one Activity within a Run, as sent by a worker appending a status update and\n    as returned back to the client reading the log. ScenarioId and ActivityId identify rows in the Run's\n    OWN snapshot -- the ids the Get Run response's Scenario/Activity snapshots carry on their Source --\n    not the live Scenario or Activity, which may since have changed or been deleted."
+        "description": "The outcome of one Activity within a Run, as sent by a worker appending a\nstatus update and\nas returned back to the client reading the log. ScenarioId and ActivityId\nidentify rows in the Run's\nOWN snapshot -- the ids the Get Run response's Scenario/Activity snapshots\ncarry on their Source --\nnot the live Scenario or Activity, which may since have changed or been\ndeleted."
       },
       "ActivityResultStatus": {
         "type": "integer",
-        "description": "What became of an Activity by the time its result was appended to a Run's status update log,\n    as returned to the client. Only Passed, Failed or Skipped are legal on an appended result -- Pending\n    and Running name the states before an Activity has concluded."
+        "description": "What became of an Activity by the time its result was appended to a Run's\nstatus update log,\nas returned to the client. Only Passed, Failed or Skipped are legal on an\nappended result -- Pending\nand Running name the states before an Activity has concluded."
       },
       "AppendRunStatusUpdateRequest": {
         "required": [
@@ -3101,7 +3338,7 @@
             "$ref": "#/components/schemas/ActivityResult"
           }
         },
-        "description": "Request body to append one entry to a Run's status update log, at the caller's own sequence\n     number. The owning worker allocates Seq in memory -- this API never invents one. Sequence numbers are\n     1-based and dense: the first update of a Run's log has Seq 1.\n\n     AppendActivityResult is the only kind of status update that exists today, so this always carries an\n     ActivityResult."
+        "description": "Request body to append one entry to a Run's status update log, at the\ncaller's own sequence\nnumber. The owning worker allocates Seq in memory -- this API never invents\none. Sequence numbers are\n1-based and dense: the first update of a Run's log has Seq 1.\nAppendActivityResult is the only kind of status update that exists today,\nso this always carries an\nActivityResult."
       },
       "ApplicationResponse": {
         "required": [
@@ -3142,7 +3379,7 @@
               "integer",
               "string"
             ],
-            "description": "Number of seconds until Token expires, measured from when the response is sent.\nA relative duration is used instead of an absolute timestamp because the client's clock may be offset\nfrom the server's.",
+            "description": "Number of seconds until Token expires, measured from\nwhen the response is sent.\nA relative duration is used instead of an absolute timestamp because the\nclient's clock may be offset\nfrom the server's.",
             "format": "int32"
           },
           "refreshTokenSecret": {
@@ -3152,7 +3389,7 @@
             "$ref": "#/components/schemas/UserResponse"
           }
         },
-        "description": "Returned after a successful Google sign-in: the issued tokens and the signed-in user."
+        "description": "Returned after a successful Google sign-in: the issued tokens and the\nsigned-in user."
       },
       "CreateActivityRequest": {
         "required": [
@@ -3187,7 +3424,7 @@
             }
           }
         },
-        "description": "Request body to append a new Activity to a Scenario. PreconditionIds/EvidenceIds must\n    each reference existing library rows in the Scenario's Application."
+        "description": "Request body to append a new Activity to a Scenario.\nPreconditionIds/EvidenceIds must\neach reference existing library rows in the Scenario's Application."
       },
       "CreateApplicationRequest": {
         "required": [
@@ -3224,7 +3461,7 @@
             "$ref": "#/components/schemas/EnvironmentClassification"
           }
         },
-        "description": "Request body to create a new Environment for an Application. No Variables at creation —\n    set those afterward via `PUT /environments/{id}/variables/{key}`."
+        "description": "Request body to create a new Environment for an Application. No Variables\nat creation —\nset those afterward via `PUT /environments/{id}/variables/{key}`."
       },
       "CreateEvidenceDefinitionRequest": {
         "required": [
@@ -3294,7 +3531,7 @@
             "format": "uuid"
           }
         },
-        "description": "Request body to start a Manual Run of one or more Scenarios against an Environment. Every id\n    in ScenarioIds must reference a Scenario belonging to the Application named in the URL."
+        "description": "Request body to start a Manual Run of one or more Scenarios against an\nEnvironment. Every id\nin ScenarioIds must reference a Scenario belonging to the Application named\nin the URL."
       },
       "CreateScenarioRequest": {
         "required": [
@@ -3330,7 +3567,7 @@
             }
           }
         },
-        "description": "Request body to create a new Scenario for an Application. Folder defaults to \"/\" when\n    not given; Tags default to empty."
+        "description": "Request body to create a new Scenario for an Application. Folder defaults\nto \"/\" when\nnot given; Tags default to empty."
       },
       "EndRunRequest": {
         "required": [
@@ -3342,11 +3579,11 @@
             "$ref": "#/components/schemas/RunStatus"
           }
         },
-        "description": "Request body to end a Running Run. TerminalStatus must be Completed, Cancelled or Abandoned --\n    Pending and Running are rejected, since those are states the server itself moves a Run through, never\n    an outcome a caller declares."
+        "description": "Request body to end a Running Run. TerminalStatus must be Completed,\nCancelled or Abandoned --\nPending and Running are rejected, since those are states the server itself\nmoves a Run through, never\nan outcome a caller declares."
       },
       "EnvironmentClassification": {
         "type": "integer",
-        "description": "Whether an Environment is a live Production system or a non-production one (staging, dev, ...)."
+        "description": "Whether an Environment is a live Production system or a non-production\none (staging, dev, ...)."
       },
       "EnvironmentResponse": {
         "required": [
@@ -3394,7 +3631,7 @@
             "type": "boolean"
           }
         },
-        "description": "A single Environment variable, as returned to the client. When IsSensitive is true, Value\n    is masked: only its first 30% of characters, the rest replaced by a fixed-length run of dots."
+        "description": "A single Environment variable, as returned to the client. When IsSensitive\nis true, Value\nis masked: only its first 30% of characters, the rest replaced by a\nfixed-length run of dots."
       },
       "ErrorResponse": {
         "required": [
@@ -3449,10 +3686,10 @@
           "codeVerifier": {
             "maxLength": 200,
             "type": "string",
-            "description": "The PKCE code verifier the client generated for this authorization request."
+            "description": "The PKCE code verifier the client generated for this authorization\nrequest."
           }
         },
-        "description": "An OAuth 2.0 PKCE authorization code from Google's consent screen, to be exchanged for\n    the user's Google identity."
+        "description": "An OAuth 2.0 PKCE authorization code from Google's consent screen, to be\nexchanged for\nthe user's Google identity."
       },
       "OrganizationResponse": {
         "required": [
@@ -3551,7 +3788,7 @@
           "refreshTokenSecret": {
             "maxLength": 500,
             "type": "string",
-            "description": "The raw refresh token secret previously issued to the client, to be exchanged for a new access token."
+            "description": "The raw refresh token secret previously issued to the client, to be\nexchanged for a new access token."
           }
         },
         "description": "Requests a new access token using a previously issued refresh token."
@@ -3573,7 +3810,7 @@
               "integer",
               "string"
             ],
-            "description": "Number of seconds until Token expires, measured from when the response is sent.\nA relative duration is used instead of an absolute timestamp because the client's clock may be offset\nfrom the server's.",
+            "description": "Number of seconds until Token expires, measured from\nwhen the response is sent.\nA relative duration is used instead of an absolute timestamp because the\nclient's clock may be offset\nfrom the server's.",
             "format": "int32"
           },
           "refreshTokenSecret": {
@@ -3597,7 +3834,7 @@
             }
           }
         },
-        "description": "Request body to reorder a Scenario's Activities. Must contain exactly one entry per\n    Activity currently in the Scenario, as a permutation of their ids."
+        "description": "Request body to reorder a Scenario's Activities. Must contain exactly one\nentry per\nActivity currently in the Scenario, as a permutation of their ids."
       },
       "RunActivitySnapshotResponse": {
         "required": [
@@ -3636,7 +3873,7 @@
             }
           }
         },
-        "description": "An Activity as it was when a Run was created, together with the Preconditions and\n    EvidenceDefinitions it referenced at that moment, as returned to the client."
+        "description": "An Activity as it was when a Run was created, together with the\nPreconditions and\nEvidenceDefinitions it referenced at that moment, as returned to the\nclient."
       },
       "RunEnvironmentSnapshotResponse": {
         "required": [
@@ -3663,7 +3900,7 @@
             }
           }
         },
-        "description": "The Environment a Run ran against, as it was when the Run was created, as returned to the\n    client."
+        "description": "The Environment a Run ran against, as it was when the Run was created, as\nreturned to the\nclient."
       },
       "RunEnvironmentVariableSnapshotResponse": {
         "required": [
@@ -3703,7 +3940,7 @@
             "format": "date-time"
           }
         },
-        "description": "An Environment variable as it was when a Run was created, as returned to the client. When\n    IsSensitive is true, Value is already masked -- more heavily than the live Environment API masks it,\n    since a Run snapshot lives for three years."
+        "description": "An Environment variable as it was when a Run was created, as returned to\nthe client. When\nIsSensitive is true, Value is already masked -- more heavily than the live\nEnvironment API masks it,\nsince a Run snapshot lives for three years."
       },
       "RunEvidenceDefinitionSnapshotResponse": {
         "required": [
@@ -3727,7 +3964,7 @@
             "type": "string"
           }
         },
-        "description": "An EvidenceDefinition as it was when a Run was created, as returned to the client."
+        "description": "An EvidenceDefinition as it was when a Run was created, as returned to\nthe client."
       },
       "RunningRunResponse": {
         "required": [
@@ -3768,7 +4005,7 @@
             "type": "string"
           }
         },
-        "description": "A Precondition as it was when a Run was created, as returned to the client."
+        "description": "A Precondition as it was when a Run was created, as returned to the\nclient."
       },
       "RunResponse": {
         "required": [
@@ -3849,7 +4086,7 @@
               "integer",
               "string"
             ],
-            "description": "The highest sequence number appended to this Run's status update log so far. A client\n    that already holds up to this sequence has nothing new to poll for.",
+            "description": "The highest sequence number appended to this Run's status update log so\nfar. A client\nthat already holds up to this sequence has nothing new to poll for.",
             "format": "int64"
           },
           "triggeredByUserId": {
@@ -3857,7 +4094,7 @@
               "null",
               "string"
             ],
-            "description": "Who triggered this Run. Null for a Scheduled Run -- a system timer has no user id.",
+            "description": "Who triggered this Run. Null for a Scheduled Run -- a system timer has\nno user id.",
             "format": "uuid"
           },
           "createdAt": {
@@ -3883,11 +4120,11 @@
               "null",
               "string"
             ],
-            "description": "When the owning worker last proved it was alive. Null while Status is Pending. A Run\n    stuck on Running with an old LastHeartbeatAt has likely lost its worker -- Status alone does not\n    tell you that.",
+            "description": "When the owning worker last proved it was alive. Null while Status is\nPending. A Run\nstuck on Running with an old LastHeartbeatAt has likely lost its worker --\nStatus alone does not\ntell you that.",
             "format": "date-time"
           }
         },
-        "description": "A Run's identity, execution state and what it ran, as returned to the client. Never carries\n    the status update log -- LastSeq and Status are what tell a client whether it is worth polling List\n    Run Status Updates and when to stop. ApplicationId is included even under the nested\n    `/applications/{applicationId}/runs/{runId}` route because the authoring create route\n    (`POST /scenarios/{scenarioId}/runs`) is flat and returns this same shape -- without it, a client\n    following an authoring Run would have no way to build its polling URLs."
+        "description": "A Run's identity, execution state and what it ran, as returned to the\nclient. Never carries\nthe status update log -- LastSeq and Status are what tell a client whether\nit is worth polling List\nRun Status Updates and when to stop. ApplicationId is included even under\nthe nested\n`/applications/{applicationId}/runs/{runId}` route because the\nauthoring create route\n(`POST /scenarios/{scenarioId}/runs`) is flat and returns this same\nshape -- without it, a client\nfollowing an authoring Run would have no way to build its polling URLs."
       },
       "RunScenarioSnapshotResponse": {
         "required": [
@@ -3925,15 +4162,15 @@
             }
           }
         },
-        "description": "A Scenario as it was when a Run was created, together with its Activities in order, as\n    returned to the client. Never changes when the live Scenario is edited or deleted afterward."
+        "description": "A Scenario as it was when a Run was created, together with its Activities\nin order, as\nreturned to the client. Never changes when the live Scenario is edited or\ndeleted afterward."
       },
       "RunStatus": {
         "type": "integer",
-        "description": "A Run's execution state, as returned to the client. Carries no pass/fail judgment: a Run\n     whose every Activity failed is still Completed, and the activity counts say how it went.\n\n     Only Completed, Cancelled and Abandoned are legal terminal values to send on End Run -- Pending and\n     Running name states the server itself moves a Run through and are rejected there.\n\n     Running does not by itself mean the owning worker is still alive -- it may have crashed or been\n     killed without anything having noticed yet. Treat Running as \"not yet terminal,\" and check\n     LastHeartbeatAt (on RunResponse/RunSummaryResponse) to tell whether it is actually making\n     progress."
+        "description": "A Run's execution state, as returned to the client. Carries no pass/fail\njudgment: a Run\nwhose every Activity failed is still Completed, and the activity counts say\nhow it went.\nOnly Completed, Cancelled and Abandoned are legal terminal values to send\non End Run -- Pending and\nRunning name states the server itself moves a Run through and are rejected\nthere.\nRunning does not by itself mean the owning worker is still alive -- it may\nhave crashed or been\nkilled without anything having noticed yet. Treat Running as \"not yet\nterminal,\" and check\nLastHeartbeatAt (on RunResponse/RunSummaryResponse) to tell whether it is\nactually making\nprogress."
       },
       "RunStatusUpdateKind": {
         "type": "integer",
-        "description": "What a Run status update row records, as returned to the client. AppendActivityResult is\n    the only kind that exists today -- see the server's design notes for what earns a new one."
+        "description": "What a Run status update row records, as returned to the client.\nAppendActivityResult is\nthe only kind that exists today -- see the server's design notes for what\nearns a new one."
       },
       "RunStatusUpdateResponse": {
         "required": [
@@ -3964,13 +4201,13 @@
                 "type": "null"
               },
               {
-                "description": "Set when Kind is AppendActivityResult -- the only kind today, so always set in\n    practice.",
+                "description": "Set when Kind is AppendActivityResult -- the only kind today, so always set\nin\npractice.",
                 "$ref": "#/components/schemas/ActivityResult"
               }
             ]
           }
         },
-        "description": "One entry of a Run's status update log, as returned to the client. The API hands these back\n    exactly as appended, in sequence order -- it never folds or interprets them; only the client\n    does."
+        "description": "One entry of a Run's status update log, as returned to the client. The API\nhands these back\nexactly as appended, in sequence order -- it never folds or interprets\nthem; only the client\ndoes."
       },
       "RunSummaryResponse": {
         "required": [
@@ -4050,15 +4287,15 @@
               "null",
               "string"
             ],
-            "description": "When the owning worker last proved it was alive. Null while Status is Pending. A Run\n    stuck on Running with an old LastHeartbeatAt has likely lost its worker -- Status alone does not\n    tell you that.",
+            "description": "When the owning worker last proved it was alive. Null while Status is\nPending. A Run\nstuck on Running with an old LastHeartbeatAt has likely lost its worker --\nStatus alone does not\ntell you that.",
             "format": "date-time"
           }
         },
-        "description": "A Run's identity and execution state only -- no Environment, no Scenarios -- exactly what the\n    Application's Runs panel shows for one row of the list."
+        "description": "A Run's identity and execution state only -- no Environment, no Scenarios\n-- exactly what the\nApplication's Runs panel shows for one row of the list."
       },
       "RunTrigger": {
         "type": "integer",
-        "description": "Where a Run came from, as returned to the client. Affects retention and whether the Run\n    shows up in the Application's Runs panel -- nothing about how it executes."
+        "description": "Where a Run came from, as returned to the client. Affects retention and\nwhether the Run\nshows up in the Application's Runs panel -- nothing about how it executes."
       },
       "ScenarioResponse": {
         "required": [
@@ -4141,7 +4378,7 @@
             "format": "date-time"
           }
         },
-        "description": "Where a Run snapshot was copied from, as returned to the client: provenance only. Id may no\n    longer resolve to a live row -- the source can have been edited, archived or deleted since this Run\n    was created -- so it should be treated as a hint for \"open the current version, if it still exists\",\n    never as a live reference."
+        "description": "Where a Run snapshot was copied from, as returned to the client: provenance\nonly. Id may no\nlonger resolve to a live row -- the source can have been edited, archived\nor deleted since this Run\nwas created -- so it should be treated as a hint for \"open the current\nversion, if it still exists\",\nnever as a live reference."
       },
       "UpdateActivityRequest": {
         "required": [
@@ -4176,7 +4413,7 @@
             }
           }
         },
-        "description": "Request body to edit an existing Activity's Description/PreconditionIds/EvidenceIds.\n    Does not change the Activity's Order -- use the reorder endpoint for that."
+        "description": "Request body to edit an existing Activity's\nDescription/PreconditionIds/EvidenceIds.\nDoes not change the Activity's Order -- use the reorder endpoint for that."
       },
       "UpdateEnvironmentRequest": {
         "required": [
@@ -4293,7 +4530,7 @@
             "format": "int32"
           }
         },
-        "description": "Request body to overwrite a Running Run's four activity counts with absolute values -- never\n    an increment, so a retried call does no harm."
+        "description": "Request body to overwrite a Running Run's four activity counts with\nabsolute values -- never\nan increment, so a retried call does no harm."
       },
       "UpdateScenarioRequest": {
         "required": [
@@ -4327,7 +4564,7 @@
             }
           }
         },
-        "description": "Request body to edit an existing Scenario's Title/Description/Folder/Tags."
+        "description": "Request body to edit an existing Scenario's\nTitle/Description/Folder/Tags."
       },
       "UserResponse": {
         "required": [
@@ -4356,7 +4593,7 @@
             "type": "boolean"
           }
         },
-        "description": "The signed-in AutoAssure user, as returned to the client after authentication."
+        "description": "The signed-in AutoAssure user, as returned to the client after\nauthentication."
       }
     }
   },

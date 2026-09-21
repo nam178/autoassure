@@ -35,10 +35,14 @@ export interface ActivityResponse {
 }
 
 /**
- * The outcome of one Activity within a Run, as sent by a worker appending a status update and
- *     as returned back to the client reading the log. ScenarioId and ActivityId identify rows in the Run's
- *     OWN snapshot -- the ids the Get Run response's Scenario/Activity snapshots carry on their Source --
- *     not the live Scenario or Activity, which may since have changed or been deleted.
+ * The outcome of one Activity within a Run, as sent by a worker appending a
+ * status update and
+ * as returned back to the client reading the log. ScenarioId and ActivityId
+ * identify rows in the Run's
+ * OWN snapshot -- the ids the Get Run response's Scenario/Activity snapshots
+ * carry on their Source --
+ * not the live Scenario or Activity, which may since have changed or been
+ * deleted.
  */
 export interface ActivityResult {
   /** @format uuid */
@@ -46,9 +50,11 @@ export interface ActivityResult {
   /** @format uuid */
   activityId: string;
   /**
-   * What became of an Activity by the time its result was appended to a Run's status update log,
-   *     as returned to the client. Only Passed, Failed or Skipped are legal on an appended result -- Pending
-   *     and Running name the states before an Activity has concluded.
+   * What became of an Activity by the time its result was appended to a Run's
+   * status update log,
+   * as returned to the client. Only Passed, Failed or Skipped are legal on an
+   * appended result -- Pending
+   * and Running name the states before an Activity has concluded.
    */
   status: ActivityResultStatus;
   /** @maxLength 50 */
@@ -56,26 +62,31 @@ export interface ActivityResult {
   /** @maxLength 50 */
   evidence?: null | Record<string, string>;
   /**
-   * Why this Activity was chosen for execution despite an earlier Activity failing.
+   * Why this Activity was chosen for execution despite an earlier Activity
+   * failing.
    * @maxLength 2000
    */
   continuationReasoning?: null | string;
 }
 
 /**
- * What became of an Activity by the time its result was appended to a Run's status update log,
- *     as returned to the client. Only Passed, Failed or Skipped are legal on an appended result -- Pending
- *     and Running name the states before an Activity has concluded.
+ * What became of an Activity by the time its result was appended to a Run's
+ * status update log,
+ * as returned to the client. Only Passed, Failed or Skipped are legal on an
+ * appended result -- Pending
+ * and Running name the states before an Activity has concluded.
  */
 export type ActivityResultStatus = number;
 
 /**
- * Request body to append one entry to a Run's status update log, at the caller's own sequence
- *      number. The owning worker allocates Seq in memory -- this API never invents one. Sequence numbers are
- *      1-based and dense: the first update of a Run's log has Seq 1.
- *
- *      AppendActivityResult is the only kind of status update that exists today, so this always carries an
- *      ActivityResult.
+ * Request body to append one entry to a Run's status update log, at the
+ * caller's own sequence
+ * number. The owning worker allocates Seq in memory -- this API never invents
+ * one. Sequence numbers are
+ * 1-based and dense: the first update of a Run's log has Seq 1.
+ * AppendActivityResult is the only kind of status update that exists today,
+ * so this always carries an
+ * ActivityResult.
  */
 export interface AppendRunStatusUpdateRequest {
   /**
@@ -86,10 +97,14 @@ export interface AppendRunStatusUpdateRequest {
    */
   seq: number | string;
   /**
-   * The outcome of one Activity within a Run, as sent by a worker appending a status update and
-   *     as returned back to the client reading the log. ScenarioId and ActivityId identify rows in the Run's
-   *     OWN snapshot -- the ids the Get Run response's Scenario/Activity snapshots carry on their Source --
-   *     not the live Scenario or Activity, which may since have changed or been deleted.
+   * The outcome of one Activity within a Run, as sent by a worker appending a
+   * status update and
+   * as returned back to the client reading the log. ScenarioId and ActivityId
+   * identify rows in the Run's
+   * OWN snapshot -- the ids the Get Run response's Scenario/Activity snapshots
+   * carry on their Source --
+   * not the live Scenario or Activity, which may since have changed or been
+   * deleted.
    */
   activityResult: ActivityResult;
 }
@@ -102,25 +117,34 @@ export interface ApplicationResponse {
   description: string;
 }
 
-/** Returned after a successful Google sign-in: the issued tokens and the signed-in user. */
+/**
+ * Returned after a successful Google sign-in: the issued tokens and the
+ * signed-in user.
+ */
 export interface AuthTokenResponse {
   token: string;
   /**
-   * Number of seconds until Token expires, measured from when the response is sent.
-   * A relative duration is used instead of an absolute timestamp because the client's clock may be offset
+   * Number of seconds until Token expires, measured from
+   * when the response is sent.
+   * A relative duration is used instead of an absolute timestamp because the
+   * client's clock may be offset
    * from the server's.
    * @format int32
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   expiresInSeconds: number | string;
   refreshTokenSecret: string;
-  /** The signed-in AutoAssure user, as returned to the client after authentication. */
+  /**
+   * The signed-in AutoAssure user, as returned to the client after
+   * authentication.
+   */
   user: UserResponse;
 }
 
 /**
- * Request body to append a new Activity to a Scenario. PreconditionIds/EvidenceIds must
- *     each reference existing library rows in the Scenario's Application.
+ * Request body to append a new Activity to a Scenario.
+ * PreconditionIds/EvidenceIds must
+ * each reference existing library rows in the Scenario's Application.
  */
 export interface CreateActivityRequest {
   /** @maxLength 2000 */
@@ -143,8 +167,9 @@ export interface CreateApplicationRequest {
 }
 
 /**
- * Request body to create a new Environment for an Application. No Variables at creation —
- *     set those afterward via `PUT /environments/{id}/variables/{key}`.
+ * Request body to create a new Environment for an Application. No Variables
+ * at creation —
+ * set those afterward via `PUT /environments/{id}/variables/{key}`.
  */
 export interface CreateEnvironmentRequest {
   /**
@@ -152,7 +177,10 @@ export interface CreateEnvironmentRequest {
    * @maxLength 100
    */
   name: string;
-  /** Whether an Environment is a live Production system or a non-production one (staging, dev, ...). */
+  /**
+   * Whether an Environment is a live Production system or a non-production
+   * one (staging, dev, ...).
+   */
   classification: EnvironmentClassification;
 }
 
@@ -183,8 +211,10 @@ export interface CreatePreconditionRequest {
 }
 
 /**
- * Request body to start a Manual Run of one or more Scenarios against an Environment. Every id
- *     in ScenarioIds must reference a Scenario belonging to the Application named in the URL.
+ * Request body to start a Manual Run of one or more Scenarios against an
+ * Environment. Every id
+ * in ScenarioIds must reference a Scenario belonging to the Application named
+ * in the URL.
  */
 export interface CreateRunRequest {
   /**
@@ -197,8 +227,9 @@ export interface CreateRunRequest {
 }
 
 /**
- * Request body to create a new Scenario for an Application. Folder defaults to "/" when
- *     not given; Tags default to empty.
+ * Request body to create a new Scenario for an Application. Folder defaults
+ * to "/" when
+ * not given; Tags default to empty.
  */
 export interface CreateScenarioRequest {
   /**
@@ -215,27 +246,37 @@ export interface CreateScenarioRequest {
 }
 
 /**
- * Request body to end a Running Run. TerminalStatus must be Completed, Cancelled or Abandoned --
- *     Pending and Running are rejected, since those are states the server itself moves a Run through, never
- *     an outcome a caller declares.
+ * Request body to end a Running Run. TerminalStatus must be Completed,
+ * Cancelled or Abandoned --
+ * Pending and Running are rejected, since those are states the server itself
+ * moves a Run through, never
+ * an outcome a caller declares.
  */
 export interface EndRunRequest {
   /**
-   * A Run's execution state, as returned to the client. Carries no pass/fail judgment: a Run
-   *      whose every Activity failed is still Completed, and the activity counts say how it went.
-   *
-   *      Only Completed, Cancelled and Abandoned are legal terminal values to send on End Run -- Pending and
-   *      Running name states the server itself moves a Run through and are rejected there.
-   *
-   *      Running does not by itself mean the owning worker is still alive -- it may have crashed or been
-   *      killed without anything having noticed yet. Treat Running as "not yet terminal," and check
-   *      LastHeartbeatAt (on RunResponse/RunSummaryResponse) to tell whether it is actually making
-   *      progress.
+   * A Run's execution state, as returned to the client. Carries no pass/fail
+   * judgment: a Run
+   * whose every Activity failed is still Completed, and the activity counts say
+   * how it went.
+   * Only Completed, Cancelled and Abandoned are legal terminal values to send
+   * on End Run -- Pending and
+   * Running name states the server itself moves a Run through and are rejected
+   * there.
+   * Running does not by itself mean the owning worker is still alive -- it may
+   * have crashed or been
+   * killed without anything having noticed yet. Treat Running as "not yet
+   * terminal," and check
+   * LastHeartbeatAt (on RunResponse/RunSummaryResponse) to tell whether it is
+   * actually making
+   * progress.
    */
   terminalStatus: RunStatus;
 }
 
-/** Whether an Environment is a live Production system or a non-production one (staging, dev, ...). */
+/**
+ * Whether an Environment is a live Production system or a non-production
+ * one (staging, dev, ...).
+ */
 export type EnvironmentClassification = number;
 
 /** An Environment and its assembled Variables, as returned to the client. */
@@ -243,14 +284,19 @@ export interface EnvironmentResponse {
   /** @format uuid */
   id: string;
   name: string;
-  /** Whether an Environment is a live Production system or a non-production one (staging, dev, ...). */
+  /**
+   * Whether an Environment is a live Production system or a non-production
+   * one (staging, dev, ...).
+   */
   classification: EnvironmentClassification;
   variables: EnvironmentVariableResponse[];
 }
 
 /**
- * A single Environment variable, as returned to the client. When IsSensitive is true, Value
- *     is masked: only its first 30% of characters, the rest replaced by a fixed-length run of dots.
+ * A single Environment variable, as returned to the client. When IsSensitive
+ * is true, Value
+ * is masked: only its first 30% of characters, the rest replaced by a
+ * fixed-length run of dots.
  */
 export interface EnvironmentVariableResponse {
   key: string;
@@ -274,8 +320,9 @@ export interface EvidenceDefinitionResponse {
 }
 
 /**
- * An OAuth 2.0 PKCE authorization code from Google's consent screen, to be exchanged for
- *     the user's Google identity.
+ * An OAuth 2.0 PKCE authorization code from Google's consent screen, to be
+ * exchanged for
+ * the user's Google identity.
  */
 export interface ExchangeGoogleCodeRequest {
   /**
@@ -284,7 +331,8 @@ export interface ExchangeGoogleCodeRequest {
    */
   code: string;
   /**
-   * The PKCE code verifier the client generated for this authorization request.
+   * The PKCE code verifier the client generated for this authorization
+   * request.
    * @maxLength 200
    */
   codeVerifier: string;
@@ -326,7 +374,8 @@ export interface ProblemDetails {
 /** Requests a new access token using a previously issued refresh token. */
 export interface RefreshTokenRequest {
   /**
-   * The raw refresh token secret previously issued to the client, to be exchanged for a new access token.
+   * The raw refresh token secret previously issued to the client, to be
+   * exchanged for a new access token.
    * @maxLength 500
    */
   refreshTokenSecret: string;
@@ -336,8 +385,10 @@ export interface RefreshTokenRequest {
 export interface RefreshTokenResponse {
   token: string;
   /**
-   * Number of seconds until Token expires, measured from when the response is sent.
-   * A relative duration is used instead of an absolute timestamp because the client's clock may be offset
+   * Number of seconds until Token expires, measured from
+   * when the response is sent.
+   * A relative duration is used instead of an absolute timestamp because the
+   * client's clock may be offset
    * from the server's.
    * @format int32
    * @pattern ^-?(?:0|[1-9]\d*)$
@@ -347,8 +398,9 @@ export interface RefreshTokenResponse {
 }
 
 /**
- * Request body to reorder a Scenario's Activities. Must contain exactly one entry per
- *     Activity currently in the Scenario, as a permutation of their ids.
+ * Request body to reorder a Scenario's Activities. Must contain exactly one
+ * entry per
+ * Activity currently in the Scenario, as a permutation of their ids.
  */
 export interface ReorderActivitiesRequest {
   /** @maxItems 90 */
@@ -356,15 +408,20 @@ export interface ReorderActivitiesRequest {
 }
 
 /**
- * An Activity as it was when a Run was created, together with the Preconditions and
- *     EvidenceDefinitions it referenced at that moment, as returned to the client.
+ * An Activity as it was when a Run was created, together with the
+ * Preconditions and
+ * EvidenceDefinitions it referenced at that moment, as returned to the
+ * client.
  */
 export interface RunActivitySnapshotResponse {
   /**
-   * Where a Run snapshot was copied from, as returned to the client: provenance only. Id may no
-   *     longer resolve to a live row -- the source can have been edited, archived or deleted since this Run
-   *     was created -- so it should be treated as a hint for "open the current version, if it still exists",
-   *     never as a live reference.
+   * Where a Run snapshot was copied from, as returned to the client: provenance
+   * only. Id may no
+   * longer resolve to a live row -- the source can have been edited, archived
+   * or deleted since this Run
+   * was created -- so it should be treated as a hint for "open the current
+   * version, if it still exists",
+   * never as a live reference.
    */
   source: SnapshotSourceResponse;
   /**
@@ -378,27 +435,36 @@ export interface RunActivitySnapshotResponse {
 }
 
 /**
- * The Environment a Run ran against, as it was when the Run was created, as returned to the
- *     client.
+ * The Environment a Run ran against, as it was when the Run was created, as
+ * returned to the
+ * client.
  */
 export interface RunEnvironmentSnapshotResponse {
   /**
-   * Where a Run snapshot was copied from, as returned to the client: provenance only. Id may no
-   *     longer resolve to a live row -- the source can have been edited, archived or deleted since this Run
-   *     was created -- so it should be treated as a hint for "open the current version, if it still exists",
-   *     never as a live reference.
+   * Where a Run snapshot was copied from, as returned to the client: provenance
+   * only. Id may no
+   * longer resolve to a live row -- the source can have been edited, archived
+   * or deleted since this Run
+   * was created -- so it should be treated as a hint for "open the current
+   * version, if it still exists",
+   * never as a live reference.
    */
   source: SnapshotSourceResponse;
   name: string;
-  /** Whether an Environment is a live Production system or a non-production one (staging, dev, ...). */
+  /**
+   * Whether an Environment is a live Production system or a non-production
+   * one (staging, dev, ...).
+   */
   classification: EnvironmentClassification;
   variables: RunEnvironmentVariableSnapshotResponse[];
 }
 
 /**
- * An Environment variable as it was when a Run was created, as returned to the client. When
- *     IsSensitive is true, Value is already masked -- more heavily than the live Environment API masks it,
- *     since a Run snapshot lives for three years.
+ * An Environment variable as it was when a Run was created, as returned to
+ * the client. When
+ * IsSensitive is true, Value is already masked -- more heavily than the live
+ * Environment API masks it,
+ * since a Run snapshot lives for three years.
  */
 export interface RunEnvironmentVariableSnapshotResponse {
   key: string;
@@ -414,13 +480,19 @@ export interface RunEnvironmentVariableSnapshotResponse {
   updatedAt: string;
 }
 
-/** An EvidenceDefinition as it was when a Run was created, as returned to the client. */
+/**
+ * An EvidenceDefinition as it was when a Run was created, as returned to
+ * the client.
+ */
 export interface RunEvidenceDefinitionSnapshotResponse {
   /**
-   * Where a Run snapshot was copied from, as returned to the client: provenance only. Id may no
-   *     longer resolve to a live row -- the source can have been edited, archived or deleted since this Run
-   *     was created -- so it should be treated as a hint for "open the current version, if it still exists",
-   *     never as a live reference.
+   * Where a Run snapshot was copied from, as returned to the client: provenance
+   * only. Id may no
+   * longer resolve to a live row -- the source can have been edited, archived
+   * or deleted since this Run
+   * was created -- so it should be treated as a hint for "open the current
+   * version, if it still exists",
+   * never as a live reference.
    */
   source: SnapshotSourceResponse;
   name: string;
@@ -435,13 +507,19 @@ export interface RunningRunResponse {
   startedAt: string;
 }
 
-/** A Precondition as it was when a Run was created, as returned to the client. */
+/**
+ * A Precondition as it was when a Run was created, as returned to the
+ * client.
+ */
 export interface RunPreconditionSnapshotResponse {
   /**
-   * Where a Run snapshot was copied from, as returned to the client: provenance only. Id may no
-   *     longer resolve to a live row -- the source can have been edited, archived or deleted since this Run
-   *     was created -- so it should be treated as a hint for "open the current version, if it still exists",
-   *     never as a live reference.
+   * Where a Run snapshot was copied from, as returned to the client: provenance
+   * only. Id may no
+   * longer resolve to a live row -- the source can have been edited, archived
+   * or deleted since this Run
+   * was created -- so it should be treated as a hint for "open the current
+   * version, if it still exists",
+   * never as a live reference.
    */
   source: SnapshotSourceResponse;
   name: string;
@@ -451,12 +529,17 @@ export interface RunPreconditionSnapshotResponse {
 }
 
 /**
- * A Run's identity, execution state and what it ran, as returned to the client. Never carries
- *     the status update log -- LastSeq and Status are what tell a client whether it is worth polling List
- *     Run Status Updates and when to stop. ApplicationId is included even under the nested
- *     `/applications/{applicationId}/runs/{runId}` route because the authoring create route
- *     (`POST /scenarios/{scenarioId}/runs`) is flat and returns this same shape -- without it, a client
- *     following an authoring Run would have no way to build its polling URLs.
+ * A Run's identity, execution state and what it ran, as returned to the
+ * client. Never carries
+ * the status update log -- LastSeq and Status are what tell a client whether
+ * it is worth polling List
+ * Run Status Updates and when to stop. ApplicationId is included even under
+ * the nested
+ * `/applications/{applicationId}/runs/{runId}` route because the
+ * authoring create route
+ * (`POST /scenarios/{scenarioId}/runs`) is flat and returns this same
+ * shape -- without it, a client
+ * following an authoring Run would have no way to build its polling URLs.
  */
 export interface RunResponse {
   /** @format uuid */
@@ -464,21 +547,27 @@ export interface RunResponse {
   /** @format uuid */
   applicationId: string;
   /**
-   * Where a Run came from, as returned to the client. Affects retention and whether the Run
-   *     shows up in the Application's Runs panel -- nothing about how it executes.
+   * Where a Run came from, as returned to the client. Affects retention and
+   * whether the Run
+   * shows up in the Application's Runs panel -- nothing about how it executes.
    */
   trigger: RunTrigger;
   /**
-   * A Run's execution state, as returned to the client. Carries no pass/fail judgment: a Run
-   *      whose every Activity failed is still Completed, and the activity counts say how it went.
-   *
-   *      Only Completed, Cancelled and Abandoned are legal terminal values to send on End Run -- Pending and
-   *      Running name states the server itself moves a Run through and are rejected there.
-   *
-   *      Running does not by itself mean the owning worker is still alive -- it may have crashed or been
-   *      killed without anything having noticed yet. Treat Running as "not yet terminal," and check
-   *      LastHeartbeatAt (on RunResponse/RunSummaryResponse) to tell whether it is actually making
-   *      progress.
+   * A Run's execution state, as returned to the client. Carries no pass/fail
+   * judgment: a Run
+   * whose every Activity failed is still Completed, and the activity counts say
+   * how it went.
+   * Only Completed, Cancelled and Abandoned are legal terminal values to send
+   * on End Run -- Pending and
+   * Running name states the server itself moves a Run through and are rejected
+   * there.
+   * Running does not by itself mean the owning worker is still alive -- it may
+   * have crashed or been
+   * killed without anything having noticed yet. Treat Running as "not yet
+   * terminal," and check
+   * LastHeartbeatAt (on RunResponse/RunSummaryResponse) to tell whether it is
+   * actually making
+   * progress.
    */
   status: RunStatus;
   /**
@@ -502,21 +591,24 @@ export interface RunResponse {
    */
   skippedActivityCount: number | string;
   /**
-   * The Environment a Run ran against, as it was when the Run was created, as returned to the
-   *     client.
+   * The Environment a Run ran against, as it was when the Run was created, as
+   * returned to the
+   * client.
    */
   environment: RunEnvironmentSnapshotResponse;
   /** One snapshot per Scenario the Run ran, in no particular order. */
   scenarios: RunScenarioSnapshotResponse[];
   /**
-   * The highest sequence number appended to this Run's status update log so far. A client
-   *     that already holds up to this sequence has nothing new to poll for.
+   * The highest sequence number appended to this Run's status update log so
+   * far. A client
+   * that already holds up to this sequence has nothing new to poll for.
    * @format int64
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   lastSeq: number | string;
   /**
-   * Who triggered this Run. Null for a Scheduled Run -- a system timer has no user id.
+   * Who triggered this Run. Null for a Scheduled Run -- a system timer has
+   * no user id.
    * @format uuid
    */
   triggeredByUserId?: null | string;
@@ -527,24 +619,31 @@ export interface RunResponse {
   /** @format date-time */
   completedAt?: null | string;
   /**
-   * When the owning worker last proved it was alive. Null while Status is Pending. A Run
-   *     stuck on Running with an old LastHeartbeatAt has likely lost its worker -- Status alone does not
-   *     tell you that.
+   * When the owning worker last proved it was alive. Null while Status is
+   * Pending. A Run
+   * stuck on Running with an old LastHeartbeatAt has likely lost its worker --
+   * Status alone does not
+   * tell you that.
    * @format date-time
    */
   lastHeartbeatAt?: null | string;
 }
 
 /**
- * A Scenario as it was when a Run was created, together with its Activities in order, as
- *     returned to the client. Never changes when the live Scenario is edited or deleted afterward.
+ * A Scenario as it was when a Run was created, together with its Activities
+ * in order, as
+ * returned to the client. Never changes when the live Scenario is edited or
+ * deleted afterward.
  */
 export interface RunScenarioSnapshotResponse {
   /**
-   * Where a Run snapshot was copied from, as returned to the client: provenance only. Id may no
-   *     longer resolve to a live row -- the source can have been edited, archived or deleted since this Run
-   *     was created -- so it should be treated as a hint for "open the current version, if it still exists",
-   *     never as a live reference.
+   * Where a Run snapshot was copied from, as returned to the client: provenance
+   * only. Id may no
+   * longer resolve to a live row -- the source can have been edited, archived
+   * or deleted since this Run
+   * was created -- so it should be treated as a hint for "open the current
+   * version, if it still exists",
+   * never as a live reference.
    */
   source: SnapshotSourceResponse;
   title: string;
@@ -555,29 +654,38 @@ export interface RunScenarioSnapshotResponse {
 }
 
 /**
- * A Run's execution state, as returned to the client. Carries no pass/fail judgment: a Run
- *      whose every Activity failed is still Completed, and the activity counts say how it went.
- *
- *      Only Completed, Cancelled and Abandoned are legal terminal values to send on End Run -- Pending and
- *      Running name states the server itself moves a Run through and are rejected there.
- *
- *      Running does not by itself mean the owning worker is still alive -- it may have crashed or been
- *      killed without anything having noticed yet. Treat Running as "not yet terminal," and check
- *      LastHeartbeatAt (on RunResponse/RunSummaryResponse) to tell whether it is actually making
- *      progress.
+ * A Run's execution state, as returned to the client. Carries no pass/fail
+ * judgment: a Run
+ * whose every Activity failed is still Completed, and the activity counts say
+ * how it went.
+ * Only Completed, Cancelled and Abandoned are legal terminal values to send
+ * on End Run -- Pending and
+ * Running name states the server itself moves a Run through and are rejected
+ * there.
+ * Running does not by itself mean the owning worker is still alive -- it may
+ * have crashed or been
+ * killed without anything having noticed yet. Treat Running as "not yet
+ * terminal," and check
+ * LastHeartbeatAt (on RunResponse/RunSummaryResponse) to tell whether it is
+ * actually making
+ * progress.
  */
 export type RunStatus = number;
 
 /**
- * What a Run status update row records, as returned to the client. AppendActivityResult is
- *     the only kind that exists today -- see the server's design notes for what earns a new one.
+ * What a Run status update row records, as returned to the client.
+ * AppendActivityResult is
+ * the only kind that exists today -- see the server's design notes for what
+ * earns a new one.
  */
 export type RunStatusUpdateKind = number;
 
 /**
- * One entry of a Run's status update log, as returned to the client. The API hands these back
- *     exactly as appended, in sequence order -- it never folds or interprets them; only the client
- *     does.
+ * One entry of a Run's status update log, as returned to the client. The API
+ * hands these back
+ * exactly as appended, in sequence order -- it never folds or interprets
+ * them; only the client
+ * does.
  */
 export interface RunStatusUpdateResponse {
   /**
@@ -586,42 +694,52 @@ export interface RunStatusUpdateResponse {
    */
   seq: number | string;
   /**
-   * What a Run status update row records, as returned to the client. AppendActivityResult is
-   *     the only kind that exists today -- see the server's design notes for what earns a new one.
+   * What a Run status update row records, as returned to the client.
+   * AppendActivityResult is
+   * the only kind that exists today -- see the server's design notes for what
+   * earns a new one.
    */
   kind: RunStatusUpdateKind;
   /** @format date-time */
   createdAt: string;
   /**
-   * Set when Kind is AppendActivityResult -- the only kind today, so always set in
-   *     practice.
+   * Set when Kind is AppendActivityResult -- the only kind today, so always set
+   * in
+   * practice.
    */
   activityResult?: null | ActivityResult;
 }
 
 /**
- * A Run's identity and execution state only -- no Environment, no Scenarios -- exactly what the
- *     Application's Runs panel shows for one row of the list.
+ * A Run's identity and execution state only -- no Environment, no Scenarios
+ * -- exactly what the
+ * Application's Runs panel shows for one row of the list.
  */
 export interface RunSummaryResponse {
   /** @format uuid */
   id: string;
   /**
-   * Where a Run came from, as returned to the client. Affects retention and whether the Run
-   *     shows up in the Application's Runs panel -- nothing about how it executes.
+   * Where a Run came from, as returned to the client. Affects retention and
+   * whether the Run
+   * shows up in the Application's Runs panel -- nothing about how it executes.
    */
   trigger: RunTrigger;
   /**
-   * A Run's execution state, as returned to the client. Carries no pass/fail judgment: a Run
-   *      whose every Activity failed is still Completed, and the activity counts say how it went.
-   *
-   *      Only Completed, Cancelled and Abandoned are legal terminal values to send on End Run -- Pending and
-   *      Running name states the server itself moves a Run through and are rejected there.
-   *
-   *      Running does not by itself mean the owning worker is still alive -- it may have crashed or been
-   *      killed without anything having noticed yet. Treat Running as "not yet terminal," and check
-   *      LastHeartbeatAt (on RunResponse/RunSummaryResponse) to tell whether it is actually making
-   *      progress.
+   * A Run's execution state, as returned to the client. Carries no pass/fail
+   * judgment: a Run
+   * whose every Activity failed is still Completed, and the activity counts say
+   * how it went.
+   * Only Completed, Cancelled and Abandoned are legal terminal values to send
+   * on End Run -- Pending and
+   * Running name states the server itself moves a Run through and are rejected
+   * there.
+   * Running does not by itself mean the owning worker is still alive -- it may
+   * have crashed or been
+   * killed without anything having noticed yet. Treat Running as "not yet
+   * terminal," and check
+   * LastHeartbeatAt (on RunResponse/RunSummaryResponse) to tell whether it is
+   * actually making
+   * progress.
    */
   status: RunStatus;
   /**
@@ -651,17 +769,20 @@ export interface RunSummaryResponse {
   /** @format date-time */
   completedAt?: null | string;
   /**
-   * When the owning worker last proved it was alive. Null while Status is Pending. A Run
-   *     stuck on Running with an old LastHeartbeatAt has likely lost its worker -- Status alone does not
-   *     tell you that.
+   * When the owning worker last proved it was alive. Null while Status is
+   * Pending. A Run
+   * stuck on Running with an old LastHeartbeatAt has likely lost its worker --
+   * Status alone does not
+   * tell you that.
    * @format date-time
    */
   lastHeartbeatAt?: null | string;
 }
 
 /**
- * Where a Run came from, as returned to the client. Affects retention and whether the Run
- *     shows up in the Application's Runs panel -- nothing about how it executes.
+ * Where a Run came from, as returned to the client. Affects retention and
+ * whether the Run
+ * shows up in the Application's Runs panel -- nothing about how it executes.
  */
 export type RunTrigger = number;
 
@@ -684,10 +805,13 @@ export interface SetEnvironmentVariableRequest {
 }
 
 /**
- * Where a Run snapshot was copied from, as returned to the client: provenance only. Id may no
- *     longer resolve to a live row -- the source can have been edited, archived or deleted since this Run
- *     was created -- so it should be treated as a hint for "open the current version, if it still exists",
- *     never as a live reference.
+ * Where a Run snapshot was copied from, as returned to the client: provenance
+ * only. Id may no
+ * longer resolve to a live row -- the source can have been edited, archived
+ * or deleted since this Run
+ * was created -- so it should be treated as a hint for "open the current
+ * version, if it still exists",
+ * never as a live reference.
  */
 export interface SnapshotSourceResponse {
   /** @format uuid */
@@ -703,8 +827,9 @@ export interface SnapshotSourceResponse {
 }
 
 /**
- * Request body to edit an existing Activity's Description/PreconditionIds/EvidenceIds.
- *     Does not change the Activity's Order -- use the reorder endpoint for that.
+ * Request body to edit an existing Activity's
+ * Description/PreconditionIds/EvidenceIds.
+ * Does not change the Activity's Order -- use the reorder endpoint for that.
  */
 export interface UpdateActivityRequest {
   /** @maxLength 2000 */
@@ -722,7 +847,10 @@ export interface UpdateEnvironmentRequest {
    * @maxLength 100
    */
   name: string;
-  /** Whether an Environment is a live Production system or a non-production one (staging, dev, ...). */
+  /**
+   * Whether an Environment is a live Production system or a non-production
+   * one (staging, dev, ...).
+   */
   classification: EnvironmentClassification;
 }
 
@@ -753,8 +881,9 @@ export interface UpdatePreconditionRequest {
 }
 
 /**
- * Request body to overwrite a Running Run's four activity counts with absolute values -- never
- *     an increment, so a retried call does no harm.
+ * Request body to overwrite a Running Run's four activity counts with
+ * absolute values -- never
+ * an increment, so a retried call does no harm.
  */
 export interface UpdateRunStatsRequest {
   /**
@@ -787,7 +916,10 @@ export interface UpdateRunStatsRequest {
   skippedActivityCount: number | string;
 }
 
-/** Request body to edit an existing Scenario's Title/Description/Folder/Tags. */
+/**
+ * Request body to edit an existing Scenario's
+ * Title/Description/Folder/Tags.
+ */
 export interface UpdateScenarioRequest {
   /**
    * Must not be empty or whitespace.
@@ -802,7 +934,10 @@ export interface UpdateScenarioRequest {
   tags?: null | string[];
 }
 
-/** The signed-in AutoAssure user, as returned to the client after authentication. */
+/**
+ * The signed-in AutoAssure user, as returned to the client after
+ * authentication.
+ */
 export interface UserResponse {
   /** @format uuid */
   id: string;
@@ -1143,6 +1278,23 @@ export class Api<SecurityDataType extends unknown> {
         body: data,
         type: ContentType.Json,
         format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Activities
+     * @name DeleteActivity
+     * @request DELETE:/activities/{activityId}
+     * @response `204` `void` No Content
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
+     * @response `404` `ProblemDetails` No Activity with the given activityId exists in the caller's Organization. An Activity created milliseconds ago may not be in the IdIndex yet and an immediate delete can 404 — a retry fixes it. A just-deleted Activity can still appear in the index briefly, so a rapid double delete may reach the repository twice; the repository's condition expression keeps the counter honest.
+     */
+    deleteActivity: (activityId: string, params: RequestParams = {}) =>
+      this.http.request<void, void | ProblemDetails>({
+        path: `/activities/${activityId}`,
+        method: "DELETE",
         ...params,
       }),
   };
@@ -1550,8 +1702,9 @@ export class Api<SecurityDataType extends unknown> {
       runId: string,
       query?: {
         /**
-         * Return only updates with a higher Seq than this. Pass 0 (the default) to read
-         *     from the start of the log.
+         * Return only updates with a higher Seq than this. Pass 0 (the default) to
+         * read
+         * from the start of the log.
          * @format int64
          * @default 0
          * @pattern ^-?(?:0|[1-9]\d*)$
@@ -1732,6 +1885,28 @@ export class Api<SecurityDataType extends unknown> {
         type: ContentType.Json,
         ...params,
       }),
+
+    /**
+     * No description
+     *
+     * @tags Environments
+     * @name DeleteEnvironmentVariable
+     * @request DELETE:/environments/{environmentId}/variables/{key}
+     * @response `204` `void` Variable was deleted.
+     * @response `400` `void` Returns 400 when the request fails a validation constraint.
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
+     * @response `404` `ProblemDetails` No Environment with the given environmentId exists in the caller's Organization, or the Environment has no variable with the given key.
+     */
+    deleteEnvironmentVariable: (
+      environmentId: string,
+      key: string,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<void, void | ProblemDetails>({
+        path: `/environments/${environmentId}/variables/${key}`,
+        method: "DELETE",
+        ...params,
+      }),
   };
   evidenceDefinitions = {
     /**
@@ -1769,9 +1944,10 @@ export class Api<SecurityDataType extends unknown> {
      * @response `204` `void` No Content
      * @response `400` `ErrorResponse` The caller's Organization could not be found, has been deleted, or is a personal organization.
      * @response `403` `ErrorResponse` The caller is not an Owner of the Organization.
+     * @response `404` `ProblemDetails` The Organization does not exist.
      */
     archiveOrganization: (id: string, params: RequestParams = {}) =>
-      this.http.request<void, ErrorResponse>({
+      this.http.request<void, ErrorResponse | ProblemDetails>({
         path: `/organizations/${id}/archive`,
         method: "POST",
         ...params,
@@ -1786,9 +1962,10 @@ export class Api<SecurityDataType extends unknown> {
      * @response `204` `void` No Content
      * @response `400` `ErrorResponse` The caller's Organization could not be found or has been deleted.
      * @response `403` `ErrorResponse` The caller is not an Owner of the Organization.
+     * @response `404` `ProblemDetails` The Organization does not exist.
      */
     unarchiveOrganization: (id: string, params: RequestParams = {}) =>
-      this.http.request<void, ErrorResponse>({
+      this.http.request<void, ErrorResponse | ProblemDetails>({
         path: `/organizations/${id}/unarchive`,
         method: "POST",
         ...params,
@@ -1825,6 +2002,28 @@ export class Api<SecurityDataType extends unknown> {
         path: `/organizations/archived`,
         method: "GET",
         format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Organizations
+     * @name RemoveOrganizationMember
+     * @request DELETE:/organizations/{organizationId}/members/{userId}
+     * @response `204` `void` No Content
+     * @response `400` `ErrorResponse` The target Organization is not the caller's own Organization, the Organization is personal, or the caller is the last Owner.
+     * @response `403` `ErrorResponse` The caller is not an Owner. Returns 403 when the caller's Organization is archived.
+     * @response `404` `ProblemDetails` The target User is not a member of the Organization.
+     */
+    removeOrganizationMember: (
+      organizationId: string,
+      userId: string,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<void, ErrorResponse | ProblemDetails>({
+        path: `/organizations/${organizationId}/members/${userId}`,
+        method: "DELETE",
         ...params,
       }),
   };
