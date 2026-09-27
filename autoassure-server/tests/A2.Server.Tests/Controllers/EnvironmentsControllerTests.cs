@@ -112,29 +112,6 @@ public sealed class EnvironmentsControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -375,7 +352,7 @@ public sealed class EnvironmentsControllerTests
             await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
         )!;
         await client.PutAsJsonAsync(
-            $"/environments/{created.Id}/variables/API_URL",
+            $"/applications/{appId}/environments/{created.Id}/variables/API_URL",
             new SetEnvironmentVariableRequest
             {
                 Value = "https://staging.example.com",
@@ -384,7 +361,9 @@ public sealed class EnvironmentsControllerTests
         );
 
         // test
-        var getResponse = await client.GetAsync($"/environments/{created.Id}");
+        var getResponse = await client.GetAsync(
+            $"/applications/{appId}/environments/{created.Id}"
+        );
 
         // verify
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
@@ -416,7 +395,7 @@ public sealed class EnvironmentsControllerTests
             await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
         )!;
         await client.PutAsJsonAsync(
-            $"/environments/{created.Id}/variables/API_KEY",
+            $"/applications/{appId}/environments/{created.Id}/variables/API_KEY",
             new SetEnvironmentVariableRequest
             {
                 Value = "abcdefghij",
@@ -425,7 +404,9 @@ public sealed class EnvironmentsControllerTests
         );
 
         // test
-        var getResponse = await client.GetAsync($"/environments/{created.Id}");
+        var getResponse = await client.GetAsync(
+            $"/applications/{appId}/environments/{created.Id}"
+        );
 
         // verify: a leading slice of the value's real characters stays visible, the rest becomes stars
         // padded to the masker's fixed output length -- the real value is never returned whole, and the
@@ -462,7 +443,37 @@ public sealed class EnvironmentsControllerTests
         )!;
 
         // test
-        var response = await clientB.GetAsync($"/environments/{created.Id}");
+        var response = await clientB.GetAsync(
+            $"/applications/{appId}/environments/{created.Id}"
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetById_WhenApplicationIdDoesNotMatch_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId1 = await CreateApplicationAsync(client);
+        var appId2 = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId1}/environments",
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
+
+        // test: try to get the environment through a different application
+        var response = await client.GetAsync(
+            $"/applications/{appId2}/environments/{created.Id}"
+        );
 
         // verify
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -488,7 +499,7 @@ public sealed class EnvironmentsControllerTests
 
         // test
         var patchResponse = await client.PatchAsJsonAsync(
-            $"/environments/{created.Id}",
+            $"/applications/{appId}/environments/{created.Id}",
             new UpdateEnvironmentRequest
             {
                 Name = "Production",
@@ -527,7 +538,7 @@ public sealed class EnvironmentsControllerTests
 
         // test
         await client.PutAsJsonAsync(
-            $"/environments/{created.Id}/variables/API_URL",
+            $"/applications/{appId}/environments/{created.Id}/variables/API_URL",
             new SetEnvironmentVariableRequest
             {
                 Value = "https://staging.example.com",
@@ -535,7 +546,7 @@ public sealed class EnvironmentsControllerTests
             }
         );
         await client.PutAsJsonAsync(
-            $"/environments/{created.Id}/variables/API_KEY",
+            $"/applications/{appId}/environments/{created.Id}/variables/API_KEY",
             new SetEnvironmentVariableRequest
             {
                 Value = "secret-1",
@@ -543,7 +554,7 @@ public sealed class EnvironmentsControllerTests
             }
         );
         await client.PutAsJsonAsync(
-            $"/environments/{created.Id}/variables/API_KEY",
+            $"/applications/{appId}/environments/{created.Id}/variables/API_KEY",
             new SetEnvironmentVariableRequest
             {
                 Value = "secret-2",
@@ -552,7 +563,9 @@ public sealed class EnvironmentsControllerTests
         );
 
         // verify
-        var getResponse = await client.GetAsync($"/environments/{created.Id}");
+        var getResponse = await client.GetAsync(
+            $"/applications/{appId}/environments/{created.Id}"
+        );
         var environment =
             await getResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
 
@@ -652,13 +665,46 @@ public sealed class EnvironmentsControllerTests
     }
 
     [Fact]
+    public async Task Update_WhenApplicationIdDoesNotMatch_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId1 = await CreateApplicationAsync(client);
+        var appId2 = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId1}/environments",
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
+
+        // test: try to update the environment through a different application
+        var response = await client.PatchAsJsonAsync(
+            $"/applications/{appId2}/environments/{created.Id}",
+            new UpdateEnvironmentRequest
+            {
+                Name = "Production",
+                Classification = EnvironmentClassification.Production,
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Update_WhenNoAccessToken_ReturnsUnauthorized()
     {
         // test
         var response = await _factory
             .CreateClient()
             .PatchAsJsonAsync(
-                $"/environments/{Guid.CreateVersion7()}",
+                $"/applications/{Guid.CreateVersion7()}/environments/{Guid.CreateVersion7()}",
                 new UpdateEnvironmentRequest
                 {
                     Name = "Staging",
@@ -671,13 +717,46 @@ public sealed class EnvironmentsControllerTests
     }
 
     [Fact]
+    public async Task SetVariable_WhenApplicationIdDoesNotMatch_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId1 = await CreateApplicationAsync(client);
+        var appId2 = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId1}/environments",
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
+
+        // test: try to set variable through a different application
+        var response = await client.PutAsJsonAsync(
+            $"/applications/{appId2}/environments/{created.Id}/variables/API_URL",
+            new SetEnvironmentVariableRequest
+            {
+                Value = "https://example.com",
+                IsSensitive = false,
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task SetVariable_WhenNoAccessToken_ReturnsUnauthorized()
     {
         // test
         var response = await _factory
             .CreateClient()
             .PutAsJsonAsync(
-                $"/environments/{Guid.CreateVersion7()}/variables/API_URL",
+                $"/applications/{Guid.CreateVersion7()}/environments/{Guid.CreateVersion7()}/variables/API_URL",
                 new SetEnvironmentVariableRequest
                 {
                     Value = "x",
@@ -695,7 +774,9 @@ public sealed class EnvironmentsControllerTests
         // test
         var response = await _factory
             .CreateClient()
-            .GetAsync($"/environments/{Guid.CreateVersion7()}");
+            .GetAsync(
+                $"/applications/{Guid.CreateVersion7()}/environments/{Guid.CreateVersion7()}"
+            );
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -754,7 +835,7 @@ public sealed class EnvironmentsControllerTests
 
         // test
         var response = await client.PatchAsJsonAsync(
-            $"/environments/{created.Id}",
+            $"/applications/{appId}/environments/{created.Id}",
             new UpdateEnvironmentRequest
             {
                 Name = new string('a', nameLength),
@@ -792,7 +873,7 @@ public sealed class EnvironmentsControllerTests
 
         // test
         var response = await client.PutAsJsonAsync(
-            $"/environments/{created.Id}/variables/API_URL",
+            $"/applications/{appId}/environments/{created.Id}/variables/API_URL",
             new SetEnvironmentVariableRequest
             {
                 Value = new string('a', valueLength),
@@ -829,7 +910,7 @@ public sealed class EnvironmentsControllerTests
 
         // test
         var response = await client.PutAsJsonAsync(
-            $"/environments/{created.Id}/variables/{new string('k', keyLength)}",
+            $"/applications/{appId}/environments/{created.Id}/variables/{new string('k', keyLength)}",
             new SetEnvironmentVariableRequest
             {
                 Value = "x",
@@ -890,7 +971,7 @@ public sealed class EnvironmentsControllerTests
 
         // test
         var response = await client.PatchAsync(
-            $"/environments/{created.Id}",
+            $"/applications/{appId}/environments/{created.Id}",
             new StringContent(rawJson, Encoding.UTF8, "application/json")
         );
 
@@ -923,7 +1004,7 @@ public sealed class EnvironmentsControllerTests
 
         // test
         var response = await client.PutAsync(
-            $"/environments/{created.Id}/variables/API_URL",
+            $"/applications/{appId}/environments/{created.Id}/variables/API_URL",
             new StringContent(rawJson, Encoding.UTF8, "application/json")
         );
 
@@ -949,7 +1030,7 @@ public sealed class EnvironmentsControllerTests
             await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
         )!;
         await client.PutAsJsonAsync(
-            $"/environments/{created.Id}/variables/API_URL",
+            $"/applications/{appId}/environments/{created.Id}/variables/API_URL",
             new SetEnvironmentVariableRequest
             {
                 Value = "https://staging.example.com",
@@ -959,12 +1040,14 @@ public sealed class EnvironmentsControllerTests
 
         // test
         var deleteResponse = await client.DeleteAsync(
-            $"/environments/{created.Id}/variables/API_URL"
+            $"/applications/{appId}/environments/{created.Id}/variables/API_URL"
         );
 
         // verify
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
-        var getResponse = await client.GetAsync($"/environments/{created.Id}");
+        var getResponse = await client.GetAsync(
+            $"/applications/{appId}/environments/{created.Id}"
+        );
         var environment =
             await getResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
         Assert.NotNull(environment);
@@ -991,7 +1074,7 @@ public sealed class EnvironmentsControllerTests
 
         // test
         var deleteResponse = await client.DeleteAsync(
-            $"/environments/{created.Id}/variables/NONEXISTENT"
+            $"/applications/{appId}/environments/{created.Id}/variables/NONEXISTENT"
         );
 
         // verify
@@ -1003,10 +1086,11 @@ public sealed class EnvironmentsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
+        var appId = Guid.CreateVersion7();
 
         // test
         var deleteResponse = await client.DeleteAsync(
-            $"/environments/{Guid.CreateVersion7()}/variables/API_URL"
+            $"/applications/{appId}/environments/{Guid.CreateVersion7()}/variables/API_URL"
         );
 
         // verify
@@ -1036,7 +1120,7 @@ public sealed class EnvironmentsControllerTests
             await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
         )!;
         await clientA.PutAsJsonAsync(
-            $"/environments/{created.Id}/variables/API_URL",
+            $"/applications/{appIdA}/environments/{created.Id}/variables/API_URL",
             new SetEnvironmentVariableRequest
             {
                 Value = "value-a",
@@ -1046,12 +1130,14 @@ public sealed class EnvironmentsControllerTests
 
         // test
         var deleteResponse = await clientB.DeleteAsync(
-            $"/environments/{created.Id}/variables/API_URL"
+            $"/applications/{appIdA}/environments/{created.Id}/variables/API_URL"
         );
 
         // verify: clientB gets 404, variable in clientA's org is untouched
         Assert.Equal(HttpStatusCode.NotFound, deleteResponse.StatusCode);
-        var getResponse = await clientA.GetAsync($"/environments/{created.Id}");
+        var getResponse = await clientA.GetAsync(
+            $"/applications/{appIdA}/environments/{created.Id}"
+        );
         var environment =
             await getResponse.Content.ReadFromJsonAsync<EnvironmentResponse>();
         Assert.NotNull(environment);
@@ -1084,7 +1170,7 @@ public sealed class EnvironmentsControllerTests
 
         // test
         var response = await client.DeleteAsync(
-            $"/environments/{created.Id}/variables/{new string('k', keyLength)}"
+            $"/applications/{appId}/environments/{created.Id}/variables/{new string('k', keyLength)}"
         );
 
         // verify
@@ -1111,11 +1197,47 @@ public sealed class EnvironmentsControllerTests
 
         // test
         var response = await client.DeleteAsync(
-            $"/environments/{created.Id}/variables/API KEY"
+            $"/applications/{appId}/environments/{created.Id}/variables/API KEY"
         );
 
         // verify
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteVariable_WhenApplicationIdDoesNotMatch_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId1 = await CreateApplicationAsync(client);
+        var appId2 = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId1}/environments",
+            new CreateEnvironmentRequest
+            {
+                Name = "Staging",
+                Classification = EnvironmentClassification.NonProduction,
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<EnvironmentResponse>()
+        )!;
+        await client.PutAsJsonAsync(
+            $"/applications/{appId1}/environments/{created.Id}/variables/API_URL",
+            new SetEnvironmentVariableRequest
+            {
+                Value = "https://staging.example.com",
+                IsSensitive = false,
+            }
+        );
+
+        // test: try to delete variable through a different application
+        var response = await client.DeleteAsync(
+            $"/applications/{appId2}/environments/{created.Id}/variables/API_URL"
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -1125,7 +1247,7 @@ public sealed class EnvironmentsControllerTests
         var response = await _factory
             .CreateClient()
             .DeleteAsync(
-                $"/environments/{Guid.CreateVersion7()}/variables/API_URL"
+                $"/applications/{Guid.CreateVersion7()}/environments/{Guid.CreateVersion7()}/variables/API_URL"
             );
 
         // verify

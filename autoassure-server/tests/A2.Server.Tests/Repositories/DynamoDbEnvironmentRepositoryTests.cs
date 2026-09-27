@@ -57,29 +57,6 @@ public sealed class DynamoDbEnvironmentRepositoryTests(
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -155,6 +132,7 @@ public sealed class DynamoDbEnvironmentRepositoryTests(
         var saved = await _repository.TrySaveAsync(environment);
         var result = await _repository.GetByIdAsync(
             organizationId,
+            applicationId,
             environment.Id
         );
 
@@ -225,6 +203,7 @@ public sealed class DynamoDbEnvironmentRepositoryTests(
         );
         var result = await _repository.GetByIdAsync(
             organizationId,
+            applicationId,
             environment.Id
         );
 
@@ -271,7 +250,11 @@ public sealed class DynamoDbEnvironmentRepositoryTests(
                 ),
             }
         );
-        var result = await _repository.GetByIdAsync(organizationId, id);
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            applicationId,
+            id
+        );
 
         // verify
         Assert.False(succeeded);
@@ -284,7 +267,42 @@ public sealed class DynamoDbEnvironmentRepositoryTests(
         // test
         var result = await _repository.GetByIdAsync(
             Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
             Guid.CreateVersion7()
+        );
+
+        // verify
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenEnvironmentInDifferentApplication_ReturnsNull()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationIdA = Guid.CreateVersion7();
+        var applicationIdB = Guid.CreateVersion7();
+        await PutApplicationAsync(organizationId, applicationIdA);
+        await PutApplicationAsync(organizationId, applicationIdB);
+        var environment = new Environment
+        {
+            Id = Guid.CreateVersion7(),
+            OrganizationId = organizationId,
+            ApplicationId = applicationIdA,
+            Name = "Staging",
+            Classification = EnvironmentClassification.NonProduction,
+            CreatedByUserId = Guid.CreateVersion7(),
+            UpdatedByUserId = Guid.CreateVersion7(),
+            CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            UpdatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        };
+        await _repository.TrySaveAsync(environment);
+
+        // test
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            applicationIdB,
+            environment.Id
         );
 
         // verify

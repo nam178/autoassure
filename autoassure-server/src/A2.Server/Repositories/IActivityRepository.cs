@@ -39,8 +39,12 @@ public interface IActivityRepository
         ActivityUpdatableFields fields
     );
 
-    /// <summary>Point lookup by Id, scoped to the Organization.</summary>
-    Task<Activity?> GetByIdAsync(Guid organizationId, Guid activityId);
+    /// <summary>Point lookup by Id, scoped to the Scenario. </summary>
+    Task<Activity?> GetByIdAsync(
+        Guid organizationId,
+        Guid scenarioId,
+        Guid activityId
+    );
 
     /// <summary>
     ///     All Activities in this Scenario, ordered by

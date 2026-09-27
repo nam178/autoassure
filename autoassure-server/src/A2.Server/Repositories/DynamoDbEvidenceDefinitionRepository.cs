@@ -11,8 +11,6 @@ public class DynamoDbEvidenceDefinitionRepository(
     IOptions<DynamoDbOptions> options
 ) : IEvidenceDefinitionRepository
 {
-    private const string IdIndexName = "IdIndex";
-
     private string TableName => options.Value.EvidenceDefinitionTableName;
     private string ApplicationTableName => options.Value.ApplicationTableName;
 
@@ -117,30 +115,30 @@ public class DynamoDbEvidenceDefinitionRepository(
 
     public async Task<EvidenceDefinition?> GetByIdAsync(
         Guid organizationId,
+        Guid applicationId,
         Guid evidenceDefinitionId
     )
     {
-        var response = await client.QueryAsync(
-            new QueryRequest
+        var response = await client.GetItemAsync(
+            new GetItemRequest
             {
                 TableName = TableName,
-                IndexName = IdIndexName,
-                KeyConditionExpression =
-                    "OrganizationId = :organizationId AND Id = :id",
-                ExpressionAttributeValues = new Dictionary<
-                    string,
-                    AttributeValue
-                >
+                Key = new Dictionary<string, AttributeValue>
                 {
-                    [":organizationId"] = new(organizationId.ToString()),
-                    [":id"] = new(evidenceDefinitionId.ToString()),
+                    ["OrganizationId_ApplicationId"] = new(
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            applicationId
+                        )
+                    ),
+                    ["Id"] = new(evidenceDefinitionId.ToString()),
                 },
-                Limit = 1,
+                ConsistentRead = true,
             }
         );
 
-        return response.Items.Count > 0
-            ? response.Items[0].ToEvidenceDefinition()
+        return response.Item?.Count > 0
+            ? response.Item.ToEvidenceDefinition()
             : null;
     }
 

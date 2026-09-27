@@ -77,29 +77,6 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -168,6 +145,7 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
         var saved = await _repository.TrySaveAsync(evidence);
         var result = await _repository.GetByIdAsync(
             organizationId,
+            applicationId,
             evidence.Id
         );
 
@@ -221,6 +199,7 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
         );
         var result = await _repository.GetByIdAsync(
             organizationId,
+            applicationId,
             evidence.Id
         );
 
@@ -269,7 +248,11 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
                 ),
             }
         );
-        var result = await _repository.GetByIdAsync(organizationId, id);
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            applicationId,
+            id
+        );
 
         // verify
         Assert.False(succeeded);
@@ -281,10 +264,12 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
     {
         // setup
         var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
 
         // test
         var result = await _repository.GetByIdAsync(
             organizationId,
+            applicationId,
             Guid.CreateVersion7()
         );
 
@@ -306,6 +291,29 @@ public sealed class DynamoDbEvidenceDefinitionRepositoryTests(
         // test
         var result = await _repository.GetByIdAsync(
             otherOrganizationId,
+            applicationId,
+            evidence.Id
+        );
+
+        // verify
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenScopedToDifferentApplication_ReturnsNull()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var otherApplicationId = Guid.CreateVersion7();
+        await PutApplicationAsync(organizationId, applicationId);
+        var evidence = CreateEvidenceDefinition(organizationId, applicationId);
+        await _repository.TrySaveAsync(evidence);
+
+        // test
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            otherApplicationId,
             evidence.Id
         );
 

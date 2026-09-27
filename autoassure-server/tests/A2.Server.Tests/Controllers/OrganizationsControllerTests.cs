@@ -464,7 +464,7 @@ public sealed class OrganizationsControllerTests
     {
         // setup
         var userId = Guid.CreateVersion7();
-        var activeId = await SeedOrganizationWithUserAsync(
+        await SeedOrganizationWithUserAsync(
             userId,
             false,
             OrganizationRole.Owner

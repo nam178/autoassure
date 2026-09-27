@@ -41,8 +41,11 @@ public interface IScenarioRepository
         Scenario previousState
     );
 
-    /// <summary>Point lookup by Id, scoped to the Organization.</summary>
-    Task<Scenario?> GetByIdAsync(Guid organizationId, Guid scenarioId);
+    Task<Scenario?> GetByIdAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid scenarioId
+    );
 
     /// <summary>
     ///     Batched point lookup by Id, scoped to the Organization and Application.

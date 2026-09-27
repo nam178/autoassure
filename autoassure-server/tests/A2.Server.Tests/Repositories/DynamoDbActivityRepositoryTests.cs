@@ -90,29 +90,6 @@ public sealed class DynamoDbActivityRepositoryTests(
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -247,6 +224,7 @@ public sealed class DynamoDbActivityRepositoryTests(
         var result = await _repository.TrySaveAsync(activity);
         var fetched = await _repository.GetByIdAsync(
             organizationId,
+            scenarioId,
             activity.Id
         );
 
@@ -339,6 +317,7 @@ public sealed class DynamoDbActivityRepositoryTests(
         );
         var fetched = await _repository.GetByIdAsync(
             organizationId,
+            scenarioId,
             activity.Id
         );
 
@@ -493,7 +472,36 @@ public sealed class DynamoDbActivityRepositoryTests(
         // test
         var result = await _repository.GetByIdAsync(
             Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
             Guid.CreateVersion7()
+        );
+
+        // verify
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenActivityInDifferentScenario_ReturnsNull()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var scenarioIdA = Guid.CreateVersion7();
+        var scenarioIdB = Guid.CreateVersion7();
+        await SeedScenarioAsync(organizationId, applicationId, scenarioIdA);
+        await SeedScenarioAsync(organizationId, applicationId, scenarioIdB);
+        var activity = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioIdA
+        );
+        await _repository.TrySaveAsync(activity);
+
+        // test
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            scenarioIdB,
+            activity.Id
         );
 
         // verify

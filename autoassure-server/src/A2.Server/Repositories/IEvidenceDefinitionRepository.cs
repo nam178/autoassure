@@ -27,9 +27,9 @@ public interface IEvidenceDefinitionRepository
         EvidenceDefinitionUpdatableFields fields
     );
 
-    /// <summary>Point lookup by Id, scoped to the Organization.</summary>
     Task<EvidenceDefinition?> GetByIdAsync(
         Guid organizationId,
+        Guid applicationId,
         Guid evidenceDefinitionId
     );
 

@@ -5,13 +5,22 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/scenarios/{scenarioId}/activities": {
+    "/applications/{applicationId}/scenarios/{scenarioId}/activities": {
       "post": {
         "tags": [
           "Activities"
         ],
         "operationId": "CreateActivity",
         "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           {
             "name": "scenarioId",
             "in": "path",
@@ -64,7 +73,7 @@
             }
           },
           "400": {
-            "description": "PreconditionIds/EvidenceIds do not reference existing library rows in\nthe Scenario's Application, or the Scenario already has the maximum number\nof\nActivities. Returns 400 when the request fails a validation constraint.",
+            "description": "Order is outside 0..89, PreconditionIds/EvidenceIds do not reference\nexisting library rows in the Scenario's Application, or the Scenario\nalready has the maximum number of Activities (90). Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -84,7 +93,7 @@
             }
           },
           "404": {
-            "description": "No Scenario with the given scenarioId exists in the caller's\nOrganization, or it no longer exists (deleted after this request started).",
+            "description": "No Scenario with the given scenarioId exists",
             "content": {
               "text/plain": {
                 "schema": {
@@ -115,6 +124,15 @@
         "operationId": "ListActivities",
         "parameters": [
           {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
             "name": "scenarioId",
             "in": "path",
             "required": true,
@@ -125,31 +143,22 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK",
+          "404": {
+            "description": "No Scenario with the given scenarioId exists in this Application,\nor the Application does not exist in the caller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ActivityResponse"
-                  }
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ActivityResponse"
-                  }
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ActivityResponse"
-                  }
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -157,13 +166,31 @@
         }
       }
     },
-    "/activities/{activityId}": {
+    "/applications/{applicationId}/scenarios/{scenarioId}/activities/{activityId}": {
       "patch": {
         "tags": [
           "Activities"
         ],
         "operationId": "UpdateActivity",
         "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           {
             "name": "activityId",
             "in": "path",
@@ -236,7 +263,7 @@
             }
           },
           "404": {
-            "description": "No Activity with the given activityId exists in the caller's\nOrganization.",
+            "description": "No Activity with the given activityId exists in this Scenario,\nor the Scenario does not exist in this Application,\nor the Application does not exist in the caller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -267,6 +294,24 @@
         "operationId": "DeleteActivity",
         "parameters": [
           {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
             "name": "activityId",
             "in": "path",
             "required": true,
@@ -281,7 +326,7 @@
             "description": "No Content"
           },
           "404": {
-            "description": "No Activity with the given activityId exists in the caller's\nOrganization. An Activity created milliseconds ago may not be in the\nIdIndex yet and an immediate delete can 404 — a retry fixes it. A\njust-deleted Activity can still appear in the index briefly, so a rapid\ndouble delete may reach the repository twice; the repository's condition\nexpression keeps the counter honest.",
+            "description": "No Activity with the given activityId exists in this Scenario,\nor the Scenario does not exist in this Application,\nor the Application does not exist in the caller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -306,13 +351,22 @@
         }
       }
     },
-    "/scenarios/{scenarioId}/activities/order": {
+    "/applications/{applicationId}/scenarios/{scenarioId}/activities/order": {
       "patch": {
         "tags": [
           "Activities"
         ],
         "operationId": "ReorderActivities",
         "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           {
             "name": "scenarioId",
             "in": "path",
@@ -373,8 +427,8 @@
               }
             }
           },
-          "400": {
-            "description": "OrderedActivityIds is not exactly a permutation of the Scenario's\ncurrent Activity ids. Returns 400 when the request fails a validation constraint.",
+          "409": {
+            "description": "OrderedActivityIds is not exactly a permutation of the Scenario's\ncurrent Activity ids, because the caller's copy of the Scenario is\nstale.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -394,7 +448,7 @@
             }
           },
           "404": {
-            "description": "No Scenario with the given scenarioId exists in the caller's\nOrganization.",
+            "description": "No Scenario with the given scenarioId exists in this Application,\nor the Application does not exist in the caller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -412,6 +466,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Returns 400 when the request fails a validation constraint."
           },
           "403": {
             "description": "Returns 403 when the caller's Organization is archived."
@@ -871,13 +928,22 @@
         }
       }
     },
-    "/environments/{environmentId}": {
+    "/applications/{applicationId}/environments/{environmentId}": {
       "get": {
         "tags": [
           "Environments"
         ],
         "operationId": "GetEnvironmentById",
         "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           {
             "name": "environmentId",
             "in": "path",
@@ -937,6 +1003,15 @@
         ],
         "operationId": "UpdateEnvironment",
         "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           {
             "name": "environmentId",
             "in": "path",
@@ -1017,13 +1092,22 @@
         }
       }
     },
-    "/environments/{environmentId}/variables/{key}": {
+    "/applications/{applicationId}/environments/{environmentId}/variables/{key}": {
       "put": {
         "tags": [
           "Environments"
         ],
         "operationId": "SetEnvironmentVariable",
         "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           {
             "name": "environmentId",
             "in": "path",
@@ -1103,6 +1187,15 @@
         ],
         "operationId": "DeleteEnvironmentVariable",
         "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           {
             "name": "environmentId",
             "in": "path",
@@ -1292,13 +1385,22 @@
         }
       }
     },
-    "/evidence-definitions/{evidenceDefinitionId}": {
+    "/applications/{applicationId}/evidence-definitions/{evidenceDefinitionId}": {
       "patch": {
         "tags": [
           "EvidenceDefinitions"
         ],
         "operationId": "UpdateEvidenceDefinition",
         "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           {
             "name": "evidenceDefinitionId",
             "in": "path",
@@ -1351,7 +1453,7 @@
             }
           },
           "404": {
-            "description": "No EvidenceDefinition with the given evidenceDefinitionId exists in the\ncaller's Organization.",
+            "description": "No EvidenceDefinition with the given evidenceDefinitionId exists in the\ncaller's Organization and Application.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -1855,13 +1957,22 @@
         }
       }
     },
-    "/preconditions/{preconditionId}": {
+    "/applications/{applicationId}/preconditions/{preconditionId}": {
       "patch": {
         "tags": [
           "Preconditions"
         ],
         "operationId": "UpdatePrecondition",
         "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           {
             "name": "preconditionId",
             "in": "path",
@@ -1914,7 +2025,7 @@
             }
           },
           "404": {
-            "description": "No Precondition with the given preconditionId exists in the caller's\nOrganization.",
+            "description": "No Precondition with the given preconditionId exists in the caller's\nOrganization and Application.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3010,13 +3121,22 @@
         }
       }
     },
-    "/scenarios/{scenarioId}": {
+    "/applications/{applicationId}/scenarios/{scenarioId}": {
       "get": {
         "tags": [
           "Scenarios"
         ],
         "operationId": "GetScenarioById",
         "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           {
             "name": "scenarioId",
             "in": "path",
@@ -3049,7 +3169,7 @@
             }
           },
           "404": {
-            "description": "No Scenario with the given scenarioId exists in the caller's\nOrganization.",
+            "description": "No Scenario with the given scenarioId exists in this Application,\nor the Application does not exist in the caller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3076,6 +3196,15 @@
         ],
         "operationId": "UpdateScenario",
         "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           {
             "name": "scenarioId",
             "in": "path",
@@ -3148,7 +3277,7 @@
             }
           },
           "404": {
-            "description": "No Scenario with the given scenarioId exists in the caller's\nOrganization.",
+            "description": "No Scenario with the given scenarioId exists in this Application,\nor the Application does not exist in the caller's Organization.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3393,13 +3522,25 @@
       },
       "CreateActivityRequest": {
         "required": [
-          "description"
+          "description",
+          "order"
         ],
         "type": "object",
         "properties": {
           "description": {
             "maxLength": 2000,
             "type": "string"
+          },
+          "order": {
+            "maximum": 89,
+            "minimum": 0,
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Zero-based display position within the Scenario, chosen by the caller.\nNot checked for uniqueness -- use the reorder endpoint to fix up positions.",
+            "format": "int32"
           },
           "preconditionIds": {
             "maxItems": 15,
@@ -3424,7 +3565,7 @@
             }
           }
         },
-        "description": "Request body to append a new Activity to a Scenario.\nPreconditionIds/EvidenceIds must\neach reference existing library rows in the Scenario's Application."
+        "description": "Request body to add a new Activity to a Scenario.\nPreconditionIds/EvidenceIds must\neach reference existing library rows in the Scenario's Application."
       },
       "CreateApplicationRequest": {
         "required": [

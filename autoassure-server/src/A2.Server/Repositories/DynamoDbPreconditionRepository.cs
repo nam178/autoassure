@@ -11,8 +11,6 @@ public class DynamoDbPreconditionRepository(
     IOptions<DynamoDbOptions> options
 ) : IPreconditionRepository
 {
-    private const string IdIndexName = "IdIndex";
-
     private string TableName => options.Value.PreconditionTableName;
     private string ApplicationTableName => options.Value.ApplicationTableName;
 
@@ -117,31 +115,29 @@ public class DynamoDbPreconditionRepository(
 
     public async Task<Precondition?> GetByIdAsync(
         Guid organizationId,
+        Guid applicationId,
         Guid preconditionId
     )
     {
-        var response = await client.QueryAsync(
-            new QueryRequest
+        var response = await client.GetItemAsync(
+            new GetItemRequest
             {
                 TableName = TableName,
-                IndexName = IdIndexName,
-                KeyConditionExpression =
-                    "OrganizationId = :organizationId AND Id = :id",
-                ExpressionAttributeValues = new Dictionary<
-                    string,
-                    AttributeValue
-                >
+                Key = new Dictionary<string, AttributeValue>
                 {
-                    [":organizationId"] = new(organizationId.ToString()),
-                    [":id"] = new(preconditionId.ToString()),
+                    ["OrganizationId_ApplicationId"] = new(
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            applicationId
+                        )
+                    ),
+                    ["Id"] = new(preconditionId.ToString()),
                 },
-                Limit = 1,
+                ConsistentRead = true,
             }
         );
 
-        return response.Items.Count > 0
-            ? response.Items[0].ToPrecondition()
-            : null;
+        return response.Item?.Count > 0 ? response.Item.ToPrecondition() : null;
     }
 
     public async Task<IReadOnlyList<Precondition>> ListByApplicationAsync(

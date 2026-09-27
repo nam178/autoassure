@@ -217,16 +217,6 @@ resource "aws_dynamodb_table" "environments" {
     type = "S"
   }
 
-  # Point lookup by Id alone, for the flat PATCH /environments/{id} route (no
-  # ApplicationId in the URL). Eventually consistent (GSIs don't support
-  # ConsistentRead) — see DynamoDbEnvironmentRepository.cs.
-  global_secondary_index {
-    name            = "IdIndex"
-    hash_key        = "OrganizationId"
-    range_key       = "Id"
-    projection_type = "ALL"
-  }
-
   point_in_time_recovery {
     enabled = var.environment == "prod"
   }
@@ -304,15 +294,6 @@ resource "aws_dynamodb_table" "preconditions" {
     type = "S"
   }
 
-  # Point lookup by Id alone, for the flat /preconditions/{id} routes. Eventually
-  # consistent (GSIs don't support ConsistentRead) — see DynamoDbPreconditionRepository.cs.
-  global_secondary_index {
-    name            = "IdIndex"
-    hash_key        = "OrganizationId"
-    range_key       = "Id"
-    projection_type = "ALL"
-  }
-
   point_in_time_recovery {
     enabled = var.environment == "prod"
   }
@@ -354,16 +335,6 @@ resource "aws_dynamodb_table" "evidence_definitions" {
     type = "S"
   }
 
-  # Point lookup by Id alone, for the flat /evidence-definitions/{id} routes.
-  # Eventually consistent (GSIs don't support ConsistentRead) — see
-  # DynamoDbEvidenceDefinitionRepository.cs.
-  global_secondary_index {
-    name            = "IdIndex"
-    hash_key        = "OrganizationId"
-    range_key       = "Id"
-    projection_type = "ALL"
-  }
-
   point_in_time_recovery {
     enabled = var.environment == "prod"
   }
@@ -403,15 +374,6 @@ resource "aws_dynamodb_table" "scenarios" {
   attribute {
     name = "OrganizationId"
     type = "S"
-  }
-
-  # Point lookup by Id alone, for the flat /scenarios/{id} routes. Eventually
-  # consistent (GSIs don't support ConsistentRead) — see DynamoDbScenarioRepository.cs.
-  global_secondary_index {
-    name            = "IdIndex"
-    hash_key        = "OrganizationId"
-    range_key       = "Id"
-    projection_type = "ALL"
   }
 
   point_in_time_recovery {
@@ -530,15 +492,6 @@ resource "aws_dynamodb_table" "activities" {
   attribute {
     name = "OrganizationId"
     type = "S"
-  }
-
-  # Point lookup by Id alone, for the flat /activities/{id} routes. Eventually
-  # consistent (GSIs don't support ConsistentRead) — see DynamoDbActivityRepository.cs.
-  global_secondary_index {
-    name            = "IdIndex"
-    hash_key        = "OrganizationId"
-    range_key       = "Id"
-    projection_type = "ALL"
   }
 
   point_in_time_recovery {

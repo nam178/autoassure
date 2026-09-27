@@ -122,29 +122,6 @@ public sealed class ActivitiesControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -178,29 +155,6 @@ public sealed class ActivitiesControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -301,29 +255,6 @@ public sealed class ActivitiesControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -495,10 +426,11 @@ public sealed class ActivitiesControllerTests
 
         // test
         var createResponse = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities",
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
             new CreateActivityRequest
             {
                 Description = "Add item to cart",
+                Order = 3,
                 PreconditionIds = [preconditionId],
                 EvidenceIds = [],
             }
@@ -510,12 +442,12 @@ public sealed class ActivitiesControllerTests
             await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
         Assert.NotNull(created);
         Assert.Equal("Add item to cart", created.Description);
-        Assert.Equal(0, created.Order);
+        Assert.Equal(3, created.Order);
         Assert.Equal(preconditionId, Assert.Single(created.PreconditionIds));
 
         // test
         var patchResponse = await client.PatchAsJsonAsync(
-            $"/activities/{created.Id}",
+            $"/applications/{appId}/scenarios/{scenarioId}/activities/{created.Id}",
             new UpdateActivityRequest
             {
                 Description = "Updated step",
@@ -533,7 +465,7 @@ public sealed class ActivitiesControllerTests
 
         // test
         var listResponse = await client.GetAsync(
-            $"/scenarios/{scenarioId}/activities"
+            $"/applications/{appId}/scenarios/{scenarioId}/activities"
         );
 
         // verify
@@ -541,6 +473,24 @@ public sealed class ActivitiesControllerTests
             List<ActivityResponse>
         >();
         Assert.Equal(updated.Description, Assert.Single(list!).Description);
+    }
+
+    [Fact]
+    public async Task List_WhenApplicationIdDoesNotMatchScenario_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var otherAppId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+
+        // test
+        var response = await client.GetAsync(
+            $"/applications/{otherAppId}/scenarios/{scenarioId}/activities"
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -553,10 +503,11 @@ public sealed class ActivitiesControllerTests
 
         // test
         var response = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities",
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
             new CreateActivityRequest
             {
                 Description = "Step",
+                Order = 0,
                 PreconditionIds = [Guid.CreateVersion7()],
                 EvidenceIds = [],
             }
@@ -567,6 +518,28 @@ public sealed class ActivitiesControllerTests
     }
 
     [Fact]
+    public async Task Create_WhenScenarioDoesNotExistAndPreconditionIdDoesNotExist_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios/{Guid.CreateVersion7()}/activities",
+            new CreateActivityRequest
+            {
+                Description = "Step",
+                Order = 0,
+                PreconditionIds = [Guid.CreateVersion7()],
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Create_WhenScenarioDoesNotExist_ReturnsNotFound()
     {
         // setup
@@ -574,8 +547,8 @@ public sealed class ActivitiesControllerTests
 
         // test
         var response = await client.PostAsJsonAsync(
-            $"/scenarios/{Guid.CreateVersion7()}/activities",
-            new CreateActivityRequest { Description = "Step" }
+            $"/applications/{Guid.CreateVersion7()}/scenarios/{Guid.CreateVersion7()}/activities",
+            new CreateActivityRequest { Description = "Step", Order = 0 }
         );
 
         // verify
@@ -591,14 +564,18 @@ public sealed class ActivitiesControllerTests
         var scenarioId = await CreateScenarioAsync(client, appId);
         for (var i = 0; i < 90; i++)
             await client.PostAsJsonAsync(
-                $"/scenarios/{scenarioId}/activities",
-                new CreateActivityRequest { Description = "Step" }
+                $"/applications/{appId}/scenarios/{scenarioId}/activities",
+                new CreateActivityRequest { Description = "Step", Order = i }
             );
 
         // test
         var response = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities",
-            new CreateActivityRequest { Description = "One too many" }
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest
+            {
+                Description = "One too many",
+                Order = 89,
+            }
         );
 
         // verify
@@ -606,24 +583,24 @@ public sealed class ActivitiesControllerTests
     }
 
     [Fact]
-    public async Task List_WhenMultipleActivitiesExist_ReturnsOrderedByCreationOrder()
+    public async Task List_WhenActivitiesCreatedOutOfOrder_ReturnsSortedByOrder()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
         var appId = await CreateApplicationAsync(client);
         var scenarioId = await CreateScenarioAsync(client, appId);
         await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities",
-            new CreateActivityRequest { Description = "First" }
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Second", Order = 1 }
         );
         await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities",
-            new CreateActivityRequest { Description = "Second" }
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "First", Order = 0 }
         );
 
         // test
         var response = await client.GetAsync(
-            $"/scenarios/{scenarioId}/activities"
+            $"/applications/{appId}/scenarios/{scenarioId}/activities"
         );
 
         // verify
@@ -642,8 +619,33 @@ public sealed class ActivitiesControllerTests
 
         // test
         var response = await client.PatchAsJsonAsync(
-            $"/activities/{Guid.CreateVersion7()}",
+            $"/applications/{Guid.CreateVersion7()}/scenarios/{Guid.CreateVersion7()}/activities/{Guid.CreateVersion7()}",
             new UpdateActivityRequest { Description = "X" }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WhenApplicationIdDoesNotMatchScenario_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var otherAppId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Step", Order = 0 }
+        );
+        var created =
+            await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
+
+        // test
+        var response = await client.PatchAsJsonAsync(
+            $"/applications/{otherAppId}/scenarios/{scenarioId}/activities/{created!.Id}",
+            new UpdateActivityRequest { Description = "Updated step" }
         );
 
         // verify
@@ -658,15 +660,15 @@ public sealed class ActivitiesControllerTests
         var appId = await CreateApplicationAsync(client);
         var scenarioId = await CreateScenarioAsync(client, appId);
         var createResponse = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities",
-            new CreateActivityRequest { Description = "Step" }
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Step", Order = 0 }
         );
         var created =
             await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
 
         // test
         var response = await client.PatchAsJsonAsync(
-            $"/activities/{created!.Id}",
+            $"/applications/{appId}/scenarios/{scenarioId}/activities/{created!.Id}",
             new UpdateActivityRequest
             {
                 Description = "Updated step",
@@ -687,15 +689,15 @@ public sealed class ActivitiesControllerTests
         var appId = await CreateApplicationAsync(client);
         var scenarioId = await CreateScenarioAsync(client, appId);
         var firstResponse = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities",
-            new CreateActivityRequest { Description = "First" }
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "First", Order = 0 }
         );
         var first = (
             await firstResponse.Content.ReadFromJsonAsync<ActivityResponse>()
         )!;
         var secondResponse = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities",
-            new CreateActivityRequest { Description = "Second" }
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Second", Order = 1 }
         );
         var second = (
             await secondResponse.Content.ReadFromJsonAsync<ActivityResponse>()
@@ -703,7 +705,7 @@ public sealed class ActivitiesControllerTests
 
         // test
         var response = await client.PatchAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities/order",
+            $"/applications/{appId}/scenarios/{scenarioId}/activities/order",
             new ReorderActivitiesRequest
             {
                 OrderedActivityIds = [second.Id, first.Id],
@@ -719,20 +721,20 @@ public sealed class ActivitiesControllerTests
     }
 
     [Fact]
-    public async Task Reorder_WhenNotAPermutation_ReturnsBadRequest()
+    public async Task Reorder_WhenNotAPermutation_ReturnsConflict()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
         var appId = await CreateApplicationAsync(client);
         var scenarioId = await CreateScenarioAsync(client, appId);
         await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities",
-            new CreateActivityRequest { Description = "First" }
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "First", Order = 0 }
         );
 
         // test
         var response = await client.PatchAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities/order",
+            $"/applications/{appId}/scenarios/{scenarioId}/activities/order",
             new ReorderActivitiesRequest
             {
                 OrderedActivityIds = [Guid.CreateVersion7()],
@@ -740,7 +742,7 @@ public sealed class ActivitiesControllerTests
         );
 
         // verify
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
     [Fact]
@@ -751,7 +753,7 @@ public sealed class ActivitiesControllerTests
 
         // test
         var response = await client.PatchAsJsonAsync(
-            $"/scenarios/{Guid.CreateVersion7()}/activities/order",
+            $"/applications/{Guid.CreateVersion7()}/scenarios/{Guid.CreateVersion7()}/activities/order",
             new ReorderActivitiesRequest { OrderedActivityIds = [] }
         );
 
@@ -775,10 +777,11 @@ public sealed class ActivitiesControllerTests
 
         // test
         var response = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities",
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
             new CreateActivityRequest
             {
                 Description = new string('a', descriptionLength),
+                Order = 0,
             }
         );
 
@@ -804,10 +807,11 @@ public sealed class ActivitiesControllerTests
 
         // test
         var response = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities",
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
             new CreateActivityRequest
             {
                 Description = "Step",
+                Order = 0,
                 PreconditionIds = preconditionIds,
             }
         );
@@ -817,13 +821,43 @@ public sealed class ActivitiesControllerTests
     }
 
     [Theory]
-    [InlineData("""{"preconditionIds":null,"evidenceIds":null}""")] // description missing entirely
+    [InlineData(-1, HttpStatusCode.BadRequest)]
+    [InlineData(0, HttpStatusCode.OK)]
+    [InlineData(89, HttpStatusCode.OK)]
+    [InlineData(90, HttpStatusCode.BadRequest)]
+    [InlineData(int.MaxValue, HttpStatusCode.BadRequest)]
+    public async Task Create_WhenOrderAtBoundary_EnforcesRange(
+        int order,
+        HttpStatusCode expectedStatus
+    )
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Step", Order = order }
+        );
+
+        // verify
+        Assert.Equal(expectedStatus, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("""{"order":0,"preconditionIds":null,"evidenceIds":null}""")] // description missing entirely
     [InlineData(
-        """{"description":null,"preconditionIds":null,"evidenceIds":null}"""
+        """{"description":null,"order":0,"preconditionIds":null,"evidenceIds":null}"""
     )] // description explicitly null
     [InlineData(
-        """{"description":123,"preconditionIds":null,"evidenceIds":null}"""
+        """{"description":123,"order":0,"preconditionIds":null,"evidenceIds":null}"""
     )] // description wrong type
+    [InlineData("""{"description":"Step"}""")] // order missing entirely
+    [InlineData("""{"description":"Step","order":null}""")] // order explicitly null
+    [InlineData("""{"description":"Step","order":"first"}""")] // order wrong type
+    [InlineData("""{"description":"Step","order":1.5}""")] // order not an integer
     public async Task Create_WhenRequestHasInvalidShape_ReturnsBadRequest(
         string rawJson
     )
@@ -835,7 +869,7 @@ public sealed class ActivitiesControllerTests
 
         // test
         var response = await client.PostAsync(
-            $"/scenarios/{scenarioId}/activities",
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
             new StringContent(rawJson, Encoding.UTF8, "application/json")
         );
 
@@ -850,8 +884,8 @@ public sealed class ActivitiesControllerTests
         var response = await _factory
             .CreateClient()
             .PostAsJsonAsync(
-                $"/scenarios/{Guid.CreateVersion7()}/activities",
-                new CreateActivityRequest { Description = "Step" }
+                $"/applications/{Guid.CreateVersion7()}/scenarios/{Guid.CreateVersion7()}/activities",
+                new CreateActivityRequest { Description = "Step", Order = 0 }
             );
 
         // verify
@@ -864,7 +898,9 @@ public sealed class ActivitiesControllerTests
         // test
         var response = await _factory
             .CreateClient()
-            .GetAsync($"/scenarios/{Guid.CreateVersion7()}/activities");
+            .GetAsync(
+                $"/applications/{Guid.CreateVersion7()}/scenarios/{Guid.CreateVersion7()}/activities"
+            );
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -877,7 +913,7 @@ public sealed class ActivitiesControllerTests
         var response = await _factory
             .CreateClient()
             .PatchAsJsonAsync(
-                $"/activities/{Guid.CreateVersion7()}",
+                $"/applications/{Guid.CreateVersion7()}/scenarios/{Guid.CreateVersion7()}/activities/{Guid.CreateVersion7()}",
                 new UpdateActivityRequest { Description = "Step" }
             );
 
@@ -892,7 +928,7 @@ public sealed class ActivitiesControllerTests
         var response = await _factory
             .CreateClient()
             .PatchAsJsonAsync(
-                $"/scenarios/{Guid.CreateVersion7()}/activities/order",
+                $"/applications/{Guid.CreateVersion7()}/scenarios/{Guid.CreateVersion7()}/activities/order",
                 new ReorderActivitiesRequest { OrderedActivityIds = [] }
             );
 
@@ -908,15 +944,15 @@ public sealed class ActivitiesControllerTests
         var appId = await CreateApplicationAsync(client);
         var scenarioId = await CreateScenarioAsync(client, appId);
         var createResponse = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities",
-            new CreateActivityRequest { Description = "Step" }
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Step", Order = 0 }
         );
         var activity =
             await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
 
         // test
         var deleteResponse = await client.DeleteAsync(
-            $"/activities/{activity!.Id}"
+            $"/applications/{appId}/scenarios/{scenarioId}/activities/{activity!.Id}"
         );
 
         // verify: delete succeeds
@@ -924,7 +960,7 @@ public sealed class ActivitiesControllerTests
 
         // verify: scenario's count dropped by one
         var listResponse = await client.GetAsync(
-            $"/scenarios/{scenarioId}/activities"
+            $"/applications/{appId}/scenarios/{scenarioId}/activities"
         );
         var activities = await listResponse.Content.ReadFromJsonAsync<
             List<ActivityResponse>
@@ -940,18 +976,18 @@ public sealed class ActivitiesControllerTests
         var appId = await CreateApplicationAsync(client);
         var scenarioId = await CreateScenarioAsync(client, appId);
         var createResponse = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities",
-            new CreateActivityRequest { Description = "Step" }
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Step", Order = 0 }
         );
         var activity =
             await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
 
         // test
         var firstDelete = await client.DeleteAsync(
-            $"/activities/{activity!.Id}"
+            $"/applications/{appId}/scenarios/{scenarioId}/activities/{activity!.Id}"
         );
         var secondDelete = await client.DeleteAsync(
-            $"/activities/{activity.Id}"
+            $"/applications/{appId}/scenarios/{scenarioId}/activities/{activity.Id}"
         );
 
         // verify
@@ -972,15 +1008,15 @@ public sealed class ActivitiesControllerTests
         var appIdA = await CreateApplicationAsync(clientA);
         var scenarioIdA = await CreateScenarioAsync(clientA, appIdA);
         var createResponse = await clientA.PostAsJsonAsync(
-            $"/scenarios/{scenarioIdA}/activities",
-            new CreateActivityRequest { Description = "Step" }
+            $"/applications/{appIdA}/scenarios/{scenarioIdA}/activities",
+            new CreateActivityRequest { Description = "Step", Order = 0 }
         );
         var activity =
             await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
 
         // test: clientB tries to delete activity from clientA's org
         var deleteResponse = await clientB.DeleteAsync(
-            $"/activities/{activity!.Id}"
+            $"/applications/{appIdA}/scenarios/{scenarioIdA}/activities/{activity!.Id}"
         );
 
         // verify: clientB gets 404
@@ -988,7 +1024,42 @@ public sealed class ActivitiesControllerTests
 
         // verify: activity still exists in clientA's org
         var listResponse = await clientA.GetAsync(
-            $"/scenarios/{scenarioIdA}/activities"
+            $"/applications/{appIdA}/scenarios/{scenarioIdA}/activities"
+        );
+        var activities = await listResponse.Content.ReadFromJsonAsync<
+            List<ActivityResponse>
+        >();
+        Assert.NotNull(activities);
+        Assert.Single(activities);
+        Assert.Equal(activity.Id, activities[0].Id);
+    }
+
+    [Fact]
+    public async Task Delete_WhenApplicationIdDoesNotMatchScenario_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var otherAppId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Step", Order = 0 }
+        );
+        var activity =
+            await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
+
+        // test
+        var deleteResponse = await client.DeleteAsync(
+            $"/applications/{otherAppId}/scenarios/{scenarioId}/activities/{activity!.Id}"
+        );
+
+        // verify: request is rejected
+        Assert.Equal(HttpStatusCode.NotFound, deleteResponse.StatusCode);
+
+        // verify: activity still exists
+        var listResponse = await client.GetAsync(
+            $"/applications/{appId}/scenarios/{scenarioId}/activities"
         );
         var activities = await listResponse.Content.ReadFromJsonAsync<
             List<ActivityResponse>
@@ -1004,7 +1075,9 @@ public sealed class ActivitiesControllerTests
         // test
         var response = await _factory
             .CreateClient()
-            .DeleteAsync($"/activities/{Guid.CreateVersion7()}");
+            .DeleteAsync(
+                $"/applications/{Guid.CreateVersion7()}/scenarios/{Guid.CreateVersion7()}/activities/{Guid.CreateVersion7()}"
+            );
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);

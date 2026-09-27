@@ -111,29 +111,6 @@ public sealed class PreconditionsControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -320,7 +297,7 @@ public sealed class PreconditionsControllerTests
 
         // test
         var patchResponse = await client.PatchAsJsonAsync(
-            $"/preconditions/{created.Id}",
+            $"/applications/{appId}/preconditions/{created.Id}",
             new UpdatePreconditionRequest
             {
                 Name = "Order ID",
@@ -406,7 +383,7 @@ public sealed class PreconditionsControllerTests
 
         // test
         var updateResponse = await client.PatchAsJsonAsync(
-            $"/preconditions/{created.Id}",
+            $"/applications/{appId}/preconditions/{created.Id}",
             new UpdatePreconditionRequest
             {
                 Name = "Order Confirmation ID",
@@ -460,10 +437,11 @@ public sealed class PreconditionsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
 
         // test
         var response = await client.PatchAsJsonAsync(
-            $"/preconditions/{Guid.CreateVersion7()}",
+            $"/applications/{appId}/preconditions/{Guid.CreateVersion7()}",
             new UpdatePreconditionRequest
             {
                 Name = "X",
@@ -588,7 +566,7 @@ public sealed class PreconditionsControllerTests
         var response = await _factory
             .CreateClient()
             .PatchAsJsonAsync(
-                $"/preconditions/{Guid.CreateVersion7()}",
+                $"/applications/{Guid.CreateVersion7()}/preconditions/{Guid.CreateVersion7()}",
                 new UpdatePreconditionRequest
                 {
                     Name = "X",
@@ -628,7 +606,7 @@ public sealed class PreconditionsControllerTests
 
         // test
         var response = await client.PatchAsJsonAsync(
-            $"/preconditions/{created.Id}",
+            $"/applications/{appId}/preconditions/{created.Id}",
             new UpdatePreconditionRequest
             {
                 Name = new string('a', nameLength),
@@ -740,11 +718,47 @@ public sealed class PreconditionsControllerTests
 
         // test
         var response = await client.PatchAsync(
-            $"/preconditions/{created.Id}",
+            $"/applications/{appId}/preconditions/{created.Id}",
             new StringContent(rawJson, Encoding.UTF8, "application/json")
         );
 
         // verify
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WhenWrongApplication_ReturnsNotFound()
+    {
+        // setup
+        var clientA = await CreateClientWithMembershipAsync();
+        var clientB = await CreateClientWithMembershipAsync();
+        var appIdA = await CreateApplicationAsync(clientA);
+        var appIdB = await CreateApplicationAsync(clientB);
+        var createResponse = await clientA.PostAsJsonAsync(
+            $"/applications/{appIdA}/preconditions",
+            new CreatePreconditionRequest
+            {
+                Name = "Order Confirmation ID",
+                ValueSource = PreconditionValueSource.SpecificValue,
+                ExampleValue = "",
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<PreconditionResponse>()
+        )!;
+
+        // test
+        var response = await clientB.PatchAsJsonAsync(
+            $"/applications/{appIdB}/preconditions/{created.Id}",
+            new UpdatePreconditionRequest
+            {
+                Name = "Updated",
+                ValueSource = PreconditionValueSource.SpecificValue,
+                ExampleValue = "",
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 }

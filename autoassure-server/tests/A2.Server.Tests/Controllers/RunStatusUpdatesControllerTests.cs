@@ -130,29 +130,6 @@ public sealed class RunStatusUpdatesControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -204,29 +181,6 @@ public sealed class RunStatusUpdatesControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -260,29 +214,6 @@ public sealed class RunStatusUpdatesControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -469,29 +400,6 @@ public sealed class RunStatusUpdatesControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -653,12 +561,17 @@ public sealed class RunStatusUpdatesControllerTests
 
     private static async Task<Guid> CreateActivityAsync(
         HttpClient client,
+        Guid applicationId,
         Guid scenarioId
     )
     {
         var response = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities",
-            new CreateActivityRequest { Description = "Click checkout" }
+            $"/applications/{applicationId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest
+            {
+                Description = "Click checkout",
+                Order = 0,
+            }
         );
         var activity =
             await response.Content.ReadFromJsonAsync<ActivityResponse>();
@@ -679,8 +592,8 @@ public sealed class RunStatusUpdatesControllerTests
         var scenarioId = await CreateScenarioAsync(client, appId);
         var activityIds = new List<Guid>
         {
-            await CreateActivityAsync(client, scenarioId),
-            await CreateActivityAsync(client, scenarioId),
+            await CreateActivityAsync(client, appId, scenarioId),
+            await CreateActivityAsync(client, appId, scenarioId),
         };
 
         var createResponse = await client.PostAsJsonAsync(
@@ -1003,8 +916,8 @@ public sealed class RunStatusUpdatesControllerTests
         var appId = await CreateApplicationAsync(client);
         var environmentId = await CreateEnvironmentAsync(client, appId);
         var scenarioId = await CreateScenarioAsync(client, appId);
-        var activity1 = await CreateActivityAsync(client, scenarioId);
-        var activity2 = await CreateActivityAsync(client, scenarioId);
+        var activity1 = await CreateActivityAsync(client, appId, scenarioId);
+        var activity2 = await CreateActivityAsync(client, appId, scenarioId);
 
         var createResponse = await client.PostAsJsonAsync(
             $"/applications/{appId}/runs",

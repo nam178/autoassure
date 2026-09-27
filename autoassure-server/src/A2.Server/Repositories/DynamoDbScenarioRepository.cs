@@ -11,8 +11,6 @@ public class DynamoDbScenarioRepository(
     IOptions<DynamoDbOptions> options
 ) : IScenarioRepository
 {
-    private const string IdIndexName = "IdIndex";
-
     private const int BatchGetChunkSize = 100;
 
     // Partition key attribute names of the two mapping tables. They hold
@@ -136,29 +134,29 @@ public class DynamoDbScenarioRepository(
 
     public async Task<Scenario?> GetByIdAsync(
         Guid organizationId,
+        Guid applicationId,
         Guid scenarioId
     )
     {
-        var response = await client.QueryAsync(
-            new QueryRequest
+        var response = await client.GetItemAsync(
+            new GetItemRequest
             {
                 TableName = ScenarioTableName,
-                IndexName = IdIndexName,
-                KeyConditionExpression =
-                    "OrganizationId = :organizationId AND Id = :id",
-                ExpressionAttributeValues = new Dictionary<
-                    string,
-                    AttributeValue
-                >
+                Key = new Dictionary<string, AttributeValue>
                 {
-                    [":organizationId"] = new(organizationId.ToString()),
-                    [":id"] = new(scenarioId.ToString()),
+                    ["OrganizationId_ApplicationId"] = new(
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            applicationId
+                        )
+                    ),
+                    ["Id"] = new(scenarioId.ToString()),
                 },
-                Limit = 1,
+                ConsistentRead = true,
             }
         );
 
-        return response.Items.Count > 0 ? response.Items[0].ToScenario() : null;
+        return response.Item?.Count > 0 ? response.Item.ToScenario() : null;
     }
 
     public async Task<IReadOnlyList<Scenario>> GetByIdsAsync(

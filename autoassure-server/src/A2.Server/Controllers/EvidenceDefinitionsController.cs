@@ -78,15 +78,16 @@ public class EvidenceDefinitionsController(
 
     /// <response code="404">
     ///     No EvidenceDefinition with the given evidenceDefinitionId exists in the
-    ///     caller's Organization.
+    ///     caller's Organization and Application.
     /// </response>
     [HttpPatch(
-        "evidence-definitions/{evidenceDefinitionId:guid}",
+        "applications/{applicationId:guid}/evidence-definitions/{evidenceDefinitionId:guid}",
         Name = "UpdateEvidenceDefinition"
     )]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EvidenceDefinitionResponse>> Update(
+        Guid applicationId,
         Guid evidenceDefinitionId,
         UpdateEvidenceDefinitionRequest request
     )
@@ -96,6 +97,7 @@ public class EvidenceDefinitionsController(
         var organizationId = callerOrganization.Id;
         var existing = await evidenceDefinitionRepository.GetByIdAsync(
             organizationId,
+            applicationId,
             evidenceDefinitionId
         );
         if (existing is null)
@@ -111,7 +113,7 @@ public class EvidenceDefinitionsController(
         };
         var updateSucceeded = await evidenceDefinitionRepository.TryUpdateAsync(
             organizationId,
-            existing.ApplicationId,
+            applicationId,
             evidenceDefinitionId,
             fields
         );

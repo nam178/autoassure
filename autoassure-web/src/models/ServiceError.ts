@@ -33,10 +33,16 @@ export class ServiceError extends Error {
     if (isAxiosError(error)) {
       const status = error.response?.status;
       if (status !== undefined && status < 500) {
-        return new ServiceError("client", error.message, { status, cause: error });
+        return new ServiceError("client", error.message, {
+          status,
+          cause: error,
+        });
       }
       if (status !== undefined) {
-        return new ServiceError("server", error.message, { status, cause: error });
+        return new ServiceError("server", error.message, {
+          status,
+          cause: error,
+        });
       }
       return new ServiceError("network", error.message, { cause: error });
     }

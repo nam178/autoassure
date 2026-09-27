@@ -11,8 +11,6 @@ public class DynamoDbEnvironmentRepository(
     IOptions<DynamoDbOptions> options
 ) : IEnvironmentRepository
 {
-    private const string IdIndexName = "IdIndex";
-
     private string TableName => options.Value.EnvironmentTableName;
     private string ApplicationTableName => options.Value.ApplicationTableName;
 
@@ -118,31 +116,32 @@ public class DynamoDbEnvironmentRepository(
 
     public async Task<Environment?> GetByIdAsync(
         Guid organizationId,
+        Guid applicationId,
         Guid environmentId
     )
     {
-        var response = await client.QueryAsync(
-            new QueryRequest
+        var response = await client.GetItemAsync(
+            new GetItemRequest
             {
                 TableName = TableName,
-                IndexName = IdIndexName,
-                KeyConditionExpression =
-                    "OrganizationId = :organizationId AND Id = :id",
-                ExpressionAttributeValues = new Dictionary<
-                    string,
-                    AttributeValue
-                >
+                Key = new Dictionary<string, AttributeValue>
                 {
-                    [":organizationId"] = new(organizationId.ToString()),
-                    [":id"] = new(environmentId.ToString()),
+                    ["OrganizationId_ApplicationId"] = new(
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            applicationId
+                        )
+                    ),
+                    ["Id"] = new(environmentId.ToString()),
                 },
-                Limit = 1,
+                ConsistentRead = true,
             }
         );
 
-        return response.Items.Count > 0
-            ? response.Items[0].ToEnvironment()
-            : null;
+        if (response.Item is null || response.Item.Count == 0)
+            return null;
+
+        return response.Item.ToEnvironment();
     }
 
     public async Task<IReadOnlyList<Environment>> ListByApplicationAsync(

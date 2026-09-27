@@ -77,29 +77,6 @@ public sealed class DynamoDbPreconditionRepositoryTests(
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -166,6 +143,7 @@ public sealed class DynamoDbPreconditionRepositoryTests(
         var saved = await _repository.TrySaveAsync(precondition);
         var result = await _repository.GetByIdAsync(
             organizationId,
+            applicationId,
             precondition.Id
         );
 
@@ -219,6 +197,7 @@ public sealed class DynamoDbPreconditionRepositoryTests(
         );
         var result = await _repository.GetByIdAsync(
             organizationId,
+            applicationId,
             precondition.Id
         );
 
@@ -267,7 +246,11 @@ public sealed class DynamoDbPreconditionRepositoryTests(
                 ),
             }
         );
-        var result = await _repository.GetByIdAsync(organizationId, id);
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            applicationId,
+            id
+        );
 
         // verify
         Assert.False(succeeded);
@@ -279,11 +262,36 @@ public sealed class DynamoDbPreconditionRepositoryTests(
     {
         // setup
         var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
 
         // test
         var result = await _repository.GetByIdAsync(
             organizationId,
+            applicationId,
             Guid.CreateVersion7()
+        );
+
+        // verify
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenPreconditionExistsInDifferentApplication_ReturnsNull()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationIdA = Guid.CreateVersion7();
+        var applicationIdB = Guid.CreateVersion7();
+        await PutApplicationAsync(organizationId, applicationIdA);
+        await PutApplicationAsync(organizationId, applicationIdB);
+        var precondition = CreatePrecondition(organizationId, applicationIdA);
+        await _repository.TrySaveAsync(precondition);
+
+        // test
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            applicationIdB,
+            precondition.Id
         );
 
         // verify

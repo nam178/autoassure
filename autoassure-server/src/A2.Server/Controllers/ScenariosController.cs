@@ -136,19 +136,26 @@ public class ScenariosController(
     }
 
     /// <response code="404">
-    ///     No Scenario with the given scenarioId exists in the caller's
-    ///     Organization.
+    ///     No Scenario with the given scenarioId exists in this Application,
+    ///     or the Application does not exist in the caller's Organization.
     /// </response>
-    [HttpGet("scenarios/{scenarioId:guid}", Name = "GetScenarioById")]
+    [HttpGet(
+        "applications/{applicationId:guid}/scenarios/{scenarioId:guid}",
+        Name = "GetScenarioById"
+    )]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ScenarioResponse>> GetById(Guid scenarioId)
+    public async Task<ActionResult<ScenarioResponse>> GetById(
+        Guid applicationId,
+        Guid scenarioId
+    )
     {
         var callerOrganization =
             await callerOrganizationService.GetCallerOrganizationAsync();
         var organizationId = callerOrganization.Id;
         var scenario = await scenarioRepository.GetByIdAsync(
             organizationId,
+            applicationId,
             scenarioId
         );
         return scenario is null ? NotFound() : Ok(scenario.ToResponse());
@@ -156,14 +163,17 @@ public class ScenariosController(
 
     /// <response code="400">A tag in Tags is longer than 50 characters.</response>
     /// <response code="404">
-    ///     No Scenario with the given scenarioId exists in the caller's
-    ///     Organization.
+    ///     No Scenario with the given scenarioId exists in this Application,
+    ///     or the Application does not exist in the caller's Organization.
     /// </response>
     /// <response code="409">
     ///     The Scenario's Application no longer exists (deleted after this request
     ///     started).
     /// </response>
-    [HttpPatch("scenarios/{scenarioId:guid}", Name = "UpdateScenario")]
+    [HttpPatch(
+        "applications/{applicationId:guid}/scenarios/{scenarioId:guid}",
+        Name = "UpdateScenario"
+    )]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(
         typeof(ErrorResponse),
@@ -172,6 +182,7 @@ public class ScenariosController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ScenarioResponse>> Update(
+        Guid applicationId,
         Guid scenarioId,
         UpdateScenarioRequest request
     )
@@ -181,6 +192,7 @@ public class ScenariosController(
         var organizationId = callerOrganization.Id;
         var previous = await scenarioRepository.GetByIdAsync(
             organizationId,
+            applicationId,
             scenarioId
         );
         if (previous is null)

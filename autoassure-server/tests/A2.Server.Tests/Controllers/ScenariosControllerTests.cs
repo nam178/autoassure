@@ -115,29 +115,6 @@ public sealed class ScenariosControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -246,29 +223,6 @@ public sealed class ScenariosControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -440,7 +394,9 @@ public sealed class ScenariosControllerTests
         Assert.Equal("/Checkout", created.Folder);
 
         // test
-        var getResponse = await client.GetAsync($"/scenarios/{created.Id}");
+        var getResponse = await client.GetAsync(
+            $"/applications/{appId}/scenarios/{created.Id}"
+        );
 
         // verify
         var fetched =
@@ -475,7 +431,9 @@ public sealed class ScenariosControllerTests
         Assert.Equal("", Assert.Single(created!.Tags));
 
         // test
-        var getResponse = await client.GetAsync($"/scenarios/{created.Id}");
+        var getResponse = await client.GetAsync(
+            $"/applications/{appId}/scenarios/{created.Id}"
+        );
 
         // verify
         var fetched =
@@ -552,7 +510,7 @@ public sealed class ScenariosControllerTests
 
         // test
         var patchResponse = await client.PatchAsJsonAsync(
-            $"/scenarios/{created.Id}",
+            $"/applications/{appId}/scenarios/{created.Id}",
             new UpdateScenarioRequest
             {
                 Title = "Title",
@@ -613,7 +571,7 @@ public sealed class ScenariosControllerTests
 
         // test
         await client.PatchAsJsonAsync(
-            $"/scenarios/{created.Id}",
+            $"/applications/{appId}/scenarios/{created.Id}",
             new UpdateScenarioRequest
             {
                 Title = "Title",
@@ -634,7 +592,7 @@ public sealed class ScenariosControllerTests
 
         // test
         await client.PatchAsJsonAsync(
-            $"/scenarios/{created.Id}",
+            $"/applications/{appId}/scenarios/{created.Id}",
             new UpdateScenarioRequest
             {
                 Title = "Title",
@@ -659,10 +617,11 @@ public sealed class ScenariosControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
 
         // test
         var response = await client.PatchAsJsonAsync(
-            $"/scenarios/{Guid.CreateVersion7()}",
+            $"/applications/{appId}/scenarios/{Guid.CreateVersion7()}",
             new UpdateScenarioRequest
             {
                 Title = "Title",
@@ -670,6 +629,73 @@ public sealed class ScenariosControllerTests
                 Folder = "/",
                 Tags = null,
             }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WhenScenarioInDifferentApplication_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId1 = await CreateApplicationAsync(client);
+        var appId2 = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId1}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+
+        // test
+        var response = await client.PatchAsJsonAsync(
+            $"/applications/{appId2}/scenarios/{created.Id}",
+            new UpdateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/",
+                Tags = null,
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetById_WhenScenarioInDifferentApplication_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId1 = await CreateApplicationAsync(client);
+        var appId2 = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId1}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+
+        // test
+        var response = await client.GetAsync(
+            $"/applications/{appId2}/scenarios/{created.Id}"
         );
 
         // verify
@@ -716,7 +742,7 @@ public sealed class ScenariosControllerTests
 
         // test
         var response = await client.PatchAsJsonAsync(
-            $"/scenarios/{created.Id}",
+            $"/applications/{appId}/scenarios/{created.Id}",
             new UpdateScenarioRequest
             {
                 Title = "Title",
@@ -776,7 +802,7 @@ public sealed class ScenariosControllerTests
 
         // test
         var response = await client.PatchAsJsonAsync(
-            $"/scenarios/{created.Id}",
+            $"/applications/{appId}/scenarios/{created.Id}",
             new UpdateScenarioRequest
             {
                 Title = "Title",
@@ -973,7 +999,7 @@ public sealed class ScenariosControllerTests
 
         // test
         var response = await client.PatchAsync(
-            $"/scenarios/{created.Id}",
+            $"/applications/{appId}/scenarios/{created.Id}",
             new StringContent(
                 """{"title":"Title","description":"Description","tags":null}""",
                 Encoding.UTF8,
@@ -1057,7 +1083,9 @@ public sealed class ScenariosControllerTests
         // test
         var response = await _factory
             .CreateClient()
-            .GetAsync($"/scenarios/{Guid.CreateVersion7()}");
+            .GetAsync(
+                $"/applications/{Guid.CreateVersion7()}/scenarios/{Guid.CreateVersion7()}"
+            );
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -1070,7 +1098,7 @@ public sealed class ScenariosControllerTests
         var response = await _factory
             .CreateClient()
             .PatchAsJsonAsync(
-                $"/scenarios/{Guid.CreateVersion7()}",
+                $"/applications/{Guid.CreateVersion7()}/scenarios/{Guid.CreateVersion7()}",
                 new UpdateScenarioRequest
                 {
                     Title = "Title",

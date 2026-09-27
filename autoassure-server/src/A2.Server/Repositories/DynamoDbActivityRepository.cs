@@ -12,8 +12,6 @@ public class DynamoDbActivityRepository(
     IOptions<DynamoDbOptions> options
 ) : IActivityRepository
 {
-    private const string IdIndexName = "IdIndex";
-
     private string TableName => options.Value.ActivityTableName;
     private string ScenarioTableName => options.Value.ScenarioTableName;
     private string PreconditionTableName => options.Value.PreconditionTableName;
@@ -145,29 +143,29 @@ public class DynamoDbActivityRepository(
 
     public async Task<Activity?> GetByIdAsync(
         Guid organizationId,
+        Guid scenarioId,
         Guid activityId
     )
     {
-        var response = await client.QueryAsync(
-            new QueryRequest
+        var response = await client.GetItemAsync(
+            new GetItemRequest
             {
                 TableName = TableName,
-                IndexName = IdIndexName,
-                KeyConditionExpression =
-                    "OrganizationId = :organizationId AND Id = :id",
-                ExpressionAttributeValues = new Dictionary<
-                    string,
-                    AttributeValue
-                >
+                Key = new Dictionary<string, AttributeValue>
                 {
-                    [":organizationId"] = new(organizationId.ToString()),
-                    [":id"] = new(activityId.ToString()),
+                    ["OrganizationId_ScenarioId"] = new(
+                        DynamoDbMapper.ScenarioScopedPartitionKey(
+                            organizationId,
+                            scenarioId
+                        )
+                    ),
+                    ["Id"] = new(activityId.ToString()),
                 },
-                Limit = 1,
+                ConsistentRead = true,
             }
         );
 
-        return response.Items.Count > 0 ? response.Items[0].ToActivity() : null;
+        return response.IsItemSet ? response.Item.ToActivity() : null;
     }
 
     public async Task<IReadOnlyList<Activity>> ListByScenarioAsync(

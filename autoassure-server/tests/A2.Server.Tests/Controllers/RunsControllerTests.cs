@@ -134,29 +134,6 @@ public sealed class RunsControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -208,29 +185,6 @@ public sealed class RunsControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -264,29 +218,6 @@ public sealed class RunsControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -475,29 +406,6 @@ public sealed class RunsControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -639,6 +547,7 @@ public sealed class RunsControllerTests
 
     private static async Task SetEnvironmentVariableAsync(
         HttpClient client,
+        Guid applicationId,
         Guid environmentId,
         string key,
         string value,
@@ -646,7 +555,7 @@ public sealed class RunsControllerTests
     )
     {
         var response = await client.PutAsJsonAsync(
-            $"/environments/{environmentId}/variables/{key}",
+            $"/applications/{applicationId}/environments/{environmentId}/variables/{key}",
             new SetEnvironmentVariableRequest
             {
                 Value = value,
@@ -679,16 +588,18 @@ public sealed class RunsControllerTests
 
     private static async Task<Guid> CreateActivityAsync(
         HttpClient client,
+        Guid applicationId,
         Guid scenarioId,
         IReadOnlyList<Guid>? preconditionIds = null,
         IReadOnlyList<Guid>? evidenceIds = null
     )
     {
         var response = await client.PostAsJsonAsync(
-            $"/scenarios/{scenarioId}/activities",
+            $"/applications/{applicationId}/scenarios/{scenarioId}/activities",
             new CreateActivityRequest
             {
                 Description = "Click checkout",
+                Order = 0,
                 PreconditionIds = preconditionIds,
                 EvidenceIds = evidenceIds,
             }
@@ -716,7 +627,7 @@ public sealed class RunsControllerTests
             appId,
             scenarioTitle
         );
-        await CreateActivityAsync(client, scenarioId);
+        await CreateActivityAsync(client, appId, scenarioId);
         return (appId, environmentId, scenarioId);
     }
 
@@ -780,6 +691,7 @@ public sealed class RunsControllerTests
         const string secret = "abcdefghijklmnopqrstuvwxyz";
         await SetEnvironmentVariableAsync(
             client,
+            appId,
             environmentId,
             "API_KEY",
             secret,
@@ -815,6 +727,7 @@ public sealed class RunsControllerTests
         const string secret = "abcdefghijklmnopqrstuvwxyz";
         await SetEnvironmentVariableAsync(
             client,
+            appId,
             environmentId,
             "API_KEY",
             secret,
@@ -926,7 +839,7 @@ public sealed class RunsControllerTests
 
         // test -- edit the live Scenario after the Run was created
         var patchResponse = await client.PatchAsJsonAsync(
-            $"/scenarios/{scenarioId}",
+            $"/applications/{appId}/scenarios/{scenarioId}",
             new UpdateScenarioRequest
             {
                 Title = "Changed After The Run",
@@ -984,6 +897,7 @@ public sealed class RunsControllerTests
 
         var activityId = await CreateActivityAsync(
             client,
+            appId,
             scenarioId,
             [precondition.Id],
             [evidence.Id]
@@ -1135,6 +1049,7 @@ public sealed class RunsControllerTests
         const string secret = "abcdefghijklmnopqrstuvwxyz";
         await SetEnvironmentVariableAsync(
             client,
+            appId,
             environmentId,
             "API_KEY",
             secret,

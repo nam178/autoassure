@@ -73,9 +73,10 @@ public class RunsController(
 
         var environment = await environmentRepository.GetByIdAsync(
             organizationId,
+            applicationId,
             request.EnvironmentId
         );
-        if (environment is null || environment.ApplicationId != applicationId)
+        if (environment is null)
             return BadRequest(
                 new ErrorResponse(
                     "EnvironmentId does not reference an Environment belonging to this Application."

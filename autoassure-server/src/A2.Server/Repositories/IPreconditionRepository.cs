@@ -26,8 +26,11 @@ public interface IPreconditionRepository
         PreconditionUpdatableFields fields
     );
 
-    /// <summary>Point lookup by Id, scoped to the Organization.</summary>
-    Task<Precondition?> GetByIdAsync(Guid organizationId, Guid preconditionId);
+    Task<Precondition?> GetByIdAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid preconditionId
+    );
 
     /// <summary>
     ///     All Preconditions in this Application's library. Ordering: newest

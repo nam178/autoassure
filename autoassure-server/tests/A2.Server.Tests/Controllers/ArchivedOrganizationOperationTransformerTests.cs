@@ -101,7 +101,7 @@ public sealed class ArchivedOrganizationOperationTransformerTests
         // Archive endpoint has [AllowArchivedOrganization] so it won't get the transformer message
         var createActivityOperation = GetOperation(
             document,
-            "/scenarios/{scenarioId}/activities",
+            "/applications/{applicationId}/scenarios/{scenarioId}/activities",
             "post"
         );
         Assert.NotNull(createActivityOperation);
@@ -178,7 +178,7 @@ public sealed class ArchivedOrganizationOperationTransformerTests
         // This endpoint documents 403 for invalid requests, and should also get the archived organization message appended
         var createActivityOperation = GetOperation(
             document,
-            "/scenarios/{scenarioId}/activities",
+            "/applications/{applicationId}/scenarios/{scenarioId}/activities",
             "post"
         );
         Assert.NotNull(createActivityOperation);

@@ -110,29 +110,6 @@ public sealed class EvidenceDefinitionsControllerTests
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -319,7 +296,7 @@ public sealed class EvidenceDefinitionsControllerTests
 
         // test
         var patchResponse = await client.PatchAsJsonAsync(
-            $"/evidence-definitions/{created.Id}",
+            $"/applications/{appId}/evidence-definitions/{created.Id}",
             new UpdateEvidenceDefinitionRequest
             {
                 Name = "Order ID",
@@ -373,13 +350,49 @@ public sealed class EvidenceDefinitionsControllerTests
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
 
         // test
         var response = await client.PatchAsJsonAsync(
-            $"/evidence-definitions/{Guid.CreateVersion7()}",
+            $"/applications/{appId}/evidence-definitions/{Guid.CreateVersion7()}",
             new UpdateEvidenceDefinitionRequest
             {
                 Name = "X",
+                Description = "",
+                ExampleValue = "",
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WhenEvidenceDefinitionExistsInDifferentApplication_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId1 = await CreateApplicationAsync(client);
+        var appId2 = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId1}/evidence-definitions",
+            new CreateEvidenceDefinitionRequest
+            {
+                Name = "Evidence 1",
+                Description = "",
+                ExampleValue = "",
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<EvidenceDefinitionResponse>()
+        )!;
+
+        // test - try to update using different app
+        var response = await client.PatchAsJsonAsync(
+            $"/applications/{appId2}/evidence-definitions/{created.Id}",
+            new UpdateEvidenceDefinitionRequest
+            {
+                Name = "Updated",
                 Description = "",
                 ExampleValue = "",
             }
@@ -489,7 +502,7 @@ public sealed class EvidenceDefinitionsControllerTests
 
         // test
         var updateResponse = await client.PatchAsJsonAsync(
-            $"/evidence-definitions/{created.Id}",
+            $"/applications/{appId}/evidence-definitions/{created.Id}",
             new UpdateEvidenceDefinitionRequest
             {
                 Name = "Order Confirmation ID",
@@ -593,7 +606,7 @@ public sealed class EvidenceDefinitionsControllerTests
         var response = await _factory
             .CreateClient()
             .PatchAsJsonAsync(
-                $"/evidence-definitions/{Guid.CreateVersion7()}",
+                $"/applications/{Guid.CreateVersion7()}/evidence-definitions/{Guid.CreateVersion7()}",
                 new UpdateEvidenceDefinitionRequest
                 {
                     Name = "X",
@@ -633,7 +646,7 @@ public sealed class EvidenceDefinitionsControllerTests
 
         // test
         var response = await client.PatchAsJsonAsync(
-            $"/evidence-definitions/{created.Id}",
+            $"/applications/{appId}/evidence-definitions/{created.Id}",
             new UpdateEvidenceDefinitionRequest
             {
                 Name = new string('a', nameLength),
@@ -792,7 +805,7 @@ public sealed class EvidenceDefinitionsControllerTests
 
         // test
         var response = await client.PatchAsync(
-            $"/evidence-definitions/{created.Id}",
+            $"/applications/{appId}/evidence-definitions/{created.Id}",
             new StringContent(rawJson, Encoding.UTF8, "application/json")
         );
 

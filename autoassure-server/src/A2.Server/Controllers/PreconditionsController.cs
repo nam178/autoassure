@@ -77,15 +77,16 @@ public class PreconditionsController(
 
     /// <response code="404">
     ///     No Precondition with the given preconditionId exists in the caller's
-    ///     Organization.
+    ///     Organization and Application.
     /// </response>
     [HttpPatch(
-        "preconditions/{preconditionId:guid}",
+        "applications/{applicationId:guid}/preconditions/{preconditionId:guid}",
         Name = "UpdatePrecondition"
     )]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<PreconditionResponse>> Update(
+        Guid applicationId,
         Guid preconditionId,
         UpdatePreconditionRequest request
     )
@@ -95,6 +96,7 @@ public class PreconditionsController(
         var organizationId = callerOrganization.Id;
         var existing = await preconditionRepository.GetByIdAsync(
             organizationId,
+            applicationId,
             preconditionId
         );
         if (existing is null)

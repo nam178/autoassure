@@ -84,10 +84,14 @@ public class EnvironmentsController(
     ///     No Environment with the given environmentId exists in the caller's
     ///     Organization.
     /// </response>
-    [HttpGet("environments/{environmentId:guid}", Name = "GetEnvironmentById")]
+    [HttpGet(
+        "applications/{applicationId:guid}/environments/{environmentId:guid}",
+        Name = "GetEnvironmentById"
+    )]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EnvironmentResponse>> GetById(
+        Guid applicationId,
         Guid environmentId
     )
     {
@@ -96,6 +100,7 @@ public class EnvironmentsController(
         var organizationId = callerOrganization.Id;
         var environment = await environmentRepository.GetByIdAsync(
             organizationId,
+            applicationId,
             environmentId
         );
         if (environment is null)
@@ -108,10 +113,14 @@ public class EnvironmentsController(
     ///     No Environment with the given environmentId exists in the caller's
     ///     Organization.
     /// </response>
-    [HttpPatch("environments/{environmentId:guid}", Name = "UpdateEnvironment")]
+    [HttpPatch(
+        "applications/{applicationId:guid}/environments/{environmentId:guid}",
+        Name = "UpdateEnvironment"
+    )]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EnvironmentResponse>> Update(
+        Guid applicationId,
         Guid environmentId,
         UpdateEnvironmentRequest request
     )
@@ -121,6 +130,7 @@ public class EnvironmentsController(
         var organizationId = callerOrganization.Id;
         var existing = await environmentRepository.GetByIdAsync(
             organizationId,
+            applicationId,
             environmentId
         );
         if (existing is null)
@@ -135,7 +145,7 @@ public class EnvironmentsController(
         };
         var updateSucceeded = await environmentRepository.TryUpdateAsync(
             organizationId,
-            existing.ApplicationId,
+            applicationId,
             environmentId,
             fields
         );
@@ -160,12 +170,13 @@ public class EnvironmentsController(
     ///     Organization, or it no longer exists (deleted after this request started).
     /// </response>
     [HttpPut(
-        "environments/{environmentId:guid}/variables/{key}",
+        "applications/{applicationId:guid}/environments/{environmentId:guid}/variables/{key}",
         Name = "SetEnvironmentVariable"
     )]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> SetVariable(
+        Guid applicationId,
         Guid environmentId,
         [MaxLength(200)] [RegularExpression("^[A-Za-z0-9_]+$")] string key,
         SetEnvironmentVariableRequest request
@@ -176,6 +187,7 @@ public class EnvironmentsController(
         var organizationId = callerOrganization.Id;
         var environment = await environmentRepository.GetByIdAsync(
             organizationId,
+            applicationId,
             environmentId
         );
         if (environment is null)
@@ -186,7 +198,7 @@ public class EnvironmentsController(
         if (
             !await environmentVariableRepository.TrySaveAsync(
                 organizationId,
-                environment.ApplicationId,
+                applicationId,
                 environmentId,
                 key,
                 request.Value,
@@ -208,12 +220,13 @@ public class EnvironmentsController(
     /// </response>
     /// <response code="204">Variable was deleted.</response>
     [HttpDelete(
-        "environments/{environmentId:guid}/variables/{key}",
+        "applications/{applicationId:guid}/environments/{environmentId:guid}/variables/{key}",
         Name = "DeleteEnvironmentVariable"
     )]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> DeleteEnvironmentVariable(
+        Guid applicationId,
         Guid environmentId,
         [MaxLength(200)] [RegularExpression("^[A-Za-z0-9_]+$")] string key
     )
@@ -223,6 +236,7 @@ public class EnvironmentsController(
         var organizationId = callerOrganization.Id;
         var environment = await environmentRepository.GetByIdAsync(
             organizationId,
+            applicationId,
             environmentId
         );
         if (environment is null)

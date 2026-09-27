@@ -26,8 +26,11 @@ public interface IEnvironmentRepository
         EnvironmentUpdatableFields fields
     );
 
-    /// <summary>Point lookup by Id, scoped to the Organization.</summary>
-    Task<Environment?> GetByIdAsync(Guid organizationId, Guid environmentId);
+    Task<Environment?> GetByIdAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid environmentId
+    );
 
     /// <summary>
     ///     All Environments belonging to this Application. Ordering: newest

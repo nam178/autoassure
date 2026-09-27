@@ -19,17 +19,15 @@ public class ActivitiesController(
 ) : ControllerBase
 {
     /// <response code="400">
-    ///     PreconditionIds/EvidenceIds do not reference existing library rows in
-    ///     the Scenario's Application, or the Scenario already has the maximum number
-    ///     of
-    ///     Activities.
+    ///     Order is outside 0..89, PreconditionIds/EvidenceIds do not reference
+    ///     existing library rows in the Scenario's Application, or the Scenario
+    ///     already has the maximum number of Activities (90).
     /// </response>
     /// <response code="404">
-    ///     No Scenario with the given scenarioId exists in the caller's
-    ///     Organization, or it no longer exists (deleted after this request started).
+    ///     No Scenario with the given scenarioId exists
     /// </response>
     [HttpPost(
-        "scenarios/{scenarioId:guid}/activities",
+        "applications/{applicationId:guid}/scenarios/{scenarioId:guid}/activities",
         Name = "CreateActivity"
     )]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -39,6 +37,7 @@ public class ActivitiesController(
     )]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ActivityResponse>> Create(
+        Guid applicationId,
         Guid scenarioId,
         CreateActivityRequest request
     )
@@ -47,33 +46,18 @@ public class ActivitiesController(
             await callerOrganizationService.GetCallerOrganizationAsync();
         var organizationId = callerOrganization.Id;
 
-        // The Scenario is the URL resource -- its non-existence must win as a 404 over a 400 for an
-        // invalid request body, so it's checked before validating references below.
-        var scenario = await scenarioRepository.GetByIdAsync(
-            organizationId,
-            scenarioId
-        );
-        if (scenario is null)
-            return NotFound();
-
-        var preconditionIds = request.PreconditionIds ?? [];
-        var evidenceIds = request.EvidenceIds ?? [];
-
         var userId = User.GetUserId();
         var now = clock.UtcNow;
         var activity = new Activity
         {
             Id = Guid.CreateVersion7(),
             OrganizationId = organizationId,
-            ApplicationId = scenario.ApplicationId,
+            ApplicationId = applicationId,
             ScenarioId = scenarioId,
             Description = request.Description,
-            // The Scenario's ActivityCount (read above) reflects the count at the start of this
-            // request, so a concurrent Create could assign the same Order -- harmless, since Order
-            // only affects display sequence and can be fixed up via Reorder.
-            Order = scenario.ActivityCount,
-            PreconditionIds = preconditionIds,
-            EvidenceIds = evidenceIds,
+            Order = request.Order,
+            PreconditionIds = request.PreconditionIds ?? [],
+            EvidenceIds = request.EvidenceIds ?? [],
             CreatedByUserId = userId,
             UpdatedByUserId = userId,
             CreatedAt = now,
@@ -81,8 +65,7 @@ public class ActivitiesController(
         };
 
         // The Scenario Activity limit is enforced atomically inside TrySaveAsync against the live
-        // ActivityCount on the Scenario row, so it can't be bypassed by concurrent Creates racing
-        // past the value read above.
+        // ActivityCount on the Scenario row, so concurrent Creates can't bypass it.
         var result = await activityRepository.TrySaveAsync(activity);
         return result switch
         {
@@ -104,14 +87,33 @@ public class ActivitiesController(
         };
     }
 
-    [HttpGet("scenarios/{scenarioId:guid}/activities", Name = "ListActivities")]
+    /// <response code="404">
+    ///     No Scenario with the given scenarioId exists in this Application,
+    ///     or the Application does not exist in the caller's Organization.
+    /// </response>
+    [HttpGet(
+        "applications/{applicationId:guid}/scenarios/{scenarioId:guid}/activities",
+        Name = "ListActivities"
+    )]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IReadOnlyList<ActivityResponse>>> List(
+        Guid applicationId,
         Guid scenarioId
     )
     {
         var callerOrganization =
             await callerOrganizationService.GetCallerOrganizationAsync();
         var organizationId = callerOrganization.Id;
+        if (
+            await scenarioRepository.GetByIdAsync(
+                organizationId,
+                applicationId,
+                scenarioId
+            )
+            is null
+        )
+            return NotFound();
+
         var activities = await activityRepository.ListByScenarioAsync(
             organizationId,
             scenarioId
@@ -124,10 +126,14 @@ public class ActivitiesController(
     ///     the Scenario's Application.
     /// </response>
     /// <response code="404">
-    ///     No Activity with the given activityId exists in the caller's
-    ///     Organization.
+    ///     No Activity with the given activityId exists in this Scenario,
+    ///     or the Scenario does not exist in this Application,
+    ///     or the Application does not exist in the caller's Organization.
     /// </response>
-    [HttpPatch("activities/{activityId:guid}", Name = "UpdateActivity")]
+    [HttpPatch(
+        "applications/{applicationId:guid}/scenarios/{scenarioId:guid}/activities/{activityId:guid}",
+        Name = "UpdateActivity"
+    )]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(
         typeof(ErrorResponse),
@@ -135,6 +141,8 @@ public class ActivitiesController(
     )]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ActivityResponse>> Update(
+        Guid applicationId,
+        Guid scenarioId,
         Guid activityId,
         UpdateActivityRequest request
     )
@@ -144,9 +152,10 @@ public class ActivitiesController(
         var organizationId = callerOrganization.Id;
         var existing = await activityRepository.GetByIdAsync(
             organizationId,
+            scenarioId,
             activityId
         );
-        if (existing is null)
+        if (existing is null || existing.ApplicationId != applicationId)
             return NotFound();
 
         var preconditionIds = request.PreconditionIds ?? [];
@@ -194,25 +203,24 @@ public class ActivitiesController(
         return Ok(updated.ToResponse());
     }
 
-    /// <response code="400">
+    /// <response code="409">
     ///     OrderedActivityIds is not exactly a permutation of the Scenario's
-    ///     current Activity ids.
+    ///     current Activity ids, because the caller's copy of the Scenario is
+    ///     stale.
     /// </response>
     /// <response code="404">
-    ///     No Scenario with the given scenarioId exists in the caller's
-    ///     Organization.
+    ///     No Scenario with the given scenarioId exists in this Application,
+    ///     or the Application does not exist in the caller's Organization.
     /// </response>
     [HttpPatch(
-        "scenarios/{scenarioId:guid}/activities/order",
+        "applications/{applicationId:guid}/scenarios/{scenarioId:guid}/activities/order",
         Name = "ReorderActivities"
     )]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(
-        typeof(ErrorResponse),
-        StatusCodes.Status400BadRequest
-    )]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IReadOnlyList<ActivityResponse>>> Reorder(
+        Guid applicationId,
         Guid scenarioId,
         ReorderActivitiesRequest request
     )
@@ -221,7 +229,11 @@ public class ActivitiesController(
             await callerOrganizationService.GetCallerOrganizationAsync();
         var organizationId = callerOrganization.Id;
         if (
-            await scenarioRepository.GetByIdAsync(organizationId, scenarioId)
+            await scenarioRepository.GetByIdAsync(
+                organizationId,
+                applicationId,
+                scenarioId
+            )
             is null
         )
             return NotFound();
@@ -238,7 +250,7 @@ public class ActivitiesController(
                 .OrderedActivityIds.ToHashSet()
                 .SetEquals(current.Select(a => a.Id))
         )
-            return BadRequest(
+            return Conflict(
                 new ErrorResponse(
                     "OrderedActivityIds must be exactly a permutation of the Scenario's current Activity ids."
                 )
@@ -262,26 +274,31 @@ public class ActivitiesController(
     }
 
     /// <response code="404">
-    ///     No Activity with the given activityId exists in the caller's
-    ///     Organization. An Activity created milliseconds ago may not be in the
-    ///     IdIndex yet and an immediate delete can 404 — a retry fixes it. A
-    ///     just-deleted Activity can still appear in the index briefly, so a rapid
-    ///     double delete may reach the repository twice; the repository's condition
-    ///     expression keeps the counter honest.
+    ///     No Activity with the given activityId exists in this Scenario,
+    ///     or the Scenario does not exist in this Application,
+    ///     or the Application does not exist in the caller's Organization.
     /// </response>
-    [HttpDelete("activities/{activityId:guid}", Name = "DeleteActivity")]
+    [HttpDelete(
+        "applications/{applicationId:guid}/scenarios/{scenarioId:guid}/activities/{activityId:guid}",
+        Name = "DeleteActivity"
+    )]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult> DeleteActivity(Guid activityId)
+    public async Task<ActionResult> DeleteActivity(
+        Guid applicationId,
+        Guid scenarioId,
+        Guid activityId
+    )
     {
         var callerOrganization =
             await callerOrganizationService.GetCallerOrganizationAsync();
         var organizationId = callerOrganization.Id;
         var activity = await activityRepository.GetByIdAsync(
             organizationId,
+            scenarioId,
             activityId
         );
-        if (activity is null)
+        if (activity is null || activity.ApplicationId != applicationId)
             return NotFound();
 
         var succeeded = await activityRepository.TryDeleteAsync(

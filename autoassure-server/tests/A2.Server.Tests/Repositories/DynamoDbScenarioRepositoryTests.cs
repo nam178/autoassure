@@ -83,29 +83,6 @@ public sealed class DynamoDbScenarioRepositoryTests(
                         ScalarAttributeType.S
                     ),
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition(
-                        "OrganizationId",
-                        ScalarAttributeType.S
-                    ),
-                ],
-                GlobalSecondaryIndexes =
-                [
-                    new GlobalSecondaryIndex
-                    {
-                        IndexName = "IdIndex",
-                        KeySchema =
-                        [
-                            new KeySchemaElement(
-                                "OrganizationId",
-                                KeyType.HASH
-                            ),
-                            new KeySchemaElement("Id", KeyType.RANGE),
-                        ],
-                        Projection = new Projection
-                        {
-                            ProjectionType = ProjectionType.ALL,
-                        },
-                    },
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
             }
@@ -226,6 +203,7 @@ public sealed class DynamoDbScenarioRepositoryTests(
         var result = await _repository.TrySaveAsync(scenario);
         var fetched = await _repository.GetByIdAsync(
             organizationId,
+            applicationId,
             scenario.Id
         );
 
@@ -317,6 +295,7 @@ public sealed class DynamoDbScenarioRepositoryTests(
         var result = await _repository.TryUpdateAsync(scenario, scenario);
         var fetched = await _repository.GetByIdAsync(
             organizationId,
+            applicationId,
             scenario.Id
         );
 
@@ -331,7 +310,31 @@ public sealed class DynamoDbScenarioRepositoryTests(
         // test
         var result = await _repository.GetByIdAsync(
             Guid.CreateVersion7(),
+            Guid.CreateVersion7(),
             Guid.CreateVersion7()
+        );
+
+        // verify
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenScenarioInDifferentApplication_ReturnsNull()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var otherApplicationId = Guid.CreateVersion7();
+        await SeedApplicationAsync(organizationId, applicationId);
+        await SeedApplicationAsync(organizationId, otherApplicationId);
+        var scenario = CreateScenario(organizationId, applicationId);
+        await _repository.TrySaveAsync(scenario);
+
+        // test
+        var result = await _repository.GetByIdAsync(
+            organizationId,
+            otherApplicationId,
+            scenario.Id
         );
 
         // verify
