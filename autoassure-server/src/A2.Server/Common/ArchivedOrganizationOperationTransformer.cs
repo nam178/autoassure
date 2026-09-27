@@ -6,15 +6,15 @@ using Microsoft.OpenApi;
 namespace A2.Server.Common;
 
 /// <summary>
-///     Documents that a non-GET operation on an authenticated endpoint returns 403
-///     when the caller's
-///     Organization is archived. The 403 describes the archived state,
-///     automatically applying to all such
-///     endpoints that don't carry
-///     <see cref="AllowArchivedOrganizationAttribute" />. This reflects the
-///     <see cref="RequireActiveOrganizationFilter" /> behavior in the response
-///     docs, so API consumers know
-///     that their archived organizations block writes.
+/// Documents that a non-GET operation on an authenticated endpoint returns 403
+/// when the caller's
+/// Organization is archived. The 403 describes the archived state,
+/// automatically applying to all such
+/// endpoints that don't carry
+/// <see cref="AllowArchivedOrganizationAttribute" />. This reflects the
+/// <see cref="RequireActiveOrganizationFilter" /> behavior in the response
+/// docs, so API consumers know
+/// that their archived organizations block writes.
 /// </summary>
 public class ArchivedOrganizationOperationTransformer
     : IOpenApiOperationTransformer

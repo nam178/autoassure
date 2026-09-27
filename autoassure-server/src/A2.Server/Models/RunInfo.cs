@@ -6,8 +6,8 @@ public record RunInfo
     public required RunTrigger Trigger { get; init; }
 
     /// <summary>
-    ///     Running does not by itself mean the owning worker is still alive -- see
-    ///     <see cref="Run.Status" />.
+    /// Running does not by itself mean the owning worker is still alive -- see
+    /// <see cref="Run.Status" />.
     /// </summary>
     public required RunStatus Status { get; init; }
 
@@ -21,9 +21,9 @@ public record RunInfo
     public DateTimeOffset? CompletedAt { get; init; }
 
     /// <summary>
-    ///     When the owning worker last proved it was alive -- see
-    ///     <see cref="Run.LastHeartbeatAt" />.
-    ///     Null while the Run is Pending, since it has no owner yet.
+    /// When the owning worker last proved it was alive -- see
+    /// <see cref="Run.LastHeartbeatAt" />.
+    /// Null while the Run is Pending, since it has no owner yet.
     /// </summary>
     public DateTimeOffset? LastHeartbeatAt { get; init; }
 }

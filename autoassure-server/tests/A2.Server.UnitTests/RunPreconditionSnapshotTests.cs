@@ -3,8 +3,8 @@ using A2.Server.Models;
 namespace A2.Server.UnitTests;
 
 /// <summary>
-///     Unit tests for <see cref="RunPreconditionSnapshot.FromPrecondition" />
-///     .
+/// Unit tests for <see cref="RunPreconditionSnapshot.FromPrecondition" />
+/// .
 /// </summary>
 public sealed class RunPreconditionSnapshotTests
 {

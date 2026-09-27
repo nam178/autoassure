@@ -1,10 +1,10 @@
 namespace A2.Server.Models;
 
 /// <summary>
-///     A test case for an Application: a freeform description of what to verify,
-///     organized by
-///     Folder/Tags. Its ordered steps live as separate Activity entities scoped to
-///     this Scenario.
+/// A test case for an Application: a freeform description of what to verify,
+/// organized by
+/// Folder/Tags. Its ordered steps live as separate Activity entities scoped to
+/// this Scenario.
 /// </summary>
 public record Scenario
 {

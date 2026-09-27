@@ -14,12 +14,12 @@ public class GoogleTokenExchangeService(
     private const string TokenEndpoint = "https://oauth2.googleapis.com/token";
 
     /// <exception cref="GoogleTokenExchangeException">
-    ///     Google rejected the code or
-    ///     returned no ID token.
+    /// Google rejected the code or
+    /// returned no ID token.
     /// </exception>
     /// <exception cref="Google.Apis.Auth.InvalidJwtException">
-    ///     The returned ID token
-    ///     failed validation.
+    /// The returned ID token
+    /// failed validation.
     /// </exception>
     public async Task<GoogleIdentity> ExchangeCodeAsync(
         string code,

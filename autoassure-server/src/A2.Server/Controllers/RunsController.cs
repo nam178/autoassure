@@ -13,10 +13,10 @@ using Run = A2.Server.Models.Run;
 namespace A2.Server.Controllers;
 
 /// <summary>
-///     Manual Runs, nested under their Application, and the shared state-machine
-///     operations
-///     (Start/End/Heartbeat/Update Stats) every Run goes through regardless of how
-///     it was created.
+/// Manual Runs, nested under their Application, and the shared state-machine
+/// operations
+/// (Start/End/Heartbeat/Update Stats) every Run goes through regardless of how
+/// it was created.
 /// </summary>
 [ApiController]
 [Authorize]
@@ -31,15 +31,15 @@ public class RunsController(
 ) : ControllerBase
 {
     /// <response code="400">
-    ///     EnvironmentId does not reference an Environment belonging to this
-    ///     Application, ScenarioIds contains a duplicate, or ScenarioIds contains an
-    ///     id that does not
-    ///     reference a Scenario belonging to this Application.
+    /// EnvironmentId does not reference an Environment belonging to this
+    /// Application, ScenarioIds contains a duplicate, or ScenarioIds contains an
+    /// id that does not
+    /// reference a Scenario belonging to this Application.
     /// </response>
     /// <response code="404">
-    ///     No Application with the given applicationId exists in the caller's
-    ///     Organization, or
-    ///     it no longer exists (deleted after this request started).
+    /// No Application with the given applicationId exists in the caller's
+    /// Organization, or
+    /// it no longer exists (deleted after this request started).
     /// </response>
     [HttpPost("applications/{applicationId:guid}/runs", Name = "CreateRun")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -164,10 +164,10 @@ public class RunsController(
     }
 
     /// <summary>
-    ///     Lists the Runs currently Running for this Application, strongly consistent
-    ///     -- a Run that
-    ///     just started is never briefly missing from this result, unlike
-    ///     <see cref="List" />.
+    /// Lists the Runs currently Running for this Application, strongly consistent
+    /// -- a Run that
+    /// just started is never briefly missing from this result, unlike
+    /// <see cref="List" />.
     /// </summary>
     [HttpGet(
         "applications/{applicationId:guid}/runs/running",
@@ -188,8 +188,8 @@ public class RunsController(
     }
 
     /// <response code="404">
-    ///     No Run with the given runId exists in this Application, in the caller's
-    ///     Organization.
+    /// No Run with the given runId exists in this Application, in the caller's
+    /// Organization.
     /// </response>
     [HttpGet(
         "applications/{applicationId:guid}/runs/{runId:guid}",
@@ -214,15 +214,15 @@ public class RunsController(
     }
 
     /// <summary>
-    ///     Starts a Run and returns it with Environment variable values unmasked --
-    ///     the last
-    ///     chance to see them unmasked. After the Run starts, every response masks
-    ///     them, for
-    ///     security.
+    /// Starts a Run and returns it with Environment variable values unmasked --
+    /// the last
+    /// chance to see them unmasked. After the Run starts, every response masks
+    /// them, for
+    /// security.
     /// </summary>
     /// <response code="404">
-    ///     No Run with the given runId exists in this Application, in the caller's
-    ///     Organization.
+    /// No Run with the given runId exists in this Application, in the caller's
+    /// Organization.
     /// </response>
     /// <response code="409">The Run's Status is not Pending.</response>
     [HttpPost(
@@ -273,8 +273,8 @@ public class RunsController(
 
     /// <response code="400">TerminalStatus is Pending or Running.</response>
     /// <response code="404">
-    ///     No Run with the given runId exists in this Application, in the caller's
-    ///     Organization.
+    /// No Run with the given runId exists in this Application, in the caller's
+    /// Organization.
     /// </response>
     /// <response code="409">The Run's Status is not Running.</response>
     [HttpPost(
@@ -331,8 +331,8 @@ public class RunsController(
     }
 
     /// <response code="404">
-    ///     No Run with the given runId exists in this Application, in the caller's
-    ///     Organization.
+    /// No Run with the given runId exists in this Application, in the caller's
+    /// Organization.
     /// </response>
     /// <response code="409">The Run's Status is not Running.</response>
     [HttpPost(
@@ -369,8 +369,8 @@ public class RunsController(
     }
 
     /// <response code="404">
-    ///     No Run with the given runId exists in this Application, in the caller's
-    ///     Organization.
+    /// No Run with the given runId exists in this Application, in the caller's
+    /// Organization.
     /// </response>
     /// <response code="409">The Run's Status is not Running.</response>
     [HttpPost(

@@ -9,11 +9,11 @@ using Microsoft.Extensions.Options;
 namespace A2.Server.Tests.Repositories;
 
 /// <summary>
-///     Integration tests for <see cref="DynamoDbRefreshTokenRepository" /> against
-///     DynamoDB Local,
-///     covering read/write mapping only — the atomic-revoke race is covered by the
-///     fakes in
-///     <c>AuthTokenServiceTests</c> (A2.Server.UnitTests) instead.
+/// Integration tests for <see cref="DynamoDbRefreshTokenRepository" /> against
+/// DynamoDB Local,
+/// covering read/write mapping only — the atomic-revoke race is covered by the
+/// fakes in
+/// <c>AuthTokenServiceTests</c> (A2.Server.UnitTests) instead.
 /// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class DynamoDbRefreshTokenRepositoryTests(

@@ -1,11 +1,11 @@
 namespace A2.Server.Models;
 
 /// <summary>
-///     A reusable precondition definition in an Application's library (e.g. "Order
-///     Confirmation
-///     ID"), referenced by an Activity's PreconditionIds across multiple
-///     Scenarios. An Activity
-///     always reflects the current library definition -- no per-use override.
+/// A reusable precondition definition in an Application's library (e.g. "Order
+/// Confirmation
+/// ID"), referenced by an Activity's PreconditionIds across multiple
+/// Scenarios. An Activity
+/// always reflects the current library definition -- no per-use override.
 /// </summary>
 public record Precondition
 {

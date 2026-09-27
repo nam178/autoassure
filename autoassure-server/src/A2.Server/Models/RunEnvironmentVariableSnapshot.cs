@@ -5,7 +5,7 @@ public record RunEnvironmentVariableSnapshot
     public required string Key { get; init; }
 
     /// <summary>
-    ///     The raw, unmasked value.
+    /// The raw, unmasked value.
     /// </summary>
     public required string Value { get; init; }
 
@@ -32,8 +32,8 @@ public record RunEnvironmentVariableSnapshot
     }
 
     /// <summary>
-    ///     Return a copy of this environment variable snapshot with the sensitive
-    ///     value masked.
+    /// Return a copy of this environment variable snapshot with the sensitive
+    /// value masked.
     /// </summary>
     public RunEnvironmentVariableSnapshot Masked()
     {

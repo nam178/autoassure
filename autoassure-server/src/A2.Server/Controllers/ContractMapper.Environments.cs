@@ -10,8 +10,8 @@ namespace A2.Server.Controllers;
 public static partial class ContractMapper
 {
     /// <summary>
-    ///     Combines an Environment with its Variables into the response returned
-    ///     to the client.
+    /// Combines an Environment with its Variables into the response returned
+    /// to the client.
     /// </summary>
     public static EnvironmentResponse ToResponse(
         this Environment environment,
@@ -27,9 +27,9 @@ public static partial class ContractMapper
     }
 
     /// <summary>
-    ///     Maps a single Environment variable to its response representation. A
-    ///     sensitive
-    ///     variable's Value is masked -- see <see cref="SensitiveValueMasker" />.
+    /// Maps a single Environment variable to its response representation. A
+    /// sensitive
+    /// variable's Value is masked -- see <see cref="SensitiveValueMasker" />.
     /// </summary>
     private static EnvironmentVariableResponse ToResponse(
         this EnvironmentVariable variable

@@ -19,12 +19,12 @@ public class ActivitiesController(
 ) : ControllerBase
 {
     /// <response code="400">
-    ///     Order is outside 0..89, PreconditionIds/EvidenceIds do not reference
-    ///     existing library rows in the Scenario's Application, or the Scenario
-    ///     already has the maximum number of Activities (90).
+    /// Order is outside 0..89, PreconditionIds/EvidenceIds do not reference
+    /// existing library rows in the Scenario's Application, or the Scenario
+    /// already has the maximum number of Activities (90).
     /// </response>
     /// <response code="404">
-    ///     No Scenario with the given scenarioId exists
+    /// No Scenario with the given scenarioId exists
     /// </response>
     [HttpPost(
         "applications/{applicationId:guid}/scenarios/{scenarioId:guid}/activities",
@@ -88,8 +88,8 @@ public class ActivitiesController(
     }
 
     /// <response code="404">
-    ///     No Scenario with the given scenarioId exists in this Application,
-    ///     or the Application does not exist in the caller's Organization.
+    /// No Scenario with the given scenarioId exists in this Application,
+    /// or the Application does not exist in the caller's Organization.
     /// </response>
     [HttpGet(
         "applications/{applicationId:guid}/scenarios/{scenarioId:guid}/activities",
@@ -122,13 +122,13 @@ public class ActivitiesController(
     }
 
     /// <response code="400">
-    ///     PreconditionIds/EvidenceIds do not reference existing library rows in
-    ///     the Scenario's Application.
+    /// PreconditionIds/EvidenceIds do not reference existing library rows in
+    /// the Scenario's Application.
     /// </response>
     /// <response code="404">
-    ///     No Activity with the given activityId exists in this Scenario,
-    ///     or the Scenario does not exist in this Application,
-    ///     or the Application does not exist in the caller's Organization.
+    /// No Activity with the given activityId exists in this Scenario,
+    /// or the Scenario does not exist in this Application,
+    /// or the Application does not exist in the caller's Organization.
     /// </response>
     [HttpPatch(
         "applications/{applicationId:guid}/scenarios/{scenarioId:guid}/activities/{activityId:guid}",
@@ -204,13 +204,13 @@ public class ActivitiesController(
     }
 
     /// <response code="409">
-    ///     OrderedActivityIds is not exactly a permutation of the Scenario's
-    ///     current Activity ids, because the caller's copy of the Scenario is
-    ///     stale.
+    /// OrderedActivityIds is not exactly a permutation of the Scenario's
+    /// current Activity ids, because the caller's copy of the Scenario is
+    /// stale.
     /// </response>
     /// <response code="404">
-    ///     No Scenario with the given scenarioId exists in this Application,
-    ///     or the Application does not exist in the caller's Organization.
+    /// No Scenario with the given scenarioId exists in this Application,
+    /// or the Application does not exist in the caller's Organization.
     /// </response>
     [HttpPatch(
         "applications/{applicationId:guid}/scenarios/{scenarioId:guid}/activities/order",
@@ -274,9 +274,9 @@ public class ActivitiesController(
     }
 
     /// <response code="404">
-    ///     No Activity with the given activityId exists in this Scenario,
-    ///     or the Scenario does not exist in this Application,
-    ///     or the Application does not exist in the caller's Organization.
+    /// No Activity with the given activityId exists in this Scenario,
+    /// or the Scenario does not exist in this Application,
+    /// or the Application does not exist in the caller's Organization.
     /// </response>
     [HttpDelete(
         "applications/{applicationId:guid}/scenarios/{scenarioId:guid}/activities/{activityId:guid}",

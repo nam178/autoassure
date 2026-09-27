@@ -3,9 +3,9 @@ using System.ComponentModel.DataAnnotations;
 namespace A2.Server.Contracts;
 
 /// <summary>
-///     Request body to edit an existing Activity's
-///     Description/PreconditionIds/EvidenceIds.
-///     Does not change the Activity's Order -- use the reorder endpoint for that.
+/// Request body to edit an existing Activity's
+/// Description/PreconditionIds/EvidenceIds.
+/// Does not change the Activity's Order -- use the reorder endpoint for that.
 /// </summary>
 public record UpdateActivityRequest
 {

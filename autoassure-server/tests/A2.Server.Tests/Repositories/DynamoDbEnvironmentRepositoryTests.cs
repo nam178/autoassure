@@ -9,9 +9,9 @@ using Environment = A2.Server.Models.Environment;
 namespace A2.Server.Tests.Repositories;
 
 /// <summary>
-///     Integration tests for <see cref="DynamoDbEnvironmentRepository" /> against
-///     DynamoDB Local,
-///     covering read/write mapping only.
+/// Integration tests for <see cref="DynamoDbEnvironmentRepository" /> against
+/// DynamoDB Local,
+/// covering read/write mapping only.
 /// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class DynamoDbEnvironmentRepositoryTests(

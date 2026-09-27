@@ -8,13 +8,13 @@ using Microsoft.AspNetCore.Mvc;
 namespace A2.Server.Controllers;
 
 /// <summary>
-///     A Run's append-only status update log: Append Run Status Update (one entry,
-///     at the caller's
-///     own sequence number) and List Run Status Updates (the polling endpoint a
-///     client folds). Neither
-///     endpoint interprets, derives Run state from, or returns a reconstruction of
-///     these rows -- see
-///     fix_run_design.md section 7.
+/// A Run's append-only status update log: Append Run Status Update (one entry,
+/// at the caller's
+/// own sequence number) and List Run Status Updates (the polling endpoint a
+/// client folds). Neither
+/// endpoint interprets, derives Run state from, or returns a reconstruction of
+/// these rows -- see
+/// fix_run_design.md section 7.
 /// </summary>
 [ApiController]
 [Authorize]
@@ -31,13 +31,13 @@ public class RunStatusUpdatesController(
 
     /// <response code="400">ActivityResult.Status is Pending or Running.</response>
     /// <response code="404">
-    ///     No Run with the given runId exists in this Application, in the caller's
-    ///     Organization.
+    /// No Run with the given runId exists in this Application, in the caller's
+    /// Organization.
     /// </response>
     /// <response code="409">
-    ///     Seq is not greater than the Run's current LastSeq, or the Run's Status is
-    ///     not
-    ///     Running.
+    /// Seq is not greater than the Run's current LastSeq, or the Run's Status is
+    /// not
+    /// Running.
     /// </response>
     [HttpPost(
         "applications/{applicationId:guid}/runs/{runId:guid}/status-updates",
@@ -97,9 +97,9 @@ public class RunStatusUpdatesController(
     }
 
     /// <param name="after">
-    ///     Return only updates with a higher Seq than this. Pass 0 (the default) to
-    ///     read
-    ///     from the start of the log.
+    /// Return only updates with a higher Seq than this. Pass 0 (the default) to
+    /// read
+    /// from the start of the log.
     /// </param>
     /// <response code="400">after is negative.</response>
     [HttpGet(

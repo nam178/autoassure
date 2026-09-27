@@ -3,22 +3,22 @@ using A2.Server.Models;
 namespace A2.Server.Repositories;
 
 /// <summary>
-///     Persists EvidenceDefinitions. Storage-agnostic — callers only ever see
-///     the EvidenceDefinition domain model.
+/// Persists EvidenceDefinitions. Storage-agnostic — callers only ever see
+/// the EvidenceDefinition domain model.
 /// </summary>
 public interface IEvidenceDefinitionRepository
 {
     /// <summary>
-    ///     Creates the EvidenceDefinition. Returns false if its Application no
-    ///     longer exists.
+    /// Creates the EvidenceDefinition. Returns false if its Application no
+    /// longer exists.
     /// </summary>
     Task<bool> TrySaveAsync(EvidenceDefinition evidence);
 
     /// <summary>
-    ///     Updates only Name, Description, ExampleValue, UpdatedByUserId, and
-    ///     UpdatedAt on an
-    ///     existing EvidenceDefinition. Returns false if the EvidenceDefinition no
-    ///     longer exists.
+    /// Updates only Name, Description, ExampleValue, UpdatedByUserId, and
+    /// UpdatedAt on an
+    /// existing EvidenceDefinition. Returns false if the EvidenceDefinition no
+    /// longer exists.
     /// </summary>
     Task<bool> TryUpdateAsync(
         Guid organizationId,
@@ -34,8 +34,8 @@ public interface IEvidenceDefinitionRepository
     );
 
     /// <summary>
-    ///     All EvidenceDefinitions in this Application's library. Ordering:
-    ///     newest first.
+    /// All EvidenceDefinitions in this Application's library. Ordering:
+    /// newest first.
     /// </summary>
     Task<IReadOnlyList<EvidenceDefinition>> ListByApplicationAsync(
         Guid organizationId,

@@ -6,8 +6,8 @@ namespace A2.Server.Contracts;
 public record RefreshTokenRequest
 {
     /// <summary>
-    ///     The raw refresh token secret previously issued to the client, to be
-    ///     exchanged for a new access token.
+    /// The raw refresh token secret previously issued to the client, to be
+    /// exchanged for a new access token.
     /// </summary>
     [Required]
     [MaxLength(500)]

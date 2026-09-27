@@ -1,9 +1,9 @@
 namespace A2.Server.Models;
 
 /// <summary>
-///     A Precondition copied whole into a Run at create time, so a run's record of
-///     what it checked
-///     never changes when the library definition is edited or deleted later.
+/// A Precondition copied whole into a Run at create time, so a run's record of
+/// what it checked
+/// never changes when the library definition is edited or deleted later.
 /// </summary>
 public record RunPreconditionSnapshot
 {
@@ -13,9 +13,9 @@ public record RunPreconditionSnapshot
     public required string ExampleValue { get; init; }
 
     /// <summary>
-    ///     Copies a Precondition as it is right now. OrganizationId and ApplicationId
-    ///     are left out --
-    ///     they already live on the Run, and a Run never spans two of either.
+    /// Copies a Precondition as it is right now. OrganizationId and ApplicationId
+    /// are left out --
+    /// they already live on the Run, and a Run never spans two of either.
     /// </summary>
     public static RunPreconditionSnapshot FromPrecondition(
         Precondition precondition

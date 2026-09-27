@@ -5,13 +5,13 @@ using Microsoft.OpenApi;
 namespace A2.Server.Common;
 
 /// <summary>
-///     Documents that an endpoint returns 400 when its request has a property
-///     carrying ANY
-///     <see cref="ValidationAttribute" /> (e.g. <see cref="NotBlankAttribute" />,
-///     <c>[Required]</c>,
-///     <c>[MaxLength]</c>), so the constraint is reflected in the response docs
-///     even for endpoints
-///     whose XML comments don't already describe a 400.
+/// Documents that an endpoint returns 400 when its request has a property
+/// carrying ANY
+/// <see cref="ValidationAttribute" /> (e.g. <see cref="NotBlankAttribute" />,
+/// <c>[Required]</c>,
+/// <c>[MaxLength]</c>), so the constraint is reflected in the response docs
+/// even for endpoints
+/// whose XML comments don't already describe a 400.
 /// </summary>
 public class RequestValidationOperationTransformer
     : IOpenApiOperationTransformer

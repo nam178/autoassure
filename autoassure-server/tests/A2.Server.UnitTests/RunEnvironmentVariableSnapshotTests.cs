@@ -3,9 +3,9 @@ using A2.Server.Models;
 namespace A2.Server.UnitTests;
 
 /// <summary>
-///     Unit tests for
-///     <see cref="RunEnvironmentVariableSnapshot.FromEnvironmentVariable" /> and
-///     <see cref="RunEnvironmentVariableSnapshot.Masked" />.
+/// Unit tests for
+/// <see cref="RunEnvironmentVariableSnapshot.FromEnvironmentVariable" /> and
+/// <see cref="RunEnvironmentVariableSnapshot.Masked" />.
 /// </summary>
 public sealed class RunEnvironmentVariableSnapshotTests
 {

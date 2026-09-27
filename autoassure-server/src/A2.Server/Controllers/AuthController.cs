@@ -16,8 +16,8 @@ public class AuthController(
 ) : ControllerBase
 {
     /// <response code="401">
-    ///     The Google authorization code or PKCE verifier is invalid
-    ///     or expired.
+    /// The Google authorization code or PKCE verifier is invalid
+    /// or expired.
     /// </response>
     [HttpPost("google/token", Name = "ExchangeGoogleCode")]
     [ProducesResponseType(StatusCodes.Status200OK)]

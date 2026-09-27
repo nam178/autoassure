@@ -2,10 +2,10 @@ namespace A2.Server.Contracts;
 
 // ReSharper disable UnusedAutoPropertyAccessor.Global -- serialized to the JSON response body, not read in-process
 /// <summary>
-///     An Activity as it was when a Run was created, together with the
-///     Preconditions and
-///     EvidenceDefinitions it referenced at that moment, as returned to the
-///     client.
+/// An Activity as it was when a Run was created, together with the
+/// Preconditions and
+/// EvidenceDefinitions it referenced at that moment, as returned to the
+/// client.
 /// </summary>
 public record RunActivitySnapshotResponse
 {

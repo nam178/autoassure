@@ -4,9 +4,9 @@ using A2.Server.Common;
 namespace A2.Server.Contracts;
 
 /// <summary>
-///     Request body to create a new Environment for an Application. No Variables
-///     at creation —
-///     set those afterward via <c>PUT /environments/{id}/variables/{key}</c>.
+/// Request body to create a new Environment for an Application. No Variables
+/// at creation —
+/// set those afterward via <c>PUT /environments/{id}/variables/{key}</c>.
 /// </summary>
 public record CreateEnvironmentRequest
 {

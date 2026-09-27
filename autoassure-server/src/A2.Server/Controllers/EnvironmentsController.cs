@@ -19,8 +19,8 @@ public class EnvironmentsController(
 ) : ControllerBase
 {
     /// <response code="404">
-    ///     No Application with the given applicationId exists in the
-    ///     caller's Organization.
+    /// No Application with the given applicationId exists in the
+    /// caller's Organization.
     /// </response>
     [HttpPost(
         "applications/{applicationId:guid}/environments",
@@ -81,8 +81,8 @@ public class EnvironmentsController(
     }
 
     /// <response code="404">
-    ///     No Environment with the given environmentId exists in the caller's
-    ///     Organization.
+    /// No Environment with the given environmentId exists in the caller's
+    /// Organization.
     /// </response>
     [HttpGet(
         "applications/{applicationId:guid}/environments/{environmentId:guid}",
@@ -110,8 +110,8 @@ public class EnvironmentsController(
     }
 
     /// <response code="404">
-    ///     No Environment with the given environmentId exists in the caller's
-    ///     Organization.
+    /// No Environment with the given environmentId exists in the caller's
+    /// Organization.
     /// </response>
     [HttpPatch(
         "applications/{applicationId:guid}/environments/{environmentId:guid}",
@@ -162,12 +162,12 @@ public class EnvironmentsController(
     }
 
     /// <param name="key">
-    ///     Variable name. Must be 1-200 characters, using only letters, digits, and
-    ///     underscores.
+    /// Variable name. Must be 1-200 characters, using only letters, digits, and
+    /// underscores.
     /// </param>
     /// <response code="404">
-    ///     No Environment with the given environmentId exists in the caller's
-    ///     Organization, or it no longer exists (deleted after this request started).
+    /// No Environment with the given environmentId exists in the caller's
+    /// Organization, or it no longer exists (deleted after this request started).
     /// </response>
     [HttpPut(
         "applications/{applicationId:guid}/environments/{environmentId:guid}/variables/{key}",
@@ -211,12 +211,12 @@ public class EnvironmentsController(
     }
 
     /// <param name="key">
-    ///     Variable name. Must be 1-200 characters, using only letters, digits, and
-    ///     underscores.
+    /// Variable name. Must be 1-200 characters, using only letters, digits, and
+    /// underscores.
     /// </param>
     /// <response code="404">
-    ///     No Environment with the given environmentId exists in the caller's
-    ///     Organization, or the Environment has no variable with the given key.
+    /// No Environment with the given environmentId exists in the caller's
+    /// Organization, or the Environment has no variable with the given key.
     /// </response>
     /// <response code="204">Variable was deleted.</response>
     [HttpDelete(

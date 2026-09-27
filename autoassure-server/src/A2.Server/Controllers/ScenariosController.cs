@@ -23,9 +23,9 @@ public class ScenariosController(
 
     /// <response code="400">A tag in Tags is longer than 50 characters.</response>
     /// <response code="404">
-    ///     No Application with the given applicationId exists in the caller's
-    ///     Organization,
-    ///     or it no longer exists (deleted after this request started).
+    /// No Application with the given applicationId exists in the caller's
+    /// Organization,
+    /// or it no longer exists (deleted after this request started).
     /// </response>
     [HttpPost(
         "applications/{applicationId:guid}/scenarios",
@@ -88,8 +88,8 @@ public class ScenariosController(
     }
 
     /// <response code="400">
-    ///     Both folder and tag were provided; they are mutually
-    ///     exclusive.
+    /// Both folder and tag were provided; they are mutually
+    /// exclusive.
     /// </response>
     [HttpGet(
         "applications/{applicationId:guid}/scenarios",
@@ -136,8 +136,8 @@ public class ScenariosController(
     }
 
     /// <response code="404">
-    ///     No Scenario with the given scenarioId exists in this Application,
-    ///     or the Application does not exist in the caller's Organization.
+    /// No Scenario with the given scenarioId exists in this Application,
+    /// or the Application does not exist in the caller's Organization.
     /// </response>
     [HttpGet(
         "applications/{applicationId:guid}/scenarios/{scenarioId:guid}",
@@ -163,12 +163,12 @@ public class ScenariosController(
 
     /// <response code="400">A tag in Tags is longer than 50 characters.</response>
     /// <response code="404">
-    ///     No Scenario with the given scenarioId exists in this Application,
-    ///     or the Application does not exist in the caller's Organization.
+    /// No Scenario with the given scenarioId exists in this Application,
+    /// or the Application does not exist in the caller's Organization.
     /// </response>
     /// <response code="409">
-    ///     The Scenario's Application no longer exists (deleted after this request
-    ///     started).
+    /// The Scenario's Application no longer exists (deleted after this request
+    /// started).
     /// </response>
     [HttpPatch(
         "applications/{applicationId:guid}/scenarios/{scenarioId:guid}",

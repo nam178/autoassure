@@ -7,12 +7,12 @@ using Microsoft.AspNetCore.Mvc.Filters;
 namespace A2.Server.Common;
 
 /// <summary>
-///     A global filter that blocks non-GET requests against archived or deleting
-///     Organizations.
-///     GET requests are always allowed. The filter returns 403 with a clear
-///     message if the Organization
-///     is not Active, except for endpoints marked with
-///     <see cref="AllowArchivedOrganizationAttribute" />.
+/// A global filter that blocks non-GET requests against archived or deleting
+/// Organizations.
+/// GET requests are always allowed. The filter returns 403 with a clear
+/// message if the Organization
+/// is not Active, except for endpoints marked with
+/// <see cref="AllowArchivedOrganizationAttribute" />.
 /// </summary>
 public class RequireActiveOrganizationFilter(
     ICallerOrganizationService callerOrganizationService

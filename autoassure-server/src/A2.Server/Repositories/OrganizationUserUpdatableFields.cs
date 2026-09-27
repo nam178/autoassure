@@ -3,9 +3,9 @@ using A2.Server.Models;
 namespace A2.Server.Repositories;
 
 /// <summary>
-///     The only OrganizationUser fields
-///     <see cref="IOrganizationUserRepository.TryUpdateAsync" /> is allowed to
-///     change.
+/// The only OrganizationUser fields
+/// <see cref="IOrganizationUserRepository.TryUpdateAsync" /> is allowed to
+/// change.
 /// </summary>
 public record OrganizationUserUpdatableFields
 {

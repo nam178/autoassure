@@ -18,8 +18,8 @@ public class ApplicationsController(
 ) : ControllerBase
 {
     /// <response code="400">
-    ///     The caller's Organization could not be found or has been
-    ///     deleted.
+    /// The caller's Organization could not be found or has been
+    /// deleted.
     /// </response>
     [HttpPost(Name = "CreateApplication")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -74,8 +74,8 @@ public class ApplicationsController(
     }
 
     /// <response code="404">
-    ///     No Application with the given applicationId exists in the caller's
-    ///     Organization.
+    /// No Application with the given applicationId exists in the caller's
+    /// Organization.
     /// </response>
     [HttpGet("{applicationId:guid}", Name = "GetApplicationById")]
     [ProducesResponseType(StatusCodes.Status200OK)]

@@ -1,8 +1,8 @@
 namespace A2.Server.Repositories;
 
 /// <summary>
-///     The only User fields <see cref="IUserRepository.TryUpdateAsync" /> is
-///     allowed to change.
+/// The only User fields <see cref="IUserRepository.TryUpdateAsync" /> is
+/// allowed to change.
 /// </summary>
 public record UserUpdatableFields
 {

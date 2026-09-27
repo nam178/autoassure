@@ -1,7 +1,7 @@
 namespace A2.Server.Models;
 
 /// <summary>
-///     A snapshot of a run's environment variables taken when it created.
+/// A snapshot of a run's environment variables taken when it created.
 /// </summary>
 public record RunEnvironmentSnapshot
 {
@@ -33,10 +33,10 @@ public record RunEnvironmentSnapshot
     }
 
     /// <summary>
-    ///     Masks every sensitive variable's value (see
-    ///     <see cref="RunEnvironmentVariableSnapshot.Masked" />), leaving
-    ///     non-sensitive ones untouched.
-    ///     Idempotent: calling it again on the result returns an equivalent snapshot.
+    /// Masks every sensitive variable's value (see
+    /// <see cref="RunEnvironmentVariableSnapshot.Masked" />), leaving
+    /// non-sensitive ones untouched.
+    /// Idempotent: calling it again on the result returns an equivalent snapshot.
     /// </summary>
     public RunEnvironmentSnapshot Masked()
     {

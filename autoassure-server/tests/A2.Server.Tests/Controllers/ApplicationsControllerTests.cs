@@ -17,13 +17,13 @@ using Microsoft.IdentityModel.Tokens;
 namespace A2.Server.Tests.Controllers;
 
 /// <summary>
-///     Integration tests for
-///     <see cref="A2.Server.Controllers.ApplicationsController" /> over real
-///     HTTP, against DynamoDB Local. Each Organization used by a test is
-///     pre-seeded with an
-///     <see cref="OrganizationUser" /> membership so
-///     <c>ICallerOrganizationService</c> can resolve the
-///     caller's Organization from the request's JWT.
+/// Integration tests for
+/// <see cref="A2.Server.Controllers.ApplicationsController" /> over real
+/// HTTP, against DynamoDB Local. Each Organization used by a test is
+/// pre-seeded with an
+/// <see cref="OrganizationUser" /> membership so
+/// <c>ICallerOrganizationService</c> can resolve the
+/// caller's Organization from the request's JWT.
 /// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class ApplicationsControllerTests

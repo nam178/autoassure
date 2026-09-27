@@ -4,8 +4,8 @@ using Environment = A2.Server.Models.Environment;
 namespace A2.Server.UnitTests;
 
 /// <summary>
-///     Unit tests for <see cref="RunEnvironmentSnapshot.FromEnvironment" /> and
-///     <see cref="RunEnvironmentSnapshot.Masked" />.
+/// Unit tests for <see cref="RunEnvironmentSnapshot.FromEnvironment" /> and
+/// <see cref="RunEnvironmentSnapshot.Masked" />.
 /// </summary>
 public sealed class RunEnvironmentSnapshotTests
 {

@@ -17,8 +17,8 @@ public class PreconditionsController(
 ) : ControllerBase
 {
     /// <response code="404">
-    ///     No Application with the given applicationId exists in the
-    ///     caller's Organization.
+    /// No Application with the given applicationId exists in the
+    /// caller's Organization.
     /// </response>
     [HttpPost(
         "applications/{applicationId:guid}/preconditions",
@@ -76,8 +76,8 @@ public class PreconditionsController(
     }
 
     /// <response code="404">
-    ///     No Precondition with the given preconditionId exists in the caller's
-    ///     Organization and Application.
+    /// No Precondition with the given preconditionId exists in the caller's
+    /// Organization and Application.
     /// </response>
     [HttpPatch(
         "applications/{applicationId:guid}/preconditions/{preconditionId:guid}",

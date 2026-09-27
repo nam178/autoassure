@@ -8,20 +8,20 @@ using Microsoft.Extensions.Options;
 namespace A2.Server.Tests.Repositories;
 
 /// <summary>
-///     Integration tests for <see cref="DynamoDbRunRepository" /> against DynamoDB
-///     Local, covering
-///     Create Run, Get Run, List Runs, List Running Runs, Start Run, End Run,
-///     Update Run Stats, Update Run
-///     Heart Beat, and Append/List Run Status Update: the transactional create,
-///     its Application existence
-///     check, the LastEvaluatedKey pagination loop, Get Run's exclusion of status
-///     update rows,
-///     List Runs' sparse RunHeaderIndex query, List Running Runs' strongly
-///     consistent read against the
-///     separate RunningRuns table, the state machine's conditioned writes, the
-///     append transaction's two
-///     conditions, and the status update log's cursor query across the
-///     zero-padding boundary at ten.
+/// Integration tests for <see cref="DynamoDbRunRepository" /> against DynamoDB
+/// Local, covering
+/// Create Run, Get Run, List Runs, List Running Runs, Start Run, End Run,
+/// Update Run Stats, Update Run
+/// Heart Beat, and Append/List Run Status Update: the transactional create,
+/// its Application existence
+/// check, the LastEvaluatedKey pagination loop, Get Run's exclusion of status
+/// update rows,
+/// List Runs' sparse RunHeaderIndex query, List Running Runs' strongly
+/// consistent read against the
+/// separate RunningRuns table, the state machine's conditioned writes, the
+/// append transaction's two
+/// conditions, and the status update log's cursor query across the
+/// zero-padding boundary at ten.
 /// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class DynamoDbRunRepositoryTests(

@@ -5,9 +5,9 @@ using Amazon.DynamoDBv2.Model;
 namespace A2.Server.UnitTests;
 
 /// <summary>
-///     Unit tests for the Organization row mapper in
-///     <c>DynamoDbMapper.Organization.cs</c>:
-///     the Organization converted to a DynamoDB attribute map and back.
+/// Unit tests for the Organization row mapper in
+/// <c>DynamoDbMapper.Organization.cs</c>:
+/// the Organization converted to a DynamoDB attribute map and back.
 /// </summary>
 public sealed class DynamoDbMapperOrganizationTests
 {

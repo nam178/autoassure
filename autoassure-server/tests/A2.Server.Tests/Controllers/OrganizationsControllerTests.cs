@@ -17,9 +17,9 @@ using Microsoft.IdentityModel.Tokens;
 namespace A2.Server.Tests.Controllers;
 
 /// <summary>
-///     Integration tests for
-///     <see cref="A2.Server.Controllers.OrganizationsController" /> over real
-///     HTTP, against DynamoDB Local.
+/// Integration tests for
+/// <see cref="A2.Server.Controllers.OrganizationsController" /> over real
+/// HTTP, against DynamoDB Local.
 /// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class OrganizationsControllerTests

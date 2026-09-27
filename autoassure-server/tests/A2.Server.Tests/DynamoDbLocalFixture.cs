@@ -9,15 +9,15 @@ using Amazon.Runtime;
 namespace A2.Server.Tests;
 
 /// <summary>
-///     Downloads, starts, and tears down a single DynamoDB Local (Java) process
-///     shared by every
-///     integration test class in the "DynamoDbLocal" collection, so tests exercise
-///     real DynamoDB API
-///     semantics without hitting AWS or Docker. Wipes any pre-existing tables on
-///     startup so every test run
-///     begins from a clean, empty database. Individual test classes are
-///     responsible for creating and deleting
-///     their own tables against the shared instance.
+/// Downloads, starts, and tears down a single DynamoDB Local (Java) process
+/// shared by every
+/// integration test class in the "DynamoDbLocal" collection, so tests exercise
+/// real DynamoDB API
+/// semantics without hitting AWS or Docker. Wipes any pre-existing tables on
+/// startup so every test run
+/// begins from a clean, empty database. Individual test classes are
+/// responsible for creating and deleting
+/// their own tables against the shared instance.
 /// </summary>
 public sealed class DynamoDbLocalFixture : IAsyncLifetime
 {
@@ -56,8 +56,8 @@ public sealed class DynamoDbLocalFixture : IAsyncLifetime
     }
 
     /// <summary>
-    ///     Creates a new SDK client pointed at this test run's shared local
-    ///     DynamoDB process.
+    /// Creates a new SDK client pointed at this test run's shared local
+    /// DynamoDB process.
     /// </summary>
     public AmazonDynamoDBClient CreateClient()
     {
@@ -158,11 +158,11 @@ public sealed class DynamoDbLocalFixture : IAsyncLifetime
 }
 
 /// <summary>
-///     Shares one <see cref="DynamoDbLocalFixture" /> across every test class that
-///     needs DynamoDB
-///     Local. xUnit runs test classes within the same collection sequentially,
-///     which keeps table
-///     creation/deletion race-free against the single shared process.
+/// Shares one <see cref="DynamoDbLocalFixture" /> across every test class that
+/// needs DynamoDB
+/// Local. xUnit runs test classes within the same collection sequentially,
+/// which keeps table
+/// creation/deletion race-free against the single shared process.
 /// </summary>
 [CollectionDefinition("DynamoDbLocal")]
 public sealed class DynamoDbLocalCollection

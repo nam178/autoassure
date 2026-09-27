@@ -4,8 +4,8 @@ using A2.Server.Common;
 namespace A2.Server.Contracts;
 
 /// <summary>
-///     Request body to edit an existing Scenario's
-///     Title/Description/Folder/Tags.
+/// Request body to edit an existing Scenario's
+/// Title/Description/Folder/Tags.
 /// </summary>
 public record UpdateScenarioRequest
 {

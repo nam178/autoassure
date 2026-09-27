@@ -19,8 +19,8 @@ public class OrganizationsController(
 ) : ControllerBase
 {
     /// <response code="400">
-    ///     The caller's Organization could not be found, has been
-    ///     deleted, or is a personal organization.
+    /// The caller's Organization could not be found, has been
+    /// deleted, or is a personal organization.
     /// </response>
     /// <response code="403">The caller is not an Owner of the Organization.</response>
     /// <response code="404">The Organization does not exist.</response>
@@ -80,8 +80,8 @@ public class OrganizationsController(
     }
 
     /// <response code="400">
-    ///     The caller's Organization could not be found or has been
-    ///     deleted.
+    /// The caller's Organization could not be found or has been
+    /// deleted.
     /// </response>
     /// <response code="403">The caller is not an Owner of the Organization.</response>
     /// <response code="404">The Organization does not exist.</response>
@@ -183,8 +183,8 @@ public class OrganizationsController(
     }
 
     /// <response code="400">
-    ///     The target Organization is not the caller's own Organization, the
-    ///     Organization is personal, or the caller is the last Owner.
+    /// The target Organization is not the caller's own Organization, the
+    /// Organization is personal, or the caller is the last Owner.
     /// </response>
     /// <response code="403">The caller is not an Owner.</response>
     /// <response code="404">The target User is not a member of the Organization.</response>

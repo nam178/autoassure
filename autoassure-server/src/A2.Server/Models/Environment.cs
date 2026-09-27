@@ -1,9 +1,9 @@
 namespace A2.Server.Models;
 
 /// <summary>
-///     A deployment target (e.g. "Staging", "Production") that a test execution
-///     runs against.
-///     Variables live separately — see <see cref="EnvironmentVariable" />.
+/// A deployment target (e.g. "Staging", "Production") that a test execution
+/// runs against.
+/// Variables live separately — see <see cref="EnvironmentVariable" />.
 /// </summary>
 public record Environment
 {
@@ -19,8 +19,8 @@ public record Environment
 }
 
 /// <summary>
-///     Whether an Environment is a live Production system or a non-production
-///     one (staging, dev, ...).
+/// Whether an Environment is a live Production system or a non-production
+/// one (staging, dev, ...).
 /// </summary>
 public enum EnvironmentClassification
 {

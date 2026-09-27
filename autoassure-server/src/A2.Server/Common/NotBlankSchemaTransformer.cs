@@ -4,11 +4,11 @@ using Microsoft.OpenApi;
 namespace A2.Server.Common;
 
 /// <summary>
-///     Appends a note to a Contract property's OpenAPI schema description when it
-///     carries
-///     <see cref="NotBlankAttribute" />, since that constraint isn't otherwise
-///     expressible as a JSON
-///     Schema keyword and would go undocumented in the generated spec/SDK.
+/// Appends a note to a Contract property's OpenAPI schema description when it
+/// carries
+/// <see cref="NotBlankAttribute" />, since that constraint isn't otherwise
+/// expressible as a JSON
+/// Schema keyword and would go undocumented in the generated spec/SDK.
 /// </summary>
 public class NotBlankSchemaTransformer : IOpenApiSchemaTransformer
 {

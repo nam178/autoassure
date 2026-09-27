@@ -1,9 +1,9 @@
 namespace A2.Server.Repositories;
 
 /// <summary>
-///     The only EvidenceDefinition fields
-///     <see cref="IEvidenceDefinitionRepository.TryUpdateAsync" /> is allowed to
-///     change.
+/// The only EvidenceDefinition fields
+/// <see cref="IEvidenceDefinitionRepository.TryUpdateAsync" /> is allowed to
+/// change.
 /// </summary>
 public record EvidenceDefinitionUpdatableFields
 {

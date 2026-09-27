@@ -9,13 +9,13 @@ using Microsoft.Extensions.Options;
 namespace A2.Server.Tests;
 
 /// <summary>
-///     Integration tests for <see cref="GoogleUserSyncService" /> against DynamoDB
-///     Local, covering how
-///     it syncs a <see cref="User" /> from a <see cref="GoogleIdentity" /> through
-///     the real
-///     <see cref="DynamoDbUserRepository" />, and how it provisions a personal
-///     <see cref="Organization" /> on
-///     first sign-in.
+/// Integration tests for <see cref="GoogleUserSyncService" /> against DynamoDB
+/// Local, covering how
+/// it syncs a <see cref="User" /> from a <see cref="GoogleIdentity" /> through
+/// the real
+/// <see cref="DynamoDbUserRepository" />, and how it provisions a personal
+/// <see cref="Organization" /> on
+/// first sign-in.
 /// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class GoogleUserSyncServiceTests(

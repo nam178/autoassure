@@ -9,11 +9,11 @@ using Microsoft.Extensions.Options;
 namespace A2.Server.Tests.Repositories;
 
 /// <summary>
-///     Integration tests for <see cref="DynamoDbActivityRepository" /> against
-///     DynamoDB Local,
-///     covering read/write mapping correctness only — concurrency/races are
-///     covered elsewhere with
-///     fakes.
+/// Integration tests for <see cref="DynamoDbActivityRepository" /> against
+/// DynamoDB Local,
+/// covering read/write mapping correctness only — concurrency/races are
+/// covered elsewhere with
+/// fakes.
 /// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class DynamoDbActivityRepositoryTests(

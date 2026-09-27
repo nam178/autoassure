@@ -8,11 +8,11 @@ using Microsoft.Extensions.Options;
 namespace A2.Server.Tests.Repositories;
 
 /// <summary>
-///     Integration tests for <see cref="DynamoDbUserRepository" /> against
-///     DynamoDB Local,
-///     covering read/write mapping only — the concurrent-first-sign-in and
-///     concurrent-personal-Organization
-///     races are covered elsewhere with fakes.
+/// Integration tests for <see cref="DynamoDbUserRepository" /> against
+/// DynamoDB Local,
+/// covering read/write mapping only — the concurrent-first-sign-in and
+/// concurrent-personal-Organization
+/// races are covered elsewhere with fakes.
 /// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class DynamoDbUserRepositoryTests(

@@ -4,8 +4,8 @@ using System.Security.Claims;
 namespace A2.Server.Common;
 
 /// <summary>
-///     Extracts AutoAssure-specific claims from an authenticated request's
-///     <see cref="ClaimsPrincipal" />.
+/// Extracts AutoAssure-specific claims from an authenticated request's
+/// <see cref="ClaimsPrincipal" />.
 /// </summary>
 public static class ClaimsPrincipalExtensions
 {

@@ -18,9 +18,9 @@ using PreconditionValueSource = A2.Server.Contracts.PreconditionValueSource;
 namespace A2.Server.Tests.Controllers;
 
 /// <summary>
-///     Integration tests for
-///     <see cref="A2.Server.Controllers.ActivitiesController" /> over real
-///     HTTP, against DynamoDB Local.
+/// Integration tests for
+/// <see cref="A2.Server.Controllers.ActivitiesController" /> over real
+/// HTTP, against DynamoDB Local.
 /// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class ActivitiesControllerTests

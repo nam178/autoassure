@@ -4,9 +4,9 @@ using A2.Server.Common;
 namespace A2.Server.Contracts;
 
 /// <summary>
-///     Request body to create a new Scenario for an Application. Folder defaults
-///     to "/" when
-///     not given; Tags default to empty.
+/// Request body to create a new Scenario for an Application. Folder defaults
+/// to "/" when
+/// not given; Tags default to empty.
 /// </summary>
 public record CreateScenarioRequest
 {

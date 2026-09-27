@@ -1,8 +1,8 @@
 namespace A2.Server.Models;
 
 /// <summary>
-///     The lifecycle state of an entity. Shared across all first-class
-///     entities in the system.
+/// The lifecycle state of an entity. Shared across all first-class
+/// entities in the system.
 /// </summary>
 public enum LifecycleState
 {

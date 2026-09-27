@@ -3,8 +3,8 @@ using A2.Server.Models;
 namespace A2.Server.UnitTests;
 
 /// <summary>
-///     Unit tests for
-///     <see cref="RunEvidenceDefinitionSnapshot.FromEvidenceDefinition" />.
+/// Unit tests for
+/// <see cref="RunEvidenceDefinitionSnapshot.FromEvidenceDefinition" />.
 /// </summary>
 public sealed class RunEvidenceDefinitionSnapshotTests
 {

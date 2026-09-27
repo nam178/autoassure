@@ -17,8 +17,8 @@ public class EvidenceDefinitionsController(
 ) : ControllerBase
 {
     /// <response code="404">
-    ///     No Application with the given applicationId exists in the
-    ///     caller's Organization.
+    /// No Application with the given applicationId exists in the
+    /// caller's Organization.
     /// </response>
     [HttpPost(
         "applications/{applicationId:guid}/evidence-definitions",
@@ -77,8 +77,8 @@ public class EvidenceDefinitionsController(
     }
 
     /// <response code="404">
-    ///     No EvidenceDefinition with the given evidenceDefinitionId exists in the
-    ///     caller's Organization and Application.
+    /// No EvidenceDefinition with the given evidenceDefinitionId exists in the
+    /// caller's Organization and Application.
     /// </response>
     [HttpPatch(
         "applications/{applicationId:guid}/evidence-definitions/{evidenceDefinitionId:guid}",

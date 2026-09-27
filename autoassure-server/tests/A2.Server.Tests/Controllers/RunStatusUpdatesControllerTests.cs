@@ -21,12 +21,12 @@ using RunStatus = A2.Server.Contracts.RunStatus;
 namespace A2.Server.Tests.Controllers;
 
 /// <summary>
-///     Integration tests for
-///     <see cref="A2.Server.Controllers.RunStatusUpdatesController" /> over
-///     real HTTP, against DynamoDB Local: Append Run Status Update, List Run
-///     Status Updates, and the full
-///     create -> start -> append -> poll -> end round trip a client actually
-///     drives.
+/// Integration tests for
+/// <see cref="A2.Server.Controllers.RunStatusUpdatesController" /> over
+/// real HTTP, against DynamoDB Local: Append Run Status Update, List Run
+/// Status Updates, and the full
+/// create -> start -> append -> poll -> end round trip a client actually
+/// drives.
 /// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class RunStatusUpdatesControllerTests

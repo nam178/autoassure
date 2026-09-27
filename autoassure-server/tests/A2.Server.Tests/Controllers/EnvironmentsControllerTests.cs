@@ -18,9 +18,9 @@ using EnvironmentClassification = A2.Server.Contracts.EnvironmentClassification;
 namespace A2.Server.Tests.Controllers;
 
 /// <summary>
-///     Integration tests for
-///     <see cref="A2.Server.Controllers.EnvironmentsController" /> over real
-///     HTTP, against DynamoDB Local.
+/// Integration tests for
+/// <see cref="A2.Server.Controllers.EnvironmentsController" /> over real
+/// HTTP, against DynamoDB Local.
 /// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class EnvironmentsControllerTests

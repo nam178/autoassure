@@ -3,9 +3,9 @@ using System.ComponentModel.DataAnnotations;
 namespace A2.Server.Contracts;
 
 /// <summary>
-///     An OAuth 2.0 PKCE authorization code from Google's consent screen, to be
-///     exchanged for
-///     the user's Google identity.
+/// An OAuth 2.0 PKCE authorization code from Google's consent screen, to be
+/// exchanged for
+/// the user's Google identity.
 /// </summary>
 public record ExchangeGoogleCodeRequest
 {
@@ -15,8 +15,8 @@ public record ExchangeGoogleCodeRequest
     public required string Code { get; init; }
 
     /// <summary>
-    ///     The PKCE code verifier the client generated for this authorization
-    ///     request.
+    /// The PKCE code verifier the client generated for this authorization
+    /// request.
     /// </summary>
     [Required]
     [MaxLength(200)]

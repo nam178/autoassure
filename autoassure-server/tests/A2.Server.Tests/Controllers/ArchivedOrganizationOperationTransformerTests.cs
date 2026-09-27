@@ -6,12 +6,12 @@ using Microsoft.Extensions.Configuration;
 namespace A2.Server.Tests.Controllers;
 
 /// <summary>
-///     Integration tests for
-///     <see cref="A2.Server.Common.ArchivedOrganizationOperationTransformer" />.
-///     These tests verify that the OpenAPI documentation is correctly updated to
-///     show 403 responses
-///     for non-GET operations on endpoints that require authentication and don't
-///     allow archived organizations.
+/// Integration tests for
+/// <see cref="A2.Server.Common.ArchivedOrganizationOperationTransformer" />.
+/// These tests verify that the OpenAPI documentation is correctly updated to
+/// show 403 responses
+/// for non-GET operations on endpoints that require authentication and don't
+/// allow archived organizations.
 /// </summary>
 public sealed class ArchivedOrganizationOperationTransformerTests
     : IClassFixture<WebApplicationFactory<Program>>

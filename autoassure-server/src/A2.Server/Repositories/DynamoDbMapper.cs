@@ -3,22 +3,22 @@ using Amazon.DynamoDBv2.Model;
 namespace A2.Server.Repositories;
 
 /// <summary>
-///     Converts domain models to/from DynamoDB rows. Shared so each repository
-///     doesn't redefine
-///     the same mapping for a model it merely writes as part of another table's
-///     transaction.
+/// Converts domain models to/from DynamoDB rows. Shared so each repository
+/// doesn't redefine
+/// the same mapping for a model it merely writes as part of another table's
+/// transaction.
 /// </summary>
 public static partial class DynamoDbMapper
 {
     /// <summary>
-    ///     Reads a required boolean field. Every writer always sets it, so a missing
-    ///     or null BOOL
-    ///     means the stored row itself is corrupted -- there is no sensible default to
-    ///     fall back to.
+    /// Reads a required boolean field. Every writer always sets it, so a missing
+    /// or null BOOL
+    /// means the stored row itself is corrupted -- there is no sensible default to
+    /// fall back to.
     /// </summary>
     /// <exception cref="CorruptedDynamoDbRowException">
-    ///     The attribute has no BOOL
-    ///     value.
+    /// The attribute has no BOOL
+    /// value.
     /// </exception>
     public static bool RequireBool(this AttributeValue value, string fieldName)
     {
@@ -37,13 +37,13 @@ public static partial class DynamoDbMapper
     }
 
     /// <summary>
-    ///     The inverse of <see cref="ApplicationScopedPartitionKey" />, for a caller
-    ///     that only has
-    ///     the combined key back from a query -- a sparse GSI's <c>KEYS_ONLY</c>
-    ///     projection, for
-    ///     instance, which returns the base table's partition key attribute as this
-    ///     one string rather than
-    ///     the OrganizationId and ApplicationId it was built from.
+    /// The inverse of <see cref="ApplicationScopedPartitionKey" />, for a caller
+    /// that only has
+    /// the combined key back from a query -- a sparse GSI's <c>KEYS_ONLY</c>
+    /// projection, for
+    /// instance, which returns the base table's partition key attribute as this
+    /// one string rather than
+    /// the OrganizationId and ApplicationId it was built from.
     /// </summary>
     public static (
         Guid OrganizationId,

@@ -1,10 +1,10 @@
 namespace A2.Server.Models;
 
 /// <summary>
-///     A reusable evidence definition in an Application's library (e.g. "Order
-///     Confirmation ID"
-///     captured as output), referenced by an Activity's EvidenceIds across
-///     multiple Scenarios.
+/// A reusable evidence definition in an Application's library (e.g. "Order
+/// Confirmation ID"
+/// captured as output), referenced by an Activity's EvidenceIds across
+/// multiple Scenarios.
 /// </summary>
 public record EvidenceDefinition
 {

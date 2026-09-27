@@ -1,10 +1,10 @@
 namespace A2.Server.Models;
 
 /// <summary>
-///     A single ordered step within a Scenario, referencing
-///     Preconditions/EvidenceDefinitions
-///     from its Application's library. Its Id is stable so other records can
-///     reference it.
+/// A single ordered step within a Scenario, referencing
+/// Preconditions/EvidenceDefinitions
+/// from its Application's library. Its Id is stable so other records can
+/// reference it.
 /// </summary>
 public record Activity
 {
