@@ -124,9 +124,11 @@ End the document with this, in the document's own words:
 
 1. Each task is executed independently by the code-implementer sub-agent, with fresh context per task.
 2. The main thread observes progress only. Sub-agents do the work.
-3. When a task completes, update this document to tick off completion.
-4. The goal is not complete until every item in this document is ticked.
-5. Before executing any task, ask the clarifying questions from "Open questions" (if any).
+3. The code-implementer sub-agent must end its report with the exact list of files it added or changed for that task.
+4. Pass only that file list to the code-reviewer sub-agent — never the whole repo's diff.
+5. When a task completes, update this document to tick off completion.
+6. The goal is not complete until every item in this document is ticked.
+7. Before executing any task, ask the clarifying questions from "Open questions" (if any).
 
 Then add the paste-able goal prompt in a fenced block, so the user can run it straight away:
 
@@ -140,8 +142,9 @@ what is left.
 
 Note that two of the seven boxes are reviews, and each needs its own fresh call to the code-reviewer sub-agent — a
 critical-bug review that hunts correctness bugs only, and a coding-standard review that loads the project's standards
-skills. The code-implementer sub-agent must not review its own work; hand fixes back to it. After a review finds
-something, fix it with the code-implementer sub-agent, then re-run build, lint and tests before ticking.
+skills. Pass the file list from step 3 of the execution instructions, not the whole repo. The code-implementer
+sub-agent must not review its own work; hand fixes back to it. After a review finds something, fix it with the
+code-implementer sub-agent, then re-run build, lint and tests before ticking.
 
 # Step 5 — Tell the user
 
