@@ -45,16 +45,16 @@ We will support two deletion types:
 | Entity                         | Archive | Archive implemented | Physical delete | Physical delete implemented |
 |--------------------------------|---------|---------------------|-----------------|-----------------------------|
 | Organization                   | yes     | ✅                  | no              | —                           |
-| Organization membership        | no      | —                   | yes             | 🔲                          |
+| Organization membership        | no      | —                   | yes             | ✅                          |
 | User                           | no      | —                   | no              | —                           |
 | Refresh token                  | no      | —                   | no              | —                           |
 | Application                    | yes     | 🔲                  | yes             | 🔲                          |
 | Scenario                       | yes     | 🔲                  | yes             | 🔲                          |
-| Activity                       | no      | —                   | yes             | 🔲                          |
+| Activity                       | no      | —                   | yes             | ✅                          |
 | Precondition                   | yes     | 🔲                  | yes             | 🔲                          |
 | EvidenceDefinition             | yes     | 🔲                  | yes             | 🔲                          |
 | Environment                    | yes     | 🔲                  | yes             | 🔲                          |
-| EnvironmentVariable            | no      | —                   | yes             | 🔲                          |
+| EnvironmentVariable            | no      | —                   | yes             | ✅                          |
 | Run                            | no      | —                   | yes             | 🔲                          |
 | RunStatusUpdate                | no      | —                   | no              | —                           |
 | RunningRun row                 | no      | —                   | no              | —                           |
