@@ -88,9 +88,9 @@ Then end every task with exactly this checklist, copied verbatim:
 - [ ] Linting pass.
 - [ ] Build pass.
 - [ ] Tests pass
-- [ ] Output code reviewed with a seperate agent in a fresh new context for critical bugs
+- [ ] Output code reviewed with the code-reviewer sub-agent in a fresh new context for critical bugs
 - [ ] All critical bugs fixed
-- [ ] Code reviewed with coding standard agent in a brand new context
+- [ ] Code reviewed with the code-reviewer sub-agent in a brand new context for coding standard violations
 - [ ] Coding standard violations fixed
 ```
 
@@ -122,7 +122,7 @@ If everything is clear, write "None." and stop. Do not invent questions to fill 
 
 End the document with this, in the document's own words:
 
-1. Each task is executed independently by a fresh sub-agent with fresh context.
+1. Each task is executed independently by the code-implementer sub-agent, with fresh context per task.
 2. The main thread observes progress only. Sub-agents do the work.
 3. When a task completes, update this document to tick off completion.
 4. The goal is not complete until every item in this document is ticked.
@@ -138,10 +138,10 @@ session. Never edit or delete a test to make it pass. Never change <design-file>
 what is left.
 ```
 
-Note that two of the seven boxes are reviews, and each needs its own fresh sub-agent — a critical-bug review that
-hunts correctness bugs only, and a coding-standard review that loads the project's standards skills. The implementing
-agent must not review its own work. After a review finds something, fix it, then re-run build, lint and tests before
-ticking.
+Note that two of the seven boxes are reviews, and each needs its own fresh call to the code-reviewer sub-agent — a
+critical-bug review that hunts correctness bugs only, and a coding-standard review that loads the project's standards
+skills. The code-implementer sub-agent must not review its own work; hand fixes back to it. After a review finds
+something, fix it with the code-implementer sub-agent, then re-run build, lint and tests before ticking.
 
 # Step 5 — Tell the user
 

@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: Must use to review code changes, including tests.
-model: opus
+model: sonnet
 ---
 
 1. Run the built-in `/code-review` skill with the Skill tool.
