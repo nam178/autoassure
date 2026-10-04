@@ -112,6 +112,26 @@
               }
             }
           },
+          "409": {
+            "description": "Scenario exists but is not active (archived or deleting).",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "403": {
             "description": "Returns 403 when the caller's Organization is archived."
           }
@@ -2994,7 +3014,7 @@
             }
           },
           "400": {
-            "description": "A tag in Tags is longer than 50 characters. Returns 400 when the request fails a validation constraint.",
+            "description": "A tag in Tags is longer than 50 characters or Tags contains duplicate values (case-sensitive). Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3042,7 +3062,93 @@
         "tags": [
           "Scenarios"
         ],
+        "summary": "Returns active Scenarios in the Application. Supports filtering by folder or tag,\nwhich are mutually exclusive.",
         "operationId": "ListScenarios",
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "folder",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScenarioResponse"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScenarioResponse"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScenarioResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Both folder and tag were provided; they are mutually\nexclusive.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/applications/{applicationId}/scenarios/archived": {
+      "get": {
+        "tags": [
+          "Scenarios"
+        ],
+        "summary": "Returns archived Scenarios in the Application. Supports filtering by folder or tag, which are mutually exclusive.",
+        "operationId": "ListArchivedScenarios",
         "parameters": [
           {
             "name": "applicationId",
@@ -3190,6 +3296,80 @@
           }
         }
       },
+      "delete": {
+        "tags": [
+          "Scenarios"
+        ],
+        "operationId": "DeleteScenario",
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "No Scenario with the given scenarioId exists in this Application,\nor the Application does not exist in the caller's Organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Someone else added or removed Activities on this Scenario while the\ndelete was running. The caller should retry.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
+          }
+        }
+      },
       "patch": {
         "tags": [
           "Scenarios"
@@ -3257,7 +3437,7 @@
             }
           },
           "400": {
-            "description": "A tag in Tags is longer than 50 characters. Returns 400 when the request fails a validation constraint.",
+            "description": "A tag in Tags is longer than 50 characters or Tags contains duplicate values (case-sensitive). Returns 400 when the request fails a validation constraint.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -3312,6 +3492,118 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
+          }
+        }
+      }
+    },
+    "/applications/{applicationId}/scenarios/{scenarioId}/archive": {
+      "post": {
+        "tags": [
+          "Scenarios"
+        ],
+        "operationId": "ArchiveScenario",
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "No Scenario with the given scenarioId exists in this Application,\nor the Application does not exist in the caller's Organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Returns 403 when the caller's Organization is archived."
+          }
+        }
+      }
+    },
+    "/applications/{applicationId}/scenarios/{scenarioId}/unarchive": {
+      "post": {
+        "tags": [
+          "Scenarios"
+        ],
+        "operationId": "UnarchiveScenario",
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "scenarioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "No Scenario with the given scenarioId exists in this Application,\nor the Application does not exist in the caller's Organization.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -3419,7 +3711,8 @@
             ],
             "additionalProperties": {
               "type": "string"
-            }
+            },
+            "description": "Items must not be null."
           },
           "evidence": {
             "maxLength": 50,
@@ -3429,7 +3722,8 @@
             ],
             "additionalProperties": {
               "type": "string"
-            }
+            },
+            "description": "Items must not be null."
           },
           "continuationReasoning": {
             "maxLength": 2000,
@@ -3698,14 +3992,15 @@
             ]
           },
           "tags": {
-            "maxItems": 20,
+            "maxItems": 5,
             "type": [
               "null",
               "array"
             ],
             "items": {
               "type": "string"
-            }
+            },
+            "description": "Items must not be null."
           }
         },
         "description": "Request body to create a new Scenario for an Application. Folder defaults\nto \"/\" when\nnot given; Tags default to empty."
@@ -4631,7 +4926,7 @@
         "type": "object",
         "properties": {
           "totalActivityCount": {
-            "maximum": 8640,
+            "maximum": 2147483647,
             "minimum": 0,
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -4641,7 +4936,7 @@
             "format": "int32"
           },
           "passedActivityCount": {
-            "maximum": 8640,
+            "maximum": 2147483647,
             "minimum": 0,
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -4651,7 +4946,7 @@
             "format": "int32"
           },
           "failedActivityCount": {
-            "maximum": 8640,
+            "maximum": 2147483647,
             "minimum": 0,
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -4661,7 +4956,7 @@
             "format": "int32"
           },
           "skippedActivityCount": {
-            "maximum": 8640,
+            "maximum": 2147483647,
             "minimum": 0,
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -4695,14 +4990,15 @@
             "type": "string"
           },
           "tags": {
-            "maxItems": 20,
+            "maxItems": 5,
             "type": [
               "null",
               "array"
             ],
             "items": {
               "type": "string"
-            }
+            },
+            "description": "Items must not be null."
           }
         },
         "description": "Request body to edit an existing Scenario's\nTitle/Description/Folder/Tags."

@@ -11,9 +11,3 @@ This repository contains:
 
 Breaking changes are welcome. No need to make backward-compatibility. AutoAssure
 has not yet been released to the public.
-
-# Coding
-
-1. Use the `code-implementer` sub-agent to perform the coding task.
-1. Use the `code-reviewer` sub-agent to review the coder agent's works. Then,
-   ask the `code-implementer` sub-agent to make the fixes.

@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using System.Globalization;
 using A2.Server.Common;
 using A2.Server.Models;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.Options;
+using Activity = A2.Server.Models.Activity;
 
 namespace A2.Server.Repositories;
 
@@ -51,12 +53,6 @@ public class DynamoDbActivityRepository(
             }
         );
 
-        // When TransactWriteItemsAsync is cancelled due to the Scenario Update (index 0) failing,
-        // Then a follow-up read distinguishes ScenarioNotFound from ScenarioActivityLimitReached,
-        // since the combined condition can't say which clause failed. When it's cancelled due to a
-        // Precondition/Evidence ConditionCheck (index > 0) failing, Then return
-        // PreconditionOrEvidenceNotFound; otherwise rethrow, since the cancellation isn't caused by
-        // either of those checks.
         try
         {
             await client.TransactWriteItemsAsync(
@@ -70,14 +66,23 @@ public class DynamoDbActivityRepository(
             var reasons = ex.CancellationReasons;
             if (reasons[0].Code == "ConditionalCheckFailed")
             {
-                var scenarioExists = await ScenarioExistsAsync(
-                    activity.OrganizationId,
-                    activity.ApplicationId,
-                    activity.ScenarioId
-                );
-                return scenarioExists
-                    ? ActivitySaveResult.ScenarioActivityLimitReached
-                    : ActivitySaveResult.ScenarioNotFound;
+                var item = reasons[0].Item;
+                if (item is null || item.Count == 0)
+                    return ActivitySaveResult.ScenarioNotFound;
+
+                var scenario = item.ToScenario();
+                return scenario.LifecycleState switch
+                {
+                    LifecycleState.Active =>
+                        ActivitySaveResult.ScenarioActivityLimitReached,
+                    LifecycleState.Archived =>
+                        ActivitySaveResult.ScenarioNotActive,
+                    LifecycleState.Deleting =>
+                        ActivitySaveResult.ScenarioNotActive,
+                    _ => throw new UnreachableException(
+                        $"Unhandled LifecycleState: {scenario.LifecycleState}"
+                    ),
+                };
             }
 
             if (
@@ -353,34 +358,6 @@ public class DynamoDbActivityRepository(
         }
     }
 
-    // Only used to disambiguate why IncrementScenarioActivityCount's combined condition failed --
-    // not part of the transaction itself.
-    private async Task<bool> ScenarioExistsAsync(
-        Guid organizationId,
-        Guid applicationId,
-        Guid scenarioId
-    )
-    {
-        var response = await client.GetItemAsync(
-            new GetItemRequest
-            {
-                TableName = ScenarioTableName,
-                Key = new Dictionary<string, AttributeValue>
-                {
-                    ["OrganizationId_ApplicationId"] = new(
-                        DynamoDbMapper.ApplicationScopedPartitionKey(
-                            organizationId,
-                            applicationId
-                        )
-                    ),
-                    ["Id"] = new(scenarioId.ToString()),
-                },
-                ConsistentRead = true,
-            }
-        );
-        return response.IsItemSet;
-    }
-
     private TransactWriteItem IncrementScenarioActivityCount(
         Guid organizationId,
         Guid applicationId,
@@ -403,17 +380,20 @@ public class DynamoDbActivityRepository(
                     ["Id"] = new(scenarioId.ToString()),
                 },
                 UpdateExpression = "ADD ActivityCount :one",
-                // Scenarios written before ActivityCount existed have no such attribute -- Then
-                // treat it as 0 (matching ToScenario's read-side default) instead of failing the
-                // numeric comparison DynamoDB would otherwise reject against a missing attribute.
+                // Scenarios written before ActivityCount/LifecycleState existed have no such attributes -- Then
+                // treat ActivityCount as 0 and LifecycleState as Active (matching ToScenario's read-side defaults)
+                // instead of failing the comparisons DynamoDB would otherwise reject against missing attributes.
                 ConditionExpression =
-                    "attribute_exists(Id) AND (attribute_not_exists(ActivityCount) OR ActivityCount < :max)",
+                    "attribute_exists(Id) AND (attribute_not_exists(LifecycleState) OR LifecycleState = :active) AND (attribute_not_exists(ActivityCount) OR ActivityCount < :max)",
+                ReturnValuesOnConditionCheckFailure =
+                    ReturnValuesOnConditionCheckFailure.ALL_OLD,
                 ExpressionAttributeValues = new Dictionary<
                     string,
                     AttributeValue
                 >
                 {
                     [":one"] = new() { N = "1" },
+                    [":active"] = new(LifecycleState.Active.ToString()),
                     [":max"] = new()
                     {
                         N = Quota.MaxActivityCountPerScenario.ToString(

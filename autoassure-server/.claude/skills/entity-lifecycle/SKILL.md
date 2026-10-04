@@ -80,3 +80,20 @@ The deletion strategy depends on the entity's role:
 Organizations have a global filter that returns 403 when accessing data from an
 archived org. No additional actions needed when adding records—no need to verify
 the org is active.
+
+## Special Case: Scenario
+
+Scenario deletion uses a single atomic transaction instead of the general
+mark-Deleting-and-queue pattern described above. This relies on Scenario's
+child count (Activities) being hard-capped at 90
+(`Quota.MaxActivityCountPerScenario`), which comfortably fits under DynamoDB's
+100-item `TransactWriteItems` limit on its own. When deleting a Scenario, the
+transaction deletes the Scenario row, its folder and tag mapping rows, and all
+its Activities in one go — Tags currently have no equivalent cap, so a Scenario
+with both close to 90 Activities and many tags can still push the transaction
+over the 100-item limit; this is a known, accepted gap, not something this
+pattern protects against.
+
+**This is a one-off shortcut specific to Scenario.** Do not reuse this
+single-transaction delete pattern for a parent entity whose child count is not
+bounded (e.g., Application, which can own far more rows than that).

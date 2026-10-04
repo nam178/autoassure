@@ -19,6 +19,7 @@ if (!DesignTimeBuild.IsActive && !string.IsNullOrEmpty(ssmParameterPath))
 builder.Services.AddOpenApi(options =>
 {
     options.AddSchemaTransformer<NotBlankSchemaTransformer>();
+    options.AddSchemaTransformer<NoNullItemsSchemaTransformer>();
     options.AddOperationTransformer<RequestValidationOperationTransformer>();
     options.AddOperationTransformer<ArchivedOrganizationOperationTransformer>();
 });

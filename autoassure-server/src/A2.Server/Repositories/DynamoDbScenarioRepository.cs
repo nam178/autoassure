@@ -1,3 +1,4 @@
+using System.Globalization;
 using A2.Server.Common;
 using A2.Server.Models;
 using Amazon.DynamoDBv2;
@@ -31,6 +32,8 @@ public class DynamoDbScenarioRepository(
 
     private string ApplicationTableName => options.Value.ApplicationTableName;
 
+    private string ActivityTableName => options.Value.ActivityTableName;
+
     public async Task<bool> TrySaveAsync(Scenario scenario)
     {
         var transactItems = new List<TransactWriteItem>
@@ -39,9 +42,9 @@ public class DynamoDbScenarioRepository(
                 scenario.OrganizationId,
                 scenario.ApplicationId
             ),
+            PutScenario(scenario),
+            PutFolderMapping(scenario, scenario.Folder),
         };
-        transactItems.Add(PutScenario(scenario));
-        transactItems.Add(PutFolderMapping(scenario, scenario.Folder));
         transactItems.AddRange(
             scenario.Tags.Select(tag => PutTagMapping(scenario, tag))
         );
@@ -59,8 +62,8 @@ public class DynamoDbScenarioRepository(
         // result.
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons
-                    is [{ Code: "ConditionalCheckFailed" }, ..]
-            )
+                      is [{ Code: "ConditionalCheckFailed" }, ..]
+                 )
         {
             return false;
         }
@@ -77,11 +80,11 @@ public class DynamoDbScenarioRepository(
                 scenario.OrganizationId,
                 scenario.ApplicationId
             ),
+            // Guards against the Scenario being deleted between the Controller's existence check and this
+            // write -- without it, UpdateItem would silently recreate a partial row. Always transact
+            // item 1, right after the Application check.
+            UpdateScenario(scenario),
         };
-        // Guards against the Scenario being deleted between the Controller's existence check and this
-        // write -- without it, UpdateItem would silently recreate a partial row. Always transact
-        // item 1, right after the Application check.
-        transactItems.Add(UpdateScenario(scenario));
 
         // Reconcile the folder mapping: only touch it if the folder actually changed, so an
         // unrelated field update doesn't churn the mapping table.
@@ -117,14 +120,16 @@ public class DynamoDbScenarioRepository(
         // When the Application (item 0) or the Scenario itself (item 1) was deleted between the
         // Controller's existence check and this write. Then report which one; any other
         // cancellation reason (throttling, conflict, etc.) is an unexpected failure and MUST
-        // propagate instead of being reported as a business result.
+        // propagate instead of being reported as a business result. The folder/tag mapping
+        // deletes above are intentionally unconditioned (unlike TryDeleteAsync's), so they can
+        // never be the cause of a ConditionalCheckFailed here.
         catch (TransactionCanceledException ex)
             when (ex.CancellationReasons is { Count: > 1 } reasons
-                && (
-                    reasons[0].Code == "ConditionalCheckFailed"
-                    || reasons[1].Code == "ConditionalCheckFailed"
-                )
-            )
+                  && (
+                      reasons[0].Code == "ConditionalCheckFailed"
+                      || reasons[1].Code == "ConditionalCheckFailed"
+                  )
+                 )
         {
             return reasons[0].Code == "ConditionalCheckFailed"
                 ? ScenarioUpdateResult.ApplicationNotFound
@@ -275,6 +280,100 @@ public class DynamoDbScenarioRepository(
         );
     }
 
+    public async Task<bool> TrySetLifecycleStateAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid scenarioId,
+        LifecycleState newState
+    )
+    {
+        try
+        {
+            await client.UpdateItemAsync(
+                new UpdateItemRequest
+                {
+                    TableName = ScenarioTableName,
+                    Key = new Dictionary<string, AttributeValue>
+                    {
+                        ["OrganizationId_ApplicationId"] = new(
+                            DynamoDbMapper.ApplicationScopedPartitionKey(
+                                organizationId,
+                                applicationId
+                            )
+                        ),
+                        ["Id"] = new(scenarioId.ToString()),
+                    },
+                    UpdateExpression = "SET LifecycleState = :newState",
+                    ExpressionAttributeValues = new Dictionary<
+                        string,
+                        AttributeValue
+                    >
+                    {
+                        [":newState"] = new(newState.ToString()),
+                    },
+                    ConditionExpression = "attribute_exists(Id)",
+                }
+            );
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<ScenarioDeleteResult> TryDeleteAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid scenarioId,
+        IReadOnlyList<Activity> activitiesToDelete
+    )
+    {
+        var scenario = await GetByIdAsync(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
+        if (scenario is null)
+            return ScenarioDeleteResult.ScenarioNotFound;
+
+        var transactItems = new List<TransactWriteItem>
+        {
+            DeleteScenario(scenario, activitiesToDelete.Count),
+            DeleteFolderMapping(scenario, scenario.Folder, scenarioId),
+        };
+
+        var uniqueTags = scenario.Tags.ToHashSet();
+        transactItems.AddRange(
+            uniqueTags.Select(tag =>
+                DeleteTagMapping(scenario, tag, scenarioId)
+            )
+        );
+        transactItems.AddRange(
+            activitiesToDelete.Select(activity =>
+                DeleteActivity(organizationId, scenarioId, activity.Id)
+            )
+        );
+
+        try
+        {
+            await client.TransactWriteItemsAsync(
+                new TransactWriteItemsRequest { TransactItems = transactItems }
+            );
+            return ScenarioDeleteResult.Success;
+        }
+        catch (TransactionCanceledException ex)
+            when (ex.CancellationReasons is { Count: > 0 } reasons)
+        {
+            // Check if ANY item's condition failed (Scenario delete, folder mapping delete, or any tag mapping delete)
+            // All are "something changed concurrently" cases that should be reported to the caller for retry
+            if (reasons.Any(reason => reason.Code == "ConditionalCheckFailed"))
+                return ScenarioDeleteResult.ScenarioModifiedConcurrently;
+
+            throw;
+        }
+    }
+
     private TransactWriteItem ApplicationExistsCheck(
         Guid organizationId,
         Guid applicationId
@@ -342,10 +441,12 @@ public class DynamoDbScenarioRepository(
                             >
                             {
                                 ["OrganizationId_ApplicationId"] = new(
-                                    DynamoDbMapper.ApplicationScopedPartitionKey(
-                                        Guid.Parse(item["OrganizationId"].S),
-                                        Guid.Parse(item["ApplicationId"].S)
-                                    )
+                                    DynamoDbMapper
+                                        .ApplicationScopedPartitionKey(
+                                            Guid.Parse(item["OrganizationId"]
+                                                .S),
+                                            Guid.Parse(item["ApplicationId"].S)
+                                        )
                                 ),
                                 ["Id"] = new(item["ScenarioId"].S),
                             })
@@ -425,6 +526,70 @@ public class DynamoDbScenarioRepository(
         };
     }
 
+    private TransactWriteItem DeleteScenario(
+        Scenario scenario,
+        int expectedActivityCount
+    )
+    {
+        return new TransactWriteItem
+        {
+            Delete = new Delete
+            {
+                TableName = ScenarioTableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    ["OrganizationId_ApplicationId"] = new(
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            scenario.OrganizationId,
+                            scenario.ApplicationId
+                        )
+                    ),
+                    ["Id"] = new(scenario.Id.ToString()),
+                },
+                ConditionExpression =
+                    "attribute_exists(Id) AND (attribute_not_exists(ActivityCount) OR ActivityCount = :expectedCount)",
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
+                {
+                    [":expectedCount"] = new()
+                    {
+                        N = expectedActivityCount.ToString(
+                            CultureInfo.InvariantCulture
+                        ),
+                    },
+                },
+            },
+        };
+    }
+
+    private TransactWriteItem DeleteActivity(
+        Guid organizationId,
+        Guid scenarioId,
+        Guid activityId
+    )
+    {
+        return new TransactWriteItem
+        {
+            Delete = new Delete
+            {
+                TableName = ActivityTableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    ["OrganizationId_ScenarioId"] = new(
+                        DynamoDbMapper.ScenarioScopedPartitionKey(
+                            organizationId,
+                            scenarioId
+                        )
+                    ),
+                    ["Id"] = new(activityId.ToString()),
+                },
+                ConditionExpression = "attribute_exists(Id)",
+            },
+        };
+    }
+
     private TransactWriteItem PutFolderMapping(Scenario scenario, string folder)
     {
         return new TransactWriteItem
@@ -451,7 +616,8 @@ public class DynamoDbScenarioRepository(
 
     private TransactWriteItem DeleteFolderMapping(
         Scenario scenario,
-        string folder
+        string folder,
+        Guid? expectedScenarioId = null
     )
     {
         return new TransactWriteItem
@@ -466,6 +632,17 @@ public class DynamoDbScenarioRepository(
                     ),
                     ["ScenarioId"] = new(scenario.Id.ToString()),
                 },
+                ConditionExpression = expectedScenarioId is null
+                    ? null
+                    : "ScenarioId = :expectedScenarioId",
+                ExpressionAttributeValues = expectedScenarioId is null
+                    ? null
+                    : new Dictionary<string, AttributeValue>
+                    {
+                        [":expectedScenarioId"] = new(
+                            expectedScenarioId.Value.ToString()
+                        ),
+                    },
             },
         };
     }
@@ -492,7 +669,11 @@ public class DynamoDbScenarioRepository(
         };
     }
 
-    private TransactWriteItem DeleteTagMapping(Scenario scenario, string tag)
+    private TransactWriteItem DeleteTagMapping(
+        Scenario scenario,
+        string tag,
+        Guid? expectedScenarioId = null
+    )
     {
         return new TransactWriteItem
         {
@@ -504,6 +685,17 @@ public class DynamoDbScenarioRepository(
                     [TagPartitionKeyName] = new(TagPartitionKey(scenario, tag)),
                     ["ScenarioId"] = new(scenario.Id.ToString()),
                 },
+                ConditionExpression = expectedScenarioId is null
+                    ? null
+                    : "ScenarioId = :expectedScenarioId",
+                ExpressionAttributeValues = expectedScenarioId is null
+                    ? null
+                    : new Dictionary<string, AttributeValue>
+                    {
+                        [":expectedScenarioId"] = new(
+                            expectedScenarioId.Value.ToString()
+                        ),
+                    },
             },
         };
     }

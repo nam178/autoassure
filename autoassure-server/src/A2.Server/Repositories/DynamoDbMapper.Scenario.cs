@@ -36,6 +36,7 @@ public static partial class DynamoDbMapper
                     CultureInfo.InvariantCulture
                 ),
             },
+            ["LifecycleState"] = new(scenario.LifecycleState.ToString()),
             ["CreatedByUserId"] = new(scenario.CreatedByUserId.ToString()),
             ["UpdatedByUserId"] = new(scenario.UpdatedByUserId.ToString()),
             ["CreatedAt"] = new(scenario.CreatedAt.ToString("O")),
@@ -64,6 +65,12 @@ public static partial class DynamoDbMapper
             )
                 ? int.Parse(activityCount.N, CultureInfo.InvariantCulture)
                 : 0,
+            LifecycleState = row.TryGetValue(
+                "LifecycleState",
+                out var lifecycleState
+            )
+                ? Enum.Parse<LifecycleState>(lifecycleState.S)
+                : LifecycleState.Active,
             CreatedByUserId = Guid.Parse(row["CreatedByUserId"].S),
             UpdatedByUserId = Guid.Parse(row["UpdatedByUserId"].S),
             CreatedAt = DateTimeOffset.Parse(

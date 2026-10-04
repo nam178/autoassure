@@ -141,21 +141,40 @@ public sealed class DynamoDbActivityRepositoryTests(
     private async Task SeedScenarioAsync(
         Guid organizationId,
         Guid applicationId,
-        Guid scenarioId
+        Guid scenarioId,
+        LifecycleState lifecycleState = LifecycleState.Active,
+        int activityCount = 0
     )
     {
-        await _client.PutItemAsync(
-            new PutItemRequest
+        var createdByUserId = Guid.CreateVersion7();
+        var updatedByUserId = Guid.CreateVersion7();
+        var now = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+        var item = new Dictionary<string, AttributeValue>
+        {
+            ["OrganizationId_ApplicationId"] = new(
+                $"{organizationId}_{applicationId}"
+            ),
+            ["Id"] = new(scenarioId.ToString()),
+            ["OrganizationId"] = new(organizationId.ToString()),
+            ["ApplicationId"] = new(applicationId.ToString()),
+            ["Title"] = new("Test Scenario"),
+            ["Description"] = new("Test scenario description"),
+            ["Folder"] = new(""),
+            ["Tags"] = new() { L = [] },
+            ["ActivityCount"] = new()
             {
-                TableName = ScenarioTableName,
-                Item = new Dictionary<string, AttributeValue>
-                {
-                    ["OrganizationId_ApplicationId"] = new(
-                        $"{organizationId}_{applicationId}"
-                    ),
-                    ["Id"] = new(scenarioId.ToString()),
-                },
-            }
+                N = activityCount.ToString(CultureInfo.InvariantCulture),
+            },
+            ["LifecycleState"] = new(lifecycleState.ToString()),
+            ["CreatedByUserId"] = new(createdByUserId.ToString()),
+            ["UpdatedByUserId"] = new(updatedByUserId.ToString()),
+            ["CreatedAt"] = new(now.ToString("O")),
+            ["UpdatedAt"] = new(now.ToString("O")),
+        };
+
+        await _client.PutItemAsync(
+            new PutItemRequest { TableName = ScenarioTableName, Item = item }
         );
     }
 
@@ -273,6 +292,85 @@ public sealed class DynamoDbActivityRepositoryTests(
 
         // verify
         Assert.Equal(ActivitySaveResult.PreconditionOrEvidenceNotFound, result);
+    }
+
+    [Fact]
+    public async Task TrySaveAsync_WhenScenarioIsArchived_ReturnsScenarioNotActive()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var scenarioId = Guid.CreateVersion7();
+        await SeedScenarioAsync(
+            organizationId,
+            applicationId,
+            scenarioId,
+            LifecycleState.Archived
+        );
+        var activity = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
+
+        // test
+        var result = await _repository.TrySaveAsync(activity);
+
+        // verify
+        Assert.Equal(ActivitySaveResult.ScenarioNotActive, result);
+    }
+
+    [Fact]
+    public async Task TrySaveAsync_WhenScenarioIsDeleting_ReturnsScenarioNotActive()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var scenarioId = Guid.CreateVersion7();
+        await SeedScenarioAsync(
+            organizationId,
+            applicationId,
+            scenarioId,
+            LifecycleState.Deleting
+        );
+        var activity = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
+
+        // test
+        var result = await _repository.TrySaveAsync(activity);
+
+        // verify
+        Assert.Equal(ActivitySaveResult.ScenarioNotActive, result);
+    }
+
+    [Fact]
+    public async Task TrySaveAsync_WhenActiveScenarioAtActivityLimit_ReturnsScenarioActivityLimitReached()
+    {
+        // setup
+        var organizationId = Guid.CreateVersion7();
+        var applicationId = Guid.CreateVersion7();
+        var scenarioId = Guid.CreateVersion7();
+        await SeedScenarioAsync(
+            organizationId,
+            applicationId,
+            scenarioId,
+            LifecycleState.Active,
+            Quota.MaxActivityCountPerScenario
+        );
+        var activity = CreateActivity(
+            organizationId,
+            applicationId,
+            scenarioId
+        );
+
+        // test
+        var result = await _repository.TrySaveAsync(activity);
+
+        // verify
+        Assert.Equal(ActivitySaveResult.ScenarioActivityLimitReached, result);
     }
 
     [Fact]

@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using A2.Server.Common;
 
 namespace A2.Server.Contracts;
 
@@ -10,15 +9,15 @@ namespace A2.Server.Contracts;
 /// </summary>
 public record UpdateRunStatsRequest
 {
-    [Range(0, Quota.MaxActivityCountPerRun)]
+    [Range(0, int.MaxValue)]
     public required int TotalActivityCount { get; init; }
 
-    [Range(0, Quota.MaxActivityCountPerRun)]
+    [Range(0, int.MaxValue)]
     public required int PassedActivityCount { get; init; }
 
-    [Range(0, Quota.MaxActivityCountPerRun)]
+    [Range(0, int.MaxValue)]
     public required int FailedActivityCount { get; init; }
 
-    [Range(0, Quota.MaxActivityCountPerRun)]
+    [Range(0, int.MaxValue)]
     public required int SkippedActivityCount { get; init; }
 }

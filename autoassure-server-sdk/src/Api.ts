@@ -57,9 +57,15 @@ export interface ActivityResult {
    * and Running name the states before an Activity has concluded.
    */
   status: ActivityResultStatus;
-  /** @maxLength 50 */
+  /**
+   * Items must not be null.
+   * @maxLength 50
+   */
   resolvedPreconditions?: null | Record<string, string>;
-  /** @maxLength 50 */
+  /**
+   * Items must not be null.
+   * @maxLength 50
+   */
   evidence?: null | Record<string, string>;
   /**
    * Why this Activity was chosen for execution despite an earlier Activity
@@ -250,7 +256,10 @@ export interface CreateScenarioRequest {
   description: string;
   /** @maxLength 300 */
   folder?: null | string;
-  /** @maxItems 20 */
+  /**
+   * Items must not be null.
+   * @maxItems 5
+   */
   tags?: null | string[];
 }
 
@@ -898,28 +907,28 @@ export interface UpdateRunStatsRequest {
   /**
    * @format int32
    * @min 0
-   * @max 8640
+   * @max 2147483647
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   totalActivityCount: number | string;
   /**
    * @format int32
    * @min 0
-   * @max 8640
+   * @max 2147483647
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   passedActivityCount: number | string;
   /**
    * @format int32
    * @min 0
-   * @max 8640
+   * @max 2147483647
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   failedActivityCount: number | string;
   /**
    * @format int32
    * @min 0
-   * @max 8640
+   * @max 2147483647
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   skippedActivityCount: number | string;
@@ -939,7 +948,10 @@ export interface UpdateScenarioRequest {
   description: string;
   /** @maxLength 300 */
   folder: string;
-  /** @maxItems 20 */
+  /**
+   * Items must not be null.
+   * @maxItems 5
+   */
   tags?: null | string[];
 }
 
@@ -1153,6 +1165,7 @@ export class Api<SecurityDataType extends unknown> {
      * @response `400` `ErrorResponse` Order is outside 0..89, PreconditionIds/EvidenceIds do not reference existing library rows in the Scenario's Application, or the Scenario already has the maximum number of Activities (90). Returns 400 when the request fails a validation constraint.
      * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Scenario with the given scenarioId exists
+     * @response `409` `ErrorResponse` Scenario exists but is not active (archived or deleting).
      */
     createActivity: (
       applicationId: string,
@@ -1850,7 +1863,7 @@ export class Api<SecurityDataType extends unknown> {
      * @name CreateScenario
      * @request POST:/applications/{applicationId}/scenarios
      * @response `200` `ScenarioResponse` OK
-     * @response `400` `ErrorResponse` A tag in Tags is longer than 50 characters. Returns 400 when the request fails a validation constraint.
+     * @response `400` `ErrorResponse` A tag in Tags is longer than 50 characters or Tags contains duplicate values (case-sensitive). Returns 400 when the request fails a validation constraint.
      * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Application with the given applicationId exists in the caller's Organization, or it no longer exists (deleted after this request started).
      */
@@ -1876,6 +1889,7 @@ export class Api<SecurityDataType extends unknown> {
      *
      * @tags Scenarios
      * @name ListScenarios
+     * @summary Returns active Scenarios in the Application. Supports filtering by folder or tag, which are mutually exclusive.
      * @request GET:/applications/{applicationId}/scenarios
      * @response `200` `(ScenarioResponse)[]` OK
      * @response `400` `ErrorResponse` Both folder and tag were provided; they are mutually exclusive.
@@ -1890,6 +1904,32 @@ export class Api<SecurityDataType extends unknown> {
     ) =>
       this.http.request<ScenarioResponse[], ErrorResponse>({
         path: `/applications/${applicationId}/scenarios`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Scenarios
+     * @name ListArchivedScenarios
+     * @summary Returns archived Scenarios in the Application. Supports filtering by folder or tag, which are mutually exclusive.
+     * @request GET:/applications/{applicationId}/scenarios/archived
+     * @response `200` `(ScenarioResponse)[]` OK
+     * @response `400` `ErrorResponse` Both folder and tag were provided; they are mutually exclusive.
+     */
+    listArchivedScenarios: (
+      applicationId: string,
+      query?: {
+        folder?: string;
+        tag?: string;
+      },
+      params: RequestParams = {},
+    ) =>
+      this.http.request<ScenarioResponse[], ErrorResponse>({
+        path: `/applications/${applicationId}/scenarios/archived`,
         method: "GET",
         query: query,
         format: "json",
@@ -1921,10 +1961,32 @@ export class Api<SecurityDataType extends unknown> {
      * No description
      *
      * @tags Scenarios
+     * @name DeleteScenario
+     * @request DELETE:/applications/{applicationId}/scenarios/{scenarioId}
+     * @response `204` `void` No Content
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
+     * @response `404` `ProblemDetails` No Scenario with the given scenarioId exists in this Application, or the Application does not exist in the caller's Organization.
+     * @response `409` `ErrorResponse` Someone else added or removed Activities on this Scenario while the delete was running. The caller should retry.
+     */
+    deleteScenario: (
+      applicationId: string,
+      scenarioId: string,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<void, void | ProblemDetails | ErrorResponse>({
+        path: `/applications/${applicationId}/scenarios/${scenarioId}`,
+        method: "DELETE",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Scenarios
      * @name UpdateScenario
      * @request PATCH:/applications/{applicationId}/scenarios/{scenarioId}
      * @response `200` `ScenarioResponse` OK
-     * @response `400` `ErrorResponse` A tag in Tags is longer than 50 characters. Returns 400 when the request fails a validation constraint.
+     * @response `400` `ErrorResponse` A tag in Tags is longer than 50 characters or Tags contains duplicate values (case-sensitive). Returns 400 when the request fails a validation constraint.
      * @response `403` `void` Returns 403 when the caller's Organization is archived.
      * @response `404` `ProblemDetails` No Scenario with the given scenarioId exists in this Application, or the Application does not exist in the caller's Organization.
      * @response `409` `ErrorResponse` The Scenario's Application no longer exists (deleted after this request started).
@@ -1944,6 +2006,48 @@ export class Api<SecurityDataType extends unknown> {
         body: data,
         type: ContentType.Json,
         format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Scenarios
+     * @name ArchiveScenario
+     * @request POST:/applications/{applicationId}/scenarios/{scenarioId}/archive
+     * @response `204` `void` No Content
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
+     * @response `404` `ProblemDetails` No Scenario with the given scenarioId exists in this Application, or the Application does not exist in the caller's Organization.
+     */
+    archiveScenario: (
+      applicationId: string,
+      scenarioId: string,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<void, void | ProblemDetails>({
+        path: `/applications/${applicationId}/scenarios/${scenarioId}/archive`,
+        method: "POST",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags Scenarios
+     * @name UnarchiveScenario
+     * @request POST:/applications/{applicationId}/scenarios/{scenarioId}/unarchive
+     * @response `204` `void` No Content
+     * @response `403` `void` Returns 403 when the caller's Organization is archived.
+     * @response `404` `ProblemDetails` No Scenario with the given scenarioId exists in this Application, or the Application does not exist in the caller's Organization.
+     */
+    unarchiveScenario: (
+      applicationId: string,
+      scenarioId: string,
+      params: RequestParams = {},
+    ) =>
+      this.http.request<void, void | ProblemDetails>({
+        path: `/applications/${applicationId}/scenarios/${scenarioId}/unarchive`,
+        method: "POST",
         ...params,
       }),
   };

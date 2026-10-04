@@ -26,6 +26,9 @@ public class ActivitiesController(
     /// <response code="404">
     /// No Scenario with the given scenarioId exists
     /// </response>
+    /// <response code="409">
+    /// Scenario exists but is not active (archived or deleting).
+    /// </response>
     [HttpPost(
         "applications/{applicationId:guid}/scenarios/{scenarioId:guid}/activities",
         Name = "CreateActivity"
@@ -36,6 +39,7 @@ public class ActivitiesController(
         StatusCodes.Status400BadRequest
     )]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ActivityResponse>> Create(
         Guid applicationId,
         Guid scenarioId,
@@ -71,6 +75,9 @@ public class ActivitiesController(
         {
             ActivitySaveResult.Success => Ok(activity.ToResponse()),
             ActivitySaveResult.ScenarioNotFound => NotFound(),
+            ActivitySaveResult.ScenarioNotActive => Conflict(
+                new ErrorResponse("Scenario is not active.")
+            ),
             ActivitySaveResult.ScenarioActivityLimitReached => BadRequest(
                 new ErrorResponse(
                     $"A Scenario can have at most {Quota.MaxActivityCountPerScenario} Activities."

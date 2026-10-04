@@ -90,4 +90,26 @@ public interface IScenarioRepository
         Guid applicationId,
         string tag
     );
+
+    /// <summary>
+    /// Sets the Scenario's LifecycleState to the given value. Returns false if
+    /// the Scenario doesn't exist, true on success.
+    /// </summary>
+    Task<bool> TrySetLifecycleStateAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid scenarioId,
+        LifecycleState newState
+    );
+
+    /// <summary>
+    /// Atomically deletes the Scenario, the given Activities, and its folder/tag
+    /// mappings in a single transaction.
+    /// </summary>
+    Task<ScenarioDeleteResult> TryDeleteAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid scenarioId,
+        IReadOnlyList<Activity> activitiesToDelete
+    );
 }

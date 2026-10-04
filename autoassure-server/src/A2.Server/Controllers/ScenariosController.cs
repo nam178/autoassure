@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using A2.Server.Common;
 using A2.Server.Contracts;
+using A2.Server.Models;
 using A2.Server.Repositories;
 using A2.Server.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -14,6 +15,7 @@ namespace A2.Server.Controllers;
 public class ScenariosController(
     IApplicationRepository applicationRepository,
     IScenarioRepository scenarioRepository,
+    IActivityRepository activityRepository,
     ICallerOrganizationService callerOrganizationService,
     IClock clock
 ) : ControllerBase
@@ -21,7 +23,9 @@ public class ScenariosController(
     private const int MaxTagLength = 50;
     private const string DefaultFolder = "/";
 
-    /// <response code="400">A tag in Tags is longer than 50 characters.</response>
+    /// <response code="400">
+    /// A tag in Tags is longer than 50 characters or Tags contains duplicate values (case-sensitive).
+    /// </response>
     /// <response code="404">
     /// No Application with the given applicationId exists in the caller's
     /// Organization,
@@ -87,6 +91,10 @@ public class ScenariosController(
         return success ? Ok(scenario.ToResponse()) : NotFound();
     }
 
+    /// <summary>
+    /// Returns active Scenarios in the Application. Supports filtering by folder or tag,
+    /// which are mutually exclusive.
+    /// </summary>
     /// <response code="400">
     /// Both folder and tag were provided; they are mutually
     /// exclusive.
@@ -104,6 +112,55 @@ public class ScenariosController(
         Guid applicationId,
         [FromQuery] string? folder,
         [FromQuery] string? tag
+    )
+    {
+        var result = await ListByLifecycleStateAsync(
+            applicationId,
+            folder,
+            tag,
+            LifecycleState.Active
+        );
+        return result;
+    }
+
+    /// <summary>Returns archived Scenarios in the Application. Supports filtering by folder or tag, which are mutually exclusive.</summary>
+    /// <response code="400">
+    /// Both folder and tag were provided; they are mutually
+    /// exclusive.
+    /// </response>
+    [HttpGet(
+        "applications/{applicationId:guid}/scenarios/archived",
+        Name = "ListArchivedScenarios"
+    )]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ErrorResponse),
+        StatusCodes.Status400BadRequest
+    )]
+    public async Task<
+        ActionResult<IReadOnlyList<ScenarioResponse>>
+    > ListArchived(
+        Guid applicationId,
+        [FromQuery] string? folder,
+        [FromQuery] string? tag
+    )
+    {
+        var result = await ListByLifecycleStateAsync(
+            applicationId,
+            folder,
+            tag,
+            LifecycleState.Archived
+        );
+        return result;
+    }
+
+    private async Task<
+        ActionResult<IReadOnlyList<ScenarioResponse>>
+    > ListByLifecycleStateAsync(
+        Guid applicationId,
+        string? folder,
+        string? tag,
+        LifecycleState lifecycleState
     )
     {
         if (!string.IsNullOrEmpty(folder) && !string.IsNullOrEmpty(tag))
@@ -132,7 +189,11 @@ public class ScenariosController(
                 applicationId
             );
 
-        return Ok(scenarios.Select(s => s.ToResponse()).ToList());
+        var filteredScenarios = scenarios
+            .Where(s => s.LifecycleState == lifecycleState)
+            .ToList();
+
+        return Ok(filteredScenarios.Select(s => s.ToResponse()).ToList());
     }
 
     /// <response code="404">
@@ -161,7 +222,112 @@ public class ScenariosController(
         return scenario is null ? NotFound() : Ok(scenario.ToResponse());
     }
 
-    /// <response code="400">A tag in Tags is longer than 50 characters.</response>
+    /// <response code="404">
+    /// No Scenario with the given scenarioId exists in this Application,
+    /// or the Application does not exist in the caller's Organization.
+    /// </response>
+    [HttpPost(
+        "applications/{applicationId:guid}/scenarios/{scenarioId:guid}/archive",
+        Name = "ArchiveScenario"
+    )]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> Archive(Guid applicationId, Guid scenarioId)
+    {
+        var callerOrganization =
+            await callerOrganizationService.GetCallerOrganizationAsync();
+        var organizationId = callerOrganization.Id;
+
+        var success = await scenarioRepository.TrySetLifecycleStateAsync(
+            organizationId,
+            applicationId,
+            scenarioId,
+            LifecycleState.Archived
+        );
+
+        return success ? NoContent() : NotFound();
+    }
+
+    /// <response code="404">
+    /// No Scenario with the given scenarioId exists in this Application,
+    /// or the Application does not exist in the caller's Organization.
+    /// </response>
+    [HttpPost(
+        "applications/{applicationId:guid}/scenarios/{scenarioId:guid}/unarchive",
+        Name = "UnarchiveScenario"
+    )]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult> Unarchive(
+        Guid applicationId,
+        Guid scenarioId
+    )
+    {
+        var callerOrganization =
+            await callerOrganizationService.GetCallerOrganizationAsync();
+        var organizationId = callerOrganization.Id;
+
+        var success = await scenarioRepository.TrySetLifecycleStateAsync(
+            organizationId,
+            applicationId,
+            scenarioId,
+            LifecycleState.Active
+        );
+
+        return success ? NoContent() : NotFound();
+    }
+
+    /// <response code="409">
+    /// Someone else added or removed Activities on this Scenario while the
+    /// delete was running. The caller should retry.
+    /// </response>
+    /// <response code="404">
+    /// No Scenario with the given scenarioId exists in this Application,
+    /// or the Application does not exist in the caller's Organization.
+    /// </response>
+    [HttpDelete(
+        "applications/{applicationId:guid}/scenarios/{scenarioId:guid}",
+        Name = "DeleteScenario"
+    )]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
+    public async Task<ActionResult> Delete(Guid applicationId, Guid scenarioId)
+    {
+        var callerOrganization =
+            await callerOrganizationService.GetCallerOrganizationAsync();
+        var organizationId = callerOrganization.Id;
+
+        var activities = await activityRepository.ListByScenarioAsync(
+            organizationId,
+            scenarioId
+        );
+
+        var result = await scenarioRepository.TryDeleteAsync(
+            organizationId,
+            applicationId,
+            scenarioId,
+            activities
+        );
+
+        return result switch
+        {
+            ScenarioDeleteResult.Success => NoContent(),
+            ScenarioDeleteResult.ScenarioNotFound => NotFound(),
+            ScenarioDeleteResult.ScenarioModifiedConcurrently => Conflict(
+                new ErrorResponse(
+                    "The Scenario was modified concurrently. Please retry."
+                )
+            ),
+            _ => throw new UnreachableException(
+                $"Unhandled {nameof(ScenarioDeleteResult)}: {result}"
+            ),
+        };
+    }
+
+    /// <response code="400">
+    /// A tag in Tags is longer than 50 characters or Tags contains duplicate values (case-sensitive).
+    /// </response>
     /// <response code="404">
     /// No Scenario with the given scenarioId exists in this Application,
     /// or the Application does not exist in the caller's Organization.
@@ -238,6 +404,13 @@ public class ScenariosController(
         if (tags.Any(tag => tag.Length > MaxTagLength))
         {
             error = $"each tag must be at most {MaxTagLength} characters.";
+            return false;
+        }
+
+        var uniqueTags = new HashSet<string>(tags, StringComparer.Ordinal);
+        if (uniqueTags.Count != tags.Count)
+        {
+            error = "tags must not contain duplicates (case-sensitive).";
             return false;
         }
 

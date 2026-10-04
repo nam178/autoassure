@@ -1075,4 +1075,54 @@ public sealed class RunStatusUpdatesControllerTests
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
+
+    [Fact]
+    public async Task Append_WhenResolvedPreconditionsHasNullValue_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(
+            client
+        );
+
+        // test - use raw JSON to express null value in ResolvedPreconditions dict
+        var json =
+            @"{""seq"":1,""activityResult"":{""scenarioId"":"""
+            + scenarioId
+            + @""",""activityId"":"""
+            + activityIds[0]
+            + @""",""status"":2,""resolvedPreconditions"":{""key1"":null}}}";
+        var response = await client.PostAsync(
+            $"/applications/{appId}/runs/{runId}/status-updates",
+            new StringContent(json, Encoding.UTF8, "application/json")
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Append_WhenEvidenceHasNullValue_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var (appId, runId, scenarioId, activityIds) = await SeedRunningRunAsync(
+            client
+        );
+
+        // test - use raw JSON to express null value in Evidence dict
+        var json =
+            @"{""seq"":1,""activityResult"":{""scenarioId"":"""
+            + scenarioId
+            + @""",""activityId"":"""
+            + activityIds[0]
+            + @""",""status"":2,""evidence"":{""screenshot"":null}}}";
+        var response = await client.PostAsync(
+            $"/applications/{appId}/runs/{runId}/status-updates",
+            new StringContent(json, Encoding.UTF8, "application/json")
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
 }

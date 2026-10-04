@@ -583,6 +583,86 @@ public sealed class ActivitiesControllerTests
     }
 
     [Fact]
+    public async Task Create_WhenScenarioIsArchived_ReturnsConflict()
+    {
+        // setup
+        var userId = Guid.CreateVersion7();
+        var client = CreateAuthenticatedClient(userId);
+        var organizationId = Guid.CreateVersion7();
+        var now = DateTimeOffset.UtcNow;
+        await _client.PutItemAsync(
+            new PutItemRequest
+            {
+                TableName = "Organizations",
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    ["Id"] = new(organizationId.ToString()),
+                    ["Name"] = new("Test Organization"),
+                    ["IsPersonal"] = new() { BOOL = true },
+                    ["CreatedByUserId"] = new(userId.ToString()),
+                    ["UpdatedByUserId"] = new(userId.ToString()),
+                    ["CreatedAt"] = new(now.ToString("O")),
+                    ["UpdatedAt"] = new(now.ToString("O")),
+                    ["LifecycleState"] = new(LifecycleState.Active.ToString()),
+                },
+            }
+        );
+        await _client.PutItemAsync(
+            new PutItemRequest
+            {
+                TableName = "OrganizationUsers",
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    ["OrganizationId"] = new(organizationId.ToString()),
+                    ["UserId"] = new(userId.ToString()),
+                    ["Role"] = new(OrganizationRole.Owner.ToString()),
+                    ["CreatedByUserId"] = new(userId.ToString()),
+                    ["UpdatedByUserId"] = new(userId.ToString()),
+                    ["CreatedAt"] = new(now.ToString("O")),
+                    ["UpdatedAt"] = new(now.ToString("O")),
+                },
+            }
+        );
+
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+        await _client.UpdateItemAsync(
+            new UpdateItemRequest
+            {
+                TableName = "Scenarios",
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    ["OrganizationId_ApplicationId"] = new(
+                        $"{organizationId}_{appId}"
+                    ),
+                    ["Id"] = new(scenarioId.ToString()),
+                },
+                UpdateExpression = "SET LifecycleState = :archived",
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
+                {
+                    [":archived"] = new(LifecycleState.Archived.ToString()),
+                },
+            }
+        );
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest
+            {
+                Description = "Step in archived scenario",
+                Order = 0,
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
     public async Task List_WhenActivitiesCreatedOutOfOrder_ReturnsSortedByOrder()
     {
         // setup
@@ -1081,5 +1161,134 @@ public sealed class ActivitiesControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WhenPreconditionIdsHasNullItem_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+
+        // test - use raw JSON to express null item
+        var response = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new StringContent(
+                """{"description":"Step","order":0,"preconditionIds":[null,"11111111-1111-1111-1111-111111111111"]}""",
+                Encoding.UTF8,
+                "application/json"
+            )
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WhenEvidenceIdsHasNullItem_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+
+        // test - use raw JSON to express null item
+        var response = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new StringContent(
+                """{"description":"Step","order":0,"evidenceIds":[null,"11111111-1111-1111-1111-111111111111"]}""",
+                Encoding.UTF8,
+                "application/json"
+            )
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WhenPreconditionIdsHasNullItem_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Step", Order = 0 }
+        );
+        var created =
+            await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
+
+        // test - use raw JSON to express null item
+        var response = await client.PatchAsync(
+            $"/applications/{appId}/scenarios/{scenarioId}/activities/{created!.Id}",
+            new StringContent(
+                """{"description":"Updated","preconditionIds":[null,"11111111-1111-1111-1111-111111111111"]}""",
+                Encoding.UTF8,
+                "application/json"
+            )
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WhenEvidenceIdsHasNullItem_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "Step", Order = 0 }
+        );
+        var created =
+            await createResponse.Content.ReadFromJsonAsync<ActivityResponse>();
+
+        // test - use raw JSON to express null item
+        var response = await client.PatchAsync(
+            $"/applications/{appId}/scenarios/{scenarioId}/activities/{created!.Id}",
+            new StringContent(
+                """{"description":"Updated","evidenceIds":[null,"11111111-1111-1111-1111-111111111111"]}""",
+                Encoding.UTF8,
+                "application/json"
+            )
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Reorder_WhenOrderedActivityIdsHasNullItem_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var scenarioId = await CreateScenarioAsync(client, appId);
+        var firstResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios/{scenarioId}/activities",
+            new CreateActivityRequest { Description = "First", Order = 0 }
+        );
+        var first = (
+            await firstResponse.Content.ReadFromJsonAsync<ActivityResponse>()
+        )!;
+
+        // test - use raw JSON to express null item in OrderedActivityIds
+        var response = await client.PatchAsync(
+            $"/applications/{appId}/scenarios/{scenarioId}/activities/order",
+            new StringContent(
+                $$"""{"orderedActivityIds":[null,"{{first.Id}}"]}""",
+                Encoding.UTF8,
+                "application/json"
+            )
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }

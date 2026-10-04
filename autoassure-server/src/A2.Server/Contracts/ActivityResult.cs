@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using A2.Server.Common;
 
 namespace A2.Server.Contracts;
 
@@ -21,12 +22,14 @@ public record ActivityResult
     public required ActivityResultStatus Status { get; init; }
 
     [MaxLength(50)]
+    [NoNullItems]
     public IReadOnlyDictionary<
         Guid,
         string
     >? ResolvedPreconditions { get; init; }
 
     [MaxLength(50)]
+    [NoNullItems]
     public IReadOnlyDictionary<Guid, string>? Evidence { get; init; }
 
     /// <summary>

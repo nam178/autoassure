@@ -22,6 +22,7 @@ public record CreateScenarioRequest
     [MaxLength(300)]
     public string? Folder { get; init; }
 
-    [MaxLength(20)]
+    [MaxLength(Quota.MaxTagsPerScenario)]
+    [NoNullItems]
     public IReadOnlyList<string>? Tags { get; init; }
 }

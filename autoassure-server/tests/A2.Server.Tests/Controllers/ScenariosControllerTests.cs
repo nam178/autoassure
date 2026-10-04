@@ -4,15 +4,18 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
+using A2.Server.Common;
 using A2.Server.Contracts;
 using A2.Server.Models;
 using A2.Server.Repositories;
+using A2.Server.Tests.Repositories;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace A2.Server.Tests.Controllers;
@@ -817,6 +820,161 @@ public sealed class ScenariosControllerTests
     }
 
     [Fact]
+    public async Task Update_WhenTagsCountExactlyMax_Succeeds()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/Folder",
+                Tags = ["tag1"],
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+
+        // test
+        var response = await client.PatchAsJsonAsync(
+            $"/applications/{appId}/scenarios/{created.Id}",
+            new UpdateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/Folder",
+                Tags = ["tag1", "tag2", "tag3", "tag4", "tag5"],
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WhenTagsCountExceedMax_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/Folder",
+                Tags = ["tag1"],
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+
+        // test
+        var response = await client.PatchAsJsonAsync(
+            $"/applications/{appId}/scenarios/{created.Id}",
+            new UpdateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/Folder",
+                Tags = ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6"],
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WhenTagsDuplicated_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/Folder",
+                Tags = ["tag1"],
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+
+        // test
+        var response = await client.PatchAsJsonAsync(
+            $"/applications/{appId}/scenarios/{created.Id}",
+            new UpdateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/Folder",
+                Tags = ["bug", "feature", "bug"],
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var errorResponse =
+            await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        Assert.NotNull(errorResponse);
+        Assert.Equal(
+            "tags must not contain duplicates (case-sensitive).",
+            errorResponse!.Message
+        );
+    }
+
+    [Fact]
+    public async Task Update_WhenCaseDifferingDuplicates_Succeeds()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/Folder",
+                Tags = ["tag1"],
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+
+        // test
+        var response = await client.PatchAsJsonAsync(
+            $"/applications/{appId}/scenarios/{created.Id}",
+            new UpdateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/Folder",
+                Tags = ["bug", "Bug", "feature"],
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated =
+            await response.Content.ReadFromJsonAsync<ScenarioResponse>();
+        Assert.NotNull(updated);
+        Assert.Equal(3, updated!.Tags.Count);
+    }
+
+    [Fact]
     public async Task List_WhenBothFolderAndTagGiven_ReturnsBadRequest()
     {
         // setup
@@ -918,13 +1076,8 @@ public sealed class ScenariosControllerTests
         Assert.Equal(expectedStatus, response.StatusCode);
     }
 
-    [Theory]
-    [InlineData(20, HttpStatusCode.OK)]
-    [InlineData(21, HttpStatusCode.BadRequest)]
-    public async Task Create_WhenTagCountAtBoundary_EnforcesTagCountLimit(
-        int tagCount,
-        HttpStatusCode expectedStatus
-    )
+    [Fact]
+    public async Task Create_WhenTagsCountExactlyMax_Succeeds()
     {
         // setup
         var client = await CreateClientWithMembershipAsync();
@@ -938,15 +1091,122 @@ public sealed class ScenariosControllerTests
                 Title = "Title",
                 Description = "Description",
                 Folder = null,
-                Tags = Enumerable
-                    .Range(0, tagCount)
-                    .Select(i => $"tag{i}")
-                    .ToList(),
+                Tags = ["tag1", "tag2", "tag3", "tag4", "tag5"],
             }
         );
 
         // verify
-        Assert.Equal(expectedStatus, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WhenTagsCountExceedMax_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6"],
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WhenTagsDuplicated_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = ["bug", "feature", "bug"],
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var errorResponse =
+            await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        Assert.NotNull(errorResponse);
+        Assert.Equal(
+            "tags must not contain duplicates (case-sensitive).",
+            errorResponse!.Message
+        );
+    }
+
+    [Fact]
+    public async Task Create_WhenTagsWithIdenticalValues_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = ["bug", "bug", "bug", "bug", "bug"],
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var errorResponse =
+            await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        Assert.NotNull(errorResponse);
+        Assert.Equal(
+            "tags must not contain duplicates (case-sensitive).",
+            errorResponse!.Message
+        );
+    }
+
+    [Fact]
+    public async Task Create_WhenTagsWithDifferentCases_Succeeds()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+
+        // test
+        var response = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = ["Bug", "bug", "feature"],
+            }
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var created =
+            await response.Content.ReadFromJsonAsync<ScenarioResponse>();
+        Assert.NotNull(created);
+        Assert.Equal(3, created.Tags.Count);
     }
 
     [Theory]
@@ -975,6 +1235,16 @@ public sealed class ScenariosControllerTests
 
         // verify
         Assert.Equal(expectedStatus, response.StatusCode);
+        if (expectedStatus == HttpStatusCode.BadRequest)
+        {
+            var errorResponse =
+                await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            Assert.NotNull(errorResponse);
+            Assert.Equal(
+                "each tag must be at most 50 characters.",
+                errorResponse!.Message
+            );
+        }
     }
 
     [Fact]
@@ -1110,5 +1380,852 @@ public sealed class ScenariosControllerTests
 
         // verify
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Archive_WhenScenarioExists_ReturnsNoContent()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+
+        // test
+        var response = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{created.Id}/archive",
+            null
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Archive_WhenAlreadyArchived_ReturnsNoContent()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+
+        // test
+        var firstArchive = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{created.Id}/archive",
+            null
+        );
+        Assert.Equal(HttpStatusCode.NoContent, firstArchive.StatusCode);
+
+        // test
+        var secondArchive = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{created.Id}/archive",
+            null
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NoContent, secondArchive.StatusCode);
+    }
+
+    [Fact]
+    public async Task Archive_WhenScenarioDoesNotExist_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+
+        // test
+        var response = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{Guid.CreateVersion7()}/archive",
+            null
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Unarchive_WhenScenarioExists_ReturnsNoContent()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+
+        // Archive it first
+        var archiveResponse = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{created.Id}/archive",
+            null
+        );
+        Assert.Equal(HttpStatusCode.NoContent, archiveResponse.StatusCode);
+
+        // test
+        var response = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{created.Id}/unarchive",
+            null
+        );
+
+        // verify - unarchive returns 204
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        // verify - scenario shows up in List again
+        var listResponse = await client.GetAsync(
+            $"/applications/{appId}/scenarios"
+        );
+        var scenarios = await listResponse.Content.ReadFromJsonAsync<
+            List<ScenarioResponse>
+        >();
+        Assert.Contains(created.Id, scenarios!.Select(s => s.Id));
+
+        // verify - scenario does not show up in ListArchived
+        var listArchivedResponse = await client.GetAsync(
+            $"/applications/{appId}/scenarios/archived"
+        );
+        var archivedScenarios =
+            await listArchivedResponse.Content.ReadFromJsonAsync<
+                List<ScenarioResponse>
+            >();
+        Assert.DoesNotContain(created.Id, archivedScenarios!.Select(s => s.Id));
+    }
+
+    [Fact]
+    public async Task Unarchive_WhenScenarioDoesNotExist_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+
+        // test
+        var response = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{Guid.CreateVersion7()}/unarchive",
+            null
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task List_WhenScenarioArchived_ExcludesIt()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse1 = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Active Scenario",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+            }
+        );
+        var scenario1 = (
+            await createResponse1.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+        var createResponse2 = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Archived Scenario",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+            }
+        );
+        var scenario2 = (
+            await createResponse2.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+        var archiveResponse = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{scenario2.Id}/archive",
+            null
+        );
+        Assert.Equal(HttpStatusCode.NoContent, archiveResponse.StatusCode);
+
+        // test
+        var listResponse = await client.GetAsync(
+            $"/applications/{appId}/scenarios"
+        );
+
+        // verify
+        var scenarios = await listResponse.Content.ReadFromJsonAsync<
+            List<ScenarioResponse>
+        >();
+        var scenarioIds = scenarios!.Select(s => s.Id).ToList();
+        Assert.Contains(scenario1.Id, scenarioIds);
+        Assert.DoesNotContain(scenario2.Id, scenarioIds);
+    }
+
+    [Fact]
+    public async Task List_WhenFilteredByFolderAndScenarioArchived_ExcludesIt()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var folder = "/TestFolder";
+        var createResponse1 = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Active Scenario",
+                Description = "Description",
+                Folder = folder,
+                Tags = null,
+            }
+        );
+        var scenario1 = (
+            await createResponse1.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+        var createResponse2 = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Archived Scenario in Folder",
+                Description = "Description",
+                Folder = folder,
+                Tags = null,
+            }
+        );
+        var scenario2 = (
+            await createResponse2.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+        var archiveResponse = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{scenario2.Id}/archive",
+            null
+        );
+        Assert.Equal(HttpStatusCode.NoContent, archiveResponse.StatusCode);
+
+        // test
+        var listResponse = await client.GetAsync(
+            $"/applications/{appId}/scenarios?folder={Uri.EscapeDataString(folder)}"
+        );
+
+        // verify
+        var scenarios = await listResponse.Content.ReadFromJsonAsync<
+            List<ScenarioResponse>
+        >();
+        var scenarioIds = scenarios!.Select(s => s.Id).ToList();
+        Assert.Contains(scenario1.Id, scenarioIds);
+        Assert.DoesNotContain(scenario2.Id, scenarioIds);
+    }
+
+    [Fact]
+    public async Task List_WhenFilteredByTagAndScenarioArchived_ExcludesIt()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var tag = "smoketest";
+        var createResponse1 = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Active Scenario",
+                Description = "Description",
+                Folder = null,
+                Tags = [tag],
+            }
+        );
+        var scenario1 = (
+            await createResponse1.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+        var createResponse2 = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Archived Scenario with Tag",
+                Description = "Description",
+                Folder = null,
+                Tags = [tag],
+            }
+        );
+        var scenario2 = (
+            await createResponse2.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+        var archiveResponse = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{scenario2.Id}/archive",
+            null
+        );
+        Assert.Equal(HttpStatusCode.NoContent, archiveResponse.StatusCode);
+
+        // test
+        var listResponse = await client.GetAsync(
+            $"/applications/{appId}/scenarios?tag={tag}"
+        );
+
+        // verify
+        var scenarios = await listResponse.Content.ReadFromJsonAsync<
+            List<ScenarioResponse>
+        >();
+        var scenarioIds = scenarios!.Select(s => s.Id).ToList();
+        Assert.Contains(scenario1.Id, scenarioIds);
+        Assert.DoesNotContain(scenario2.Id, scenarioIds);
+    }
+
+    [Fact]
+    public async Task ListArchived_WhenScenariosArchived_ReturnsOnlyArchivedScenarios()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse1 = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Active Scenario",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+            }
+        );
+        var scenario1 = (
+            await createResponse1.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+        var createResponse2 = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Archived Scenario",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+            }
+        );
+        var scenario2 = (
+            await createResponse2.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+        var archiveResponse = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{scenario2.Id}/archive",
+            null
+        );
+        Assert.Equal(HttpStatusCode.NoContent, archiveResponse.StatusCode);
+
+        // test
+        var listResponse = await client.GetAsync(
+            $"/applications/{appId}/scenarios/archived"
+        );
+
+        // verify
+        var scenarios = await listResponse.Content.ReadFromJsonAsync<
+            List<ScenarioResponse>
+        >();
+        var archivedScenario = Assert.Single(scenarios!);
+        var archivedScenarioIds = scenarios!.Select(s => s.Id).ToList();
+        Assert.Equal(scenario2.Id, archivedScenario.Id);
+        Assert.DoesNotContain(scenario1.Id, archivedScenarioIds);
+    }
+
+    [Fact]
+    public async Task ListArchived_WhenFilteredByFolder_ReturnsOnlyArchivedInFolder()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var folder = "/ArchivedFolder";
+        var createResponse1 = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Active in Folder",
+                Description = "Description",
+                Folder = folder,
+                Tags = null,
+            }
+        );
+        var scenario1 = (
+            await createResponse1.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+        var createResponse2 = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Archived in Folder",
+                Description = "Description",
+                Folder = folder,
+                Tags = null,
+            }
+        );
+        var scenario2 = (
+            await createResponse2.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+        var createResponse3 = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Archived in Different Folder",
+                Description = "Description",
+                Folder = "/OtherFolder",
+                Tags = null,
+            }
+        );
+        var scenario3 = (
+            await createResponse3.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+        var archiveResponse2 = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{scenario2.Id}/archive",
+            null
+        );
+        Assert.Equal(HttpStatusCode.NoContent, archiveResponse2.StatusCode);
+        var archiveResponse3 = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{scenario3.Id}/archive",
+            null
+        );
+        Assert.Equal(HttpStatusCode.NoContent, archiveResponse3.StatusCode);
+
+        // test
+        var listResponse = await client.GetAsync(
+            $"/applications/{appId}/scenarios/archived?folder={Uri.EscapeDataString(folder)}"
+        );
+
+        // verify
+        var scenarios = await listResponse.Content.ReadFromJsonAsync<
+            List<ScenarioResponse>
+        >();
+        var archivedScenario = Assert.Single(scenarios!);
+        Assert.Equal(scenario2.Id, archivedScenario.Id);
+        Assert.DoesNotContain(scenario1.Id, scenarios!.Select(s => s.Id));
+        Assert.DoesNotContain(scenario3.Id, scenarios!.Select(s => s.Id));
+    }
+
+    [Fact]
+    public async Task ListArchived_WhenFilteredByTag_ReturnsOnlyArchivedWithTag()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var tag = "regression";
+        var createResponse1 = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Active with Tag",
+                Description = "Description",
+                Folder = null,
+                Tags = [tag],
+            }
+        );
+        var scenario1 = (
+            await createResponse1.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+        var createResponse2 = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Archived with Tag",
+                Description = "Description",
+                Folder = null,
+                Tags = [tag],
+            }
+        );
+        var scenario2 = (
+            await createResponse2.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+        var createResponse3 = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Archived without Tag",
+                Description = "Description",
+                Folder = null,
+                Tags = null,
+            }
+        );
+        var scenario3 = (
+            await createResponse3.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+        var archiveResponse2 = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{scenario2.Id}/archive",
+            null
+        );
+        Assert.Equal(HttpStatusCode.NoContent, archiveResponse2.StatusCode);
+        var archiveResponse3 = await client.PostAsync(
+            $"/applications/{appId}/scenarios/{scenario3.Id}/archive",
+            null
+        );
+        Assert.Equal(HttpStatusCode.NoContent, archiveResponse3.StatusCode);
+
+        // test
+        var listResponse = await client.GetAsync(
+            $"/applications/{appId}/scenarios/archived?tag={tag}"
+        );
+
+        // verify
+        var scenarios = await listResponse.Content.ReadFromJsonAsync<
+            List<ScenarioResponse>
+        >();
+        var archivedScenario = Assert.Single(scenarios!);
+        Assert.Equal(scenario2.Id, archivedScenario.Id);
+        Assert.DoesNotContain(scenario1.Id, scenarios!.Select(s => s.Id));
+        Assert.DoesNotContain(scenario3.Id, scenarios!.Select(s => s.Id));
+    }
+
+    [Fact]
+    public async Task ListArchived_WhenBothFolderAndTagGiven_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+
+        // test
+        var response = await client.GetAsync(
+            $"/applications/{appId}/scenarios/archived?folder=/&tag=smoke"
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Archive_WhenNoAccessToken_ReturnsUnauthorized()
+    {
+        // setup
+        var appId = Guid.CreateVersion7();
+
+        // test
+        var response = await _factory
+            .CreateClient()
+            .PostAsync(
+                $"/applications/{appId}/scenarios/{Guid.CreateVersion7()}/archive",
+                null
+            );
+
+        // verify
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Unarchive_WhenNoAccessToken_ReturnsUnauthorized()
+    {
+        // setup
+        var appId = Guid.CreateVersion7();
+
+        // test
+        var response = await _factory
+            .CreateClient()
+            .PostAsync(
+                $"/applications/{appId}/scenarios/{Guid.CreateVersion7()}/unarchive",
+                null
+            );
+
+        // verify
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ListArchived_WhenNoAccessToken_ReturnsUnauthorized()
+    {
+        // setup
+        var appId = Guid.CreateVersion7();
+
+        // test
+        var response = await _factory
+            .CreateClient()
+            .GetAsync($"/applications/{appId}/scenarios/archived");
+
+        // verify
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_WhenScenarioExists_ReturnsNoContent()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/TestFolder",
+                Tags = ["tag1"],
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+
+        // test
+        var response = await client.DeleteAsync(
+            $"/applications/{appId}/scenarios/{created.Id}"
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        // verify - scenario is gone
+        var getResponse = await client.GetAsync(
+            $"/applications/{appId}/scenarios/{created.Id}"
+        );
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+
+        // verify - no longer in list
+        var listResponse = await client.GetAsync(
+            $"/applications/{appId}/scenarios"
+        );
+        var scenarios = await listResponse.Content.ReadFromJsonAsync<
+            List<ScenarioResponse>
+        >();
+        Assert.DoesNotContain(created.Id, scenarios!.Select(s => s.Id));
+    }
+
+    [Fact]
+    public async Task Delete_WhenScenarioNotFound_ReturnsNotFound()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+
+        // test
+        var response = await client.DeleteAsync(
+            $"/applications/{appId}/scenarios/{Guid.CreateVersion7()}"
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_WhenScenarioHasActivities_DeletesScenarioAndAllActivities()
+    {
+        // setup
+        var userId = Guid.CreateVersion7();
+        await SeedOrganizationMembershipAsync(userId);
+        var client = CreateAuthenticatedClient(userId);
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/TestFolder",
+                Tags = ["tag1"],
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+
+        // Create an activity via HTTP API
+        var activityResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios/{created.Id}/activities",
+            new CreateActivityRequest
+            {
+                Description = "Test activity",
+                Order = 0,
+                PreconditionIds = [],
+                EvidenceIds = [],
+            }
+        );
+        Assert.Equal(HttpStatusCode.OK, activityResponse.StatusCode);
+
+        // test
+        var response = await client.DeleteAsync(
+            $"/applications/{appId}/scenarios/{created.Id}"
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        // verify - scenario is gone
+        var getResponse = await client.GetAsync(
+            $"/applications/{appId}/scenarios/{created.Id}"
+        );
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_WhenScenarioModifiedConcurrently_ReturnsConflict()
+    {
+        // setup
+        var userId = Guid.CreateVersion7();
+        await SeedOrganizationMembershipAsync(userId);
+        var client = CreateAuthenticatedClient(userId);
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/TestFolder",
+                Tags = ["tag1"],
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+        var organizationId = await GetOrganizationIdAsync(userId);
+
+        // Create an activity to set ActivityCount = 1
+        var activityResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios/{created.Id}/activities",
+            new CreateActivityRequest
+            {
+                Description = "Test activity",
+                Order = 0,
+                PreconditionIds = [],
+                EvidenceIds = [],
+            }
+        );
+        Assert.Equal(HttpStatusCode.OK, activityResponse.StatusCode);
+
+        // Create a test-scoped client with IActivityRepository wrapped by ActivityRepositoryRaceConditionWrapper
+        // This injects the ActivityCount modification between the scenario read and transaction commit
+        var scenarioPartitionKey = $"{organizationId}_{appId}";
+        var wrappedClient = _factory
+            .WithWebHostBuilder(builder =>
+                builder.ConfigureServices(services =>
+                {
+                    // Replace IActivityRepository with our race condition wrapper
+                    services.Replace(
+                        ServiceDescriptor.Scoped<IActivityRepository>(sp =>
+                        {
+                            var realRepository = new DynamoDbActivityRepository(
+                                sp.GetRequiredService<IAmazonDynamoDB>(),
+                                sp.GetRequiredService<
+                                    IOptions<DynamoDbOptions>
+                                >()
+                            );
+                            return new ActivityRepositoryRaceConditionWrapper(
+                                realRepository,
+                                organizationId,
+                                created.Id,
+                                RaceConditionMutations.ActivityCountModification(
+                                    _client,
+                                    "Scenarios",
+                                    scenarioPartitionKey,
+                                    created.Id
+                                )
+                            );
+                        })
+                    );
+                })
+            )
+            .CreateClient();
+
+        // Set auth header on wrapped client
+        wrappedClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", CreateAccessToken(userId));
+
+        // test - Delete with the wrapped repository that injects ActivityCount modification
+        var response = await wrappedClient.DeleteAsync(
+            $"/applications/{appId}/scenarios/{created.Id}"
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var errorResponse =
+            await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        Assert.NotNull(errorResponse);
+    }
+
+    [Fact]
+    public async Task Delete_WhenNoAccessToken_ReturnsUnauthorized()
+    {
+        // setup
+        var appId = Guid.CreateVersion7();
+
+        // test
+        var response = await _factory
+            .CreateClient()
+            .DeleteAsync(
+                $"/applications/{appId}/scenarios/{Guid.CreateVersion7()}"
+            );
+
+        // verify
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WhenTagsHasNullItem_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+
+        // test - use raw JSON to express null item
+        var response = await client.PostAsync(
+            $"/applications/{appId}/scenarios",
+            new StringContent(
+                """{"title":"Title","description":"Desc","tags":[null,"valid"]}""",
+                Encoding.UTF8,
+                "application/json"
+            )
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WhenTagsHasNullItem_ReturnsBadRequest()
+    {
+        // setup
+        var client = await CreateClientWithMembershipAsync();
+        var appId = await CreateApplicationAsync(client);
+        var createResponse = await client.PostAsJsonAsync(
+            $"/applications/{appId}/scenarios",
+            new CreateScenarioRequest
+            {
+                Title = "Title",
+                Description = "Description",
+                Folder = "/",
+                Tags = ["tag1"],
+            }
+        );
+        var created = (
+            await createResponse.Content.ReadFromJsonAsync<ScenarioResponse>()
+        )!;
+
+        // test - use raw JSON to express null item in tags array
+        var response = await client.PatchAsync(
+            $"/applications/{appId}/scenarios/{created.Id}",
+            new StringContent(
+                """{"title":"Title","description":"Desc","folder":"/","tags":[null,"valid"]}""",
+                Encoding.UTF8,
+                "application/json"
+            )
+        );
+
+        // verify
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }
