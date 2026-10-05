@@ -1,0 +1,131 @@
+using A2.Server.Common;
+using A2.Server.Engine.Contracts;
+using A2.Server.Engine.Repositories;
+using A2.Server.WebApi.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Precondition = A2.Server.Engine.Models.Precondition;
+
+namespace A2.Server.WebApi.Controllers;
+
+[ApiController]
+[Authorize]
+public class PreconditionsController(
+    IPreconditionRepository preconditionRepository,
+    ICallerOrganizationService callerOrganizationService,
+    IClock clock
+) : ControllerBase
+{
+    /// <response code="404">
+    /// No Application with the given applicationId exists in the
+    /// caller's Organization.
+    /// </response>
+    [HttpPost(
+        "applications/{applicationId:guid}/preconditions",
+        Name = "CreatePrecondition"
+    )]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PreconditionResponse>> Create(
+        Guid applicationId,
+        CreatePreconditionRequest request
+    )
+    {
+        var callerOrganization =
+            await callerOrganizationService.GetCallerOrganizationAsync();
+        var organizationId = callerOrganization.Id;
+        var userId = User.GetUserId();
+        var now = clock.UtcNow;
+        var precondition = new Precondition
+        {
+            Id = Guid.CreateVersion7(),
+            OrganizationId = organizationId,
+            ApplicationId = applicationId,
+            Name = request.Name,
+            ValueSource = request.ValueSource.ToModel(),
+            ExampleValue = request.ExampleValue,
+            CreatedByUserId = userId,
+            UpdatedByUserId = userId,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        // Application existence is checked here via the save's condition expression instead of a
+        // separate lookup, so there's no gap for the app to be deleted in between.
+        if (!await preconditionRepository.TrySaveAsync(precondition))
+            return NotFound();
+        return Ok(precondition.ToResponse());
+    }
+
+    [HttpGet(
+        "applications/{applicationId:guid}/preconditions",
+        Name = "ListPreconditions"
+    )]
+    public async Task<ActionResult<IReadOnlyList<PreconditionResponse>>> List(
+        Guid applicationId
+    )
+    {
+        var callerOrganization =
+            await callerOrganizationService.GetCallerOrganizationAsync();
+        var organizationId = callerOrganization.Id;
+        var preconditions = await preconditionRepository.ListByApplicationAsync(
+            organizationId,
+            applicationId
+        );
+        return Ok(preconditions.Select(p => p.ToResponse()).ToList());
+    }
+
+    /// <response code="404">
+    /// No Precondition with the given preconditionId exists in the caller's
+    /// Organization and Application.
+    /// </response>
+    [HttpPatch(
+        "applications/{applicationId:guid}/preconditions/{preconditionId:guid}",
+        Name = "UpdatePrecondition"
+    )]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PreconditionResponse>> Update(
+        Guid applicationId,
+        Guid preconditionId,
+        UpdatePreconditionRequest request
+    )
+    {
+        var callerOrganization =
+            await callerOrganizationService.GetCallerOrganizationAsync();
+        var organizationId = callerOrganization.Id;
+        var existing = await preconditionRepository.GetByIdAsync(
+            organizationId,
+            applicationId,
+            preconditionId
+        );
+        if (existing is null)
+            return NotFound();
+
+        var fields = new PreconditionUpdatableFields
+        {
+            Name = request.Name,
+            ValueSource = request.ValueSource.ToModel(),
+            ExampleValue = request.ExampleValue,
+            UpdatedByUserId = User.GetUserId(),
+            UpdatedAt = clock.UtcNow,
+        };
+        var updateSucceeded = await preconditionRepository.TryUpdateAsync(
+            organizationId,
+            existing.ApplicationId,
+            preconditionId,
+            fields
+        );
+        if (!updateSucceeded)
+            return NotFound();
+        var updated = existing with
+        {
+            Name = fields.Name,
+            ValueSource = fields.ValueSource,
+            ExampleValue = fields.ExampleValue,
+            UpdatedByUserId = fields.UpdatedByUserId,
+            UpdatedAt = fields.UpdatedAt,
+        };
+        return Ok(updated.ToResponse());
+    }
+}

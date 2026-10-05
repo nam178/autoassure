@@ -6,8 +6,10 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using A2.Server.Common;
-using A2.Server.Contracts;
-using A2.Server.Models;
+using A2.Server.Engine;
+using A2.Server.Engine.Contracts;
+using A2.Server.Engine.Models;
+using A2.Server.UserManagement.Models;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -15,17 +17,17 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
-using ActivityResult = A2.Server.Contracts.ActivityResult;
-using ActivityResultStatus = A2.Server.Contracts.ActivityResultStatus;
-using EnvironmentClassification = A2.Server.Contracts.EnvironmentClassification;
-using PreconditionValueSource = A2.Server.Contracts.PreconditionValueSource;
-using RunStatus = A2.Server.Contracts.RunStatus;
-using RunTrigger = A2.Server.Contracts.RunTrigger;
+using ActivityResult = A2.Server.Engine.Contracts.ActivityResult;
+using ActivityResultStatus = A2.Server.Engine.Contracts.ActivityResultStatus;
+using EnvironmentClassification = A2.Server.Engine.Contracts.EnvironmentClassification;
+using PreconditionValueSource = A2.Server.Engine.Contracts.PreconditionValueSource;
+using RunStatus = A2.Server.Engine.Contracts.RunStatus;
+using RunTrigger = A2.Server.Engine.Contracts.RunTrigger;
 
 namespace A2.Server.Tests.Controllers;
 
 /// <summary>
-/// Integration tests for <see cref="A2.Server.Controllers.RunsController" />
+/// Integration tests for <see cref="A2.Server.WebApi.Controllers.RunsController" />
 /// over real HTTP,
 /// against DynamoDB Local: Create Run (Manual), Get Run, List Runs, Start Run
 /// and End Run, plus the

@@ -5,10 +5,11 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using A2.Server.Common;
-using A2.Server.Contracts;
-using A2.Server.Models;
-using A2.Server.Repositories;
+using A2.Server.Engine.Contracts;
+using A2.Server.Engine.Repositories;
 using A2.Server.Tests.Repositories;
+using A2.Server.UserManagement.Models;
+using A2.Server.WebApi.Contracts;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -22,7 +23,7 @@ namespace A2.Server.Tests.Controllers;
 
 /// <summary>
 /// Integration tests for
-/// <see cref="A2.Server.Controllers.ScenariosController" /> over real
+/// <see cref="A2.Server.WebApi.Controllers.ScenariosController" /> over real
 /// HTTP, against DynamoDB Local.
 /// </summary>
 [Collection("DynamoDbLocal")]
@@ -930,7 +931,7 @@ public sealed class ScenariosControllerTests
         Assert.NotNull(errorResponse);
         Assert.Equal(
             "tags must not contain duplicates (case-sensitive).",
-            errorResponse!.Message
+            errorResponse.Message
         );
     }
 
@@ -971,7 +972,7 @@ public sealed class ScenariosControllerTests
         var updated =
             await response.Content.ReadFromJsonAsync<ScenarioResponse>();
         Assert.NotNull(updated);
-        Assert.Equal(3, updated!.Tags.Count);
+        Assert.Equal(3, updated.Tags.Count);
     }
 
     [Fact]
@@ -1148,7 +1149,7 @@ public sealed class ScenariosControllerTests
         Assert.NotNull(errorResponse);
         Assert.Equal(
             "tags must not contain duplicates (case-sensitive).",
-            errorResponse!.Message
+            errorResponse.Message
         );
     }
 
@@ -1178,7 +1179,7 @@ public sealed class ScenariosControllerTests
         Assert.NotNull(errorResponse);
         Assert.Equal(
             "tags must not contain duplicates (case-sensitive).",
-            errorResponse!.Message
+            errorResponse.Message
         );
     }
 
@@ -1242,7 +1243,7 @@ public sealed class ScenariosControllerTests
             Assert.NotNull(errorResponse);
             Assert.Equal(
                 "each tag must be at most 50 characters.",
-                errorResponse!.Message
+                errorResponse.Message
             );
         }
     }

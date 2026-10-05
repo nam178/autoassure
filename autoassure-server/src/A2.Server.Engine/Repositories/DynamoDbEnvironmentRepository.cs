@@ -1,0 +1,179 @@
+using A2.Server.Common;
+using Amazon.DynamoDBv2;
+using Amazon.DynamoDBv2.Model;
+using Microsoft.Extensions.Options;
+using Environment = A2.Server.Engine.Models.Environment;
+
+namespace A2.Server.Engine.Repositories;
+
+public class DynamoDbEnvironmentRepository(
+    IAmazonDynamoDB client,
+    IOptions<DynamoDbOptions> options
+) : IEnvironmentRepository
+{
+    private string TableName => options.Value.EnvironmentTableName;
+    private string ApplicationTableName => options.Value.ApplicationTableName;
+
+    public async Task<bool> TrySaveAsync(Environment environment)
+    {
+        try
+        {
+            await client.TransactWriteItemsAsync(
+                new TransactWriteItemsRequest
+                {
+                    TransactItems =
+                    [
+                        new TransactWriteItem
+                        {
+                            ConditionCheck = new ConditionCheck
+                            {
+                                TableName = ApplicationTableName,
+                                Key = new Dictionary<string, AttributeValue>
+                                {
+                                    ["OrganizationId"] = new(
+                                        environment.OrganizationId.ToString()
+                                    ),
+                                    ["Id"] = new(
+                                        environment.ApplicationId.ToString()
+                                    ),
+                                },
+                                ConditionExpression = "attribute_exists(Id)",
+                            },
+                        },
+                        new TransactWriteItem
+                        {
+                            Put = new Put
+                            {
+                                TableName = TableName,
+                                Item = environment.ToDynamoDbRow(),
+                            },
+                        },
+                    ],
+                }
+            );
+            return true;
+        }
+        catch (TransactionCanceledException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> TryUpdateAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid environmentId,
+        EnvironmentUpdatableFields fields
+    )
+    {
+        try
+        {
+            await client.UpdateItemAsync(
+                new UpdateItemRequest
+                {
+                    TableName = TableName,
+                    Key = new Dictionary<string, AttributeValue>
+                    {
+                        ["OrganizationId_ApplicationId"] = new(
+                            DynamoDbMapper.ApplicationScopedPartitionKey(
+                                organizationId,
+                                applicationId
+                            )
+                        ),
+                        ["Id"] = new(environmentId.ToString()),
+                    },
+                    UpdateExpression =
+                        "SET #name = :name, Classification = :classification, "
+                        + "UpdatedByUserId = :updatedByUserId, UpdatedAt = :updatedAt",
+                    ConditionExpression = "attribute_exists(Id)",
+                    ExpressionAttributeNames = new Dictionary<string, string>
+                    {
+                        ["#name"] = "Name",
+                    },
+                    ExpressionAttributeValues = new Dictionary<
+                        string,
+                        AttributeValue
+                    >
+                    {
+                        [":name"] = new(fields.Name),
+                        [":classification"] = new(
+                            fields.Classification.ToString()
+                        ),
+                        [":updatedByUserId"] = new(
+                            fields.UpdatedByUserId.ToString()
+                        ),
+                        [":updatedAt"] = new(fields.UpdatedAt.ToString("O")),
+                    },
+                }
+            );
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<Environment?> GetByIdAsync(
+        Guid organizationId,
+        Guid applicationId,
+        Guid environmentId
+    )
+    {
+        var response = await client.GetItemAsync(
+            new GetItemRequest
+            {
+                TableName = TableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    ["OrganizationId_ApplicationId"] = new(
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            applicationId
+                        )
+                    ),
+                    ["Id"] = new(environmentId.ToString()),
+                },
+                ConsistentRead = true,
+            }
+        );
+
+        if (response.Item is null || response.Item.Count == 0)
+            return null;
+
+        return response.Item.ToEnvironment();
+    }
+
+    public async Task<IReadOnlyList<Environment>> ListByApplicationAsync(
+        Guid organizationId,
+        Guid applicationId
+    )
+    {
+        var response = await client.QueryAsync(
+            new QueryRequest
+            {
+                TableName = TableName,
+                KeyConditionExpression =
+                    "OrganizationId_ApplicationId = :partitionKey",
+                ExpressionAttributeValues = new Dictionary<
+                    string,
+                    AttributeValue
+                >
+                {
+                    [":partitionKey"] = new(
+                        DynamoDbMapper.ApplicationScopedPartitionKey(
+                            organizationId,
+                            applicationId
+                        )
+                    ),
+                },
+                ConsistentRead = true,
+                // Id is the table's range key and a Guid.CreateVersion7() UUID, so descending order is
+                // newest first with no separate sort.
+                ScanIndexForward = false,
+            }
+        );
+
+        return response.Items.Select(item => item.ToEnvironment()).ToList();
+    }
+}

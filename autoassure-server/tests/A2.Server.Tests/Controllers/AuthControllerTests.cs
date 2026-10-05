@@ -1,10 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
-using A2.Server.Common;
-using A2.Server.Contracts;
-using A2.Server.Models;
-using A2.Server.Services;
+using A2.Server.UserManagement;
+using A2.Server.UserManagement.Contracts;
+using A2.Server.UserManagement.Models;
+using A2.Server.UserManagement.Services;
+using A2.Server.WebApi.Contracts;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

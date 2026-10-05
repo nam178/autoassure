@@ -1,6 +1,7 @@
 using A2.Server.Common;
-using A2.Server.Models;
-using A2.Server.Repositories;
+using A2.Server.Engine;
+using A2.Server.Engine.Models;
+using A2.Server.Engine.Repositories;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.Options;
@@ -968,13 +969,10 @@ public sealed class DynamoDbScenarioRepositoryTests(
 
         // Create application
         await _client.PutItemAsync(
-            new Amazon.DynamoDBv2.Model.PutItemRequest
+            new PutItemRequest
             {
                 TableName = ApplicationTableName,
-                Item = new Dictionary<
-                    string,
-                    Amazon.DynamoDBv2.Model.AttributeValue
-                >
+                Item = new Dictionary<string, AttributeValue>
                 {
                     ["OrganizationId"] = new(organizationId.ToString()),
                     ["Id"] = new(applicationId.ToString()),

@@ -4,8 +4,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
-using A2.Server.Contracts;
-using A2.Server.Models;
+using A2.Server.Common;
+using A2.Server.Engine.Contracts;
+using A2.Server.UserManagement.Models;
+using A2.Server.WebApi.Contracts;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -18,7 +20,7 @@ namespace A2.Server.Tests.Controllers;
 
 /// <summary>
 /// Integration tests for
-/// <see cref="A2.Server.Controllers.ApplicationsController" /> over real
+/// <see cref="A2.Server.WebApi.Controllers.ApplicationsController" /> over real
 /// HTTP, against DynamoDB Local. Each Organization used by a test is
 /// pre-seeded with an
 /// <see cref="OrganizationUser" /> membership so

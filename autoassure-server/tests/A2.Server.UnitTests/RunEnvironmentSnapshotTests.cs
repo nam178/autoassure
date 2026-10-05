@@ -1,5 +1,5 @@
-using A2.Server.Models;
-using Environment = A2.Server.Models.Environment;
+using A2.Server.Engine.Models;
+using Environment = A2.Server.Engine.Models.Environment;
 
 namespace A2.Server.UnitTests;
 

@@ -4,8 +4,9 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
-using A2.Server.Contracts;
-using A2.Server.Models;
+using A2.Server.Common;
+using A2.Server.Engine.Contracts;
+using A2.Server.UserManagement.Models;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -18,7 +19,7 @@ namespace A2.Server.Tests.Controllers;
 
 /// <summary>
 /// Integration tests for
-/// <see cref="A2.Server.Controllers.EvidenceDefinitionsController" /> over
+/// <see cref="A2.Server.WebApi.Controllers.EvidenceDefinitionsController" /> over
 /// real HTTP, against DynamoDB Local.
 /// </summary>
 [Collection("DynamoDbLocal")]

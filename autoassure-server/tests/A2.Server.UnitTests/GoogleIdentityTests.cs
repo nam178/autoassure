@@ -1,4 +1,4 @@
-using A2.Server.Models;
+using A2.Server.UserManagement.Models;
 
 namespace A2.Server.UnitTests;
 

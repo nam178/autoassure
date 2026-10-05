@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.1",
   "info": {
-    "title": "A2.Server | v1",
+    "title": "A2.Server.WebApi | v1",
     "version": "1.0.0"
   },
   "paths": {

@@ -1,0 +1,27 @@
+﻿{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "http_dev": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5234",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "AUTOASSURE_SSM_PARAMETER_PATH": "/AutoAssure/Prod/",
+        "AWS_PROFILE": "nam-admin"
+      }
+    },
+    "https_dev": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "https://localhost:7273;http://localhost:5234",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "AUTOASSURE_SSM_PARAMETER_PATH": "/AutoAssure/Prod/",
+        "AWS_PROFILE": "nam-admin"
+      }
+    }
+  }
+}

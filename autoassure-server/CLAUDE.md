@@ -8,13 +8,13 @@ As AutoAssure is a multi-tenant SaaS. MUST include the tenant (OrganizationId) i
 
 ## Structure
 
-- `Controllers/`
-- `Contracts/` — API request/response DTOs
-- `Models/` — pure business domain models and functions.
-- `Repositories/`
-- `Services/`
-- `Common/` — shared utilities
-- `Repositories/` — storage layer
+Split into 5 assemblies:
+
+**A2.Server.Common.** Shared utilities and types.
+**A2.Server.UserManagement.** Deal with authentication, authorization, user and organizations.
+**A2.Server.Engine.** The heart, business logic of AutoAssure. Test execution engine.
+**A2.Server.WebApi.** Expose WebAPIs for everything else.
+**A2.Server.Workers.** Background tasks. Consume jobs from an SQS.
 
 ## After coding
 

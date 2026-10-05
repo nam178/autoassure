@@ -1,6 +1,6 @@
 using A2.Server.Common;
-using A2.Server.Models;
-using A2.Server.Repositories;
+using A2.Server.Engine.Models;
+using A2.Server.Engine.Repositories;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.Options;
@@ -506,14 +506,15 @@ public sealed class DynamoDbRunRepositoryTests(
         // verify
         var headerRow = Assert.Single(
             rawRows,
-            row => row["RowKey"].S == DynamoDbMapper.RunHeaderRowKey(run.Id)
+            row => row["RowKey"].S == RunDynamoDbMapper.RunHeaderRowKey(run.Id)
         );
         Assert.False(headerRow.ContainsKey("Environment"));
 
         var environmentRow = Assert.Single(
             rawRows,
             row =>
-                row["RowKey"].S == DynamoDbMapper.RunEnvironmentRowKey(run.Id)
+                row["RowKey"].S
+                == RunDynamoDbMapper.RunEnvironmentRowKey(run.Id)
         );
         Assert.Equal(
             environmentId.ToString(),
@@ -548,7 +549,7 @@ public sealed class DynamoDbRunRepositoryTests(
                         )
                     ),
                     ["RowKey"] = new(
-                        DynamoDbMapper.RunEnvironmentRowKey(run.Id)
+                        RunDynamoDbMapper.RunEnvironmentRowKey(run.Id)
                     ),
                 },
             }
@@ -588,7 +589,7 @@ public sealed class DynamoDbRunRepositoryTests(
                             )
                         ),
                         ["RowKey"] = new(
-                            DynamoDbMapper.RunScenarioRowKey(
+                            RunDynamoDbMapper.RunScenarioRowKey(
                                 run.Id,
                                 scenario.Source.Id
                             )
@@ -709,7 +710,7 @@ public sealed class DynamoDbRunRepositoryTests(
                         )
                     ),
                     ["RowKey"] = new(
-                        DynamoDbMapper.RunStatusUpdateRowKey(run.Id, 1)
+                        RunDynamoDbMapper.RunStatusUpdateRowKey(run.Id, 1)
                     ),
                 },
             }
@@ -903,18 +904,39 @@ public sealed class DynamoDbRunRepositoryTests(
     [Fact]
     public async Task ListByApplicationAsync_WhenMultipleRuns_ReturnsNewestFirst()
     {
-        // setup -- three Runs created in sequence. Guid.CreateVersion7() ids are time-sortable, so
-        // descending id order is newest first.
+        // setup -- three Runs with ids from strictly increasing timestamps. Guid.CreateVersion7() ids
+        // made within the same millisecond have no defined order, so the ids carry explicit times.
         var organizationId = Guid.CreateVersion7();
         var applicationId = Guid.CreateVersion7();
         var environmentId = Guid.CreateVersion7();
         await PutApplicationAsync(organizationId, applicationId);
         await PutEnvironmentAsync(organizationId, applicationId, environmentId);
-        var firstRun = CreateRun(organizationId, applicationId, environmentId);
+        var firstRun = CreateRun(
+            organizationId,
+            applicationId,
+            environmentId
+        ) with
+        {
+            Id = Guid.CreateVersion7(FixedNow.AddSeconds(1)),
+        };
         await _repository.TryCreateAsync(firstRun);
-        var secondRun = CreateRun(organizationId, applicationId, environmentId);
+        var secondRun = CreateRun(
+            organizationId,
+            applicationId,
+            environmentId
+        ) with
+        {
+            Id = Guid.CreateVersion7(FixedNow.AddSeconds(2)),
+        };
         await _repository.TryCreateAsync(secondRun);
-        var thirdRun = CreateRun(organizationId, applicationId, environmentId);
+        var thirdRun = CreateRun(
+            organizationId,
+            applicationId,
+            environmentId
+        ) with
+        {
+            Id = Guid.CreateVersion7(FixedNow.AddSeconds(3)),
+        };
         await _repository.TryCreateAsync(thirdRun);
 
         // test
@@ -1086,7 +1108,7 @@ public sealed class DynamoDbRunRepositoryTests(
                             applicationId
                         )
                     ),
-                    ["RowKey"] = new(DynamoDbMapper.RunHeaderRowKey(runId)),
+                    ["RowKey"] = new(RunDynamoDbMapper.RunHeaderRowKey(runId)),
                 },
                 ConsistentRead = true,
             }
@@ -1756,7 +1778,7 @@ public sealed class DynamoDbRunRepositoryTests(
             rawRows,
             row =>
                 row["RowKey"].S
-                == DynamoDbMapper.RunStatusUpdateRowKey(runId, 1)
+                == RunDynamoDbMapper.RunStatusUpdateRowKey(runId, 1)
         );
     }
 
@@ -1799,7 +1821,7 @@ public sealed class DynamoDbRunRepositoryTests(
         Assert.True(first);
         Assert.False(retry);
         Assert.Equal("1", headerRow["LastSeq"].N);
-        var updateRowKey = DynamoDbMapper.RunStatusUpdateRowKey(runId, 1);
+        var updateRowKey = RunDynamoDbMapper.RunStatusUpdateRowKey(runId, 1);
         Assert.Single(rawRows, row => row["RowKey"].S == updateRowKey);
     }
 
@@ -1845,7 +1867,7 @@ public sealed class DynamoDbRunRepositoryTests(
             rawRows,
             row =>
                 row["RowKey"].S
-                == DynamoDbMapper.RunStatusUpdateRowKey(runId, 3)
+                == RunDynamoDbMapper.RunStatusUpdateRowKey(runId, 3)
         );
     }
 
@@ -1891,7 +1913,7 @@ public sealed class DynamoDbRunRepositoryTests(
             rawRows,
             row =>
                 row["RowKey"].S
-                == DynamoDbMapper.RunStatusUpdateRowKey(runId, 1)
+                == RunDynamoDbMapper.RunStatusUpdateRowKey(runId, 1)
         );
     }
 

@@ -2,8 +2,8 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Web;
-using A2.Server.Common;
-using A2.Server.Services;
+using A2.Server.UserManagement;
+using A2.Server.UserManagement.Services;
 using Google.Apis.Auth;
 using Microsoft.Extensions.Options;
 

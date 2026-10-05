@@ -4,8 +4,9 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
-using A2.Server.Contracts;
-using A2.Server.Models;
+using A2.Server.Common;
+using A2.Server.Engine.Contracts;
+using A2.Server.UserManagement.Models;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -13,16 +14,16 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
-using ActivityResult = A2.Server.Contracts.ActivityResult;
-using ActivityResultStatus = A2.Server.Contracts.ActivityResultStatus;
-using EnvironmentClassification = A2.Server.Contracts.EnvironmentClassification;
-using RunStatus = A2.Server.Contracts.RunStatus;
+using ActivityResult = A2.Server.Engine.Contracts.ActivityResult;
+using ActivityResultStatus = A2.Server.Engine.Contracts.ActivityResultStatus;
+using EnvironmentClassification = A2.Server.Engine.Contracts.EnvironmentClassification;
+using RunStatus = A2.Server.Engine.Contracts.RunStatus;
 
 namespace A2.Server.Tests.Controllers;
 
 /// <summary>
 /// Integration tests for
-/// <see cref="A2.Server.Controllers.RunStatusUpdatesController" /> over
+/// <see cref="A2.Server.WebApi.Controllers.RunStatusUpdatesController" /> over
 /// real HTTP, against DynamoDB Local: Append Run Status Update, List Run
 /// Status Updates, and the full
 /// create -> start -> append -> poll -> end round trip a client actually

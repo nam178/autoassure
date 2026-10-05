@@ -1,10 +1,10 @@
-using A2.Server.Models;
-using A2.Server.Repositories;
+using A2.Server.Engine.Models;
+using A2.Server.Engine.Repositories;
 
 namespace A2.Server.UnitTests;
 
 /// <summary>
-/// Unit tests for the runs-table row mappers in <c>DynamoDbMapper.Run.cs</c>:
+/// Unit tests for the runs-table row mappers in <c>DynamoDbMapper.Run.cs</c> (now <c>RunDynamoDbMapper.cs</c>):
 /// the header row,
 /// the Scenario snapshot row and the status update row, each converted to a
 /// DynamoDB attribute map and
@@ -256,7 +256,10 @@ public sealed class DynamoDbMapperRunTests
 
         // verify
         Assert.Equal($"{run.Id}#1000", row["RowKey"].S);
-        Assert.Equal(DynamoDbMapper.RunHeaderRowKey(run.Id), row["RowKey"].S);
+        Assert.Equal(
+            RunDynamoDbMapper.RunHeaderRowKey(run.Id),
+            row["RowKey"].S
+        );
     }
 
     // ----- RunningRuns row -----
@@ -335,7 +338,7 @@ public sealed class DynamoDbMapperRunTests
         // verify
         Assert.Equal($"{runId}#2000", row["RowKey"].S);
         Assert.Equal(
-            DynamoDbMapper.RunEnvironmentRowKey(runId),
+            RunDynamoDbMapper.RunEnvironmentRowKey(runId),
             row["RowKey"].S
         );
     }
@@ -366,9 +369,9 @@ public sealed class DynamoDbMapperRunTests
         // Environment key sorts inside those bounds -- guaranteed here by the 1000/2000/4000 sort-key
         // prefixes, not by string comparison happening to agree with them.
         var runId = Guid.NewGuid();
-        var headerKey = DynamoDbMapper.RunHeaderRowKey(runId);
-        var environmentKey = DynamoDbMapper.RunEnvironmentRowKey(runId);
-        var updatePrefix = DynamoDbMapper.RunStatusUpdateRowKeyPrefix(runId);
+        var headerKey = RunDynamoDbMapper.RunHeaderRowKey(runId);
+        var environmentKey = RunDynamoDbMapper.RunEnvironmentRowKey(runId);
+        var updatePrefix = RunDynamoDbMapper.RunStatusUpdateRowKeyPrefix(runId);
 
         // verify
         Assert.True(string.CompareOrdinal(headerKey, environmentKey) < 0);
@@ -412,7 +415,7 @@ public sealed class DynamoDbMapperRunTests
         // verify
         Assert.Equal($"{runId}#3000#{scenarioId}", row["RowKey"].S);
         Assert.Equal(
-            DynamoDbMapper.RunScenarioRowKey(runId, scenarioId),
+            RunDynamoDbMapper.RunScenarioRowKey(runId, scenarioId),
             row["RowKey"].S
         );
     }
@@ -548,7 +551,7 @@ public sealed class DynamoDbMapperRunTests
         // verify
         Assert.Equal($"{runId}#4000#000000000009", row["RowKey"].S);
         Assert.Equal(
-            DynamoDbMapper.RunStatusUpdateRowKey(runId, 9),
+            RunDynamoDbMapper.RunStatusUpdateRowKey(runId, 9),
             row["RowKey"].S
         );
     }
@@ -564,7 +567,7 @@ public sealed class DynamoDbMapperRunTests
         var runId = Guid.NewGuid();
         long[] sequencesInCreationOrder = [1, 9, 10, 100];
         var keys = sequencesInCreationOrder
-            .Select(seq => DynamoDbMapper.RunStatusUpdateRowKey(runId, seq))
+            .Select(seq => RunDynamoDbMapper.RunStatusUpdateRowKey(runId, seq))
             .ToList();
 
         // test: sort the keys the same way DynamoDB compares range keys -- as plain strings.
@@ -585,7 +588,7 @@ public sealed class DynamoDbMapperRunTests
         var runId = Guid.NewGuid();
 
         // test
-        var key = DynamoDbMapper.RunStatusUpdateRowKey(runId, 42);
+        var key = RunDynamoDbMapper.RunStatusUpdateRowKey(runId, 42);
 
         // verify
         Assert.Equal($"{runId}#4000#000000000042", key);

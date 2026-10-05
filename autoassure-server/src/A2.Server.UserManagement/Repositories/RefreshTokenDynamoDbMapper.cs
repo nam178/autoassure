@@ -1,0 +1,32 @@
+using System.Globalization;
+using A2.Server.UserManagement.Models;
+using Amazon.DynamoDBv2.Model;
+
+namespace A2.Server.UserManagement.Repositories;
+
+public static class RefreshTokenDynamoDbMapper
+{
+    public static RefreshToken ToRefreshToken(
+        this Dictionary<string, AttributeValue> row
+    )
+    {
+        return new RefreshToken(
+            row["RefreshTokenSecretHash"].S,
+            Guid.Parse(row["UserId"].S),
+            row["Email"].S,
+            DateTimeOffset.FromUnixTimeSeconds(
+                long.Parse(row["ExpiresAt"].N, CultureInfo.InvariantCulture)
+            ),
+            DateTimeOffset.Parse(
+                row["CreatedAt"].S,
+                CultureInfo.InvariantCulture
+            ),
+            row.TryGetValue("RevokedAt", out var revokedAt)
+                ? DateTimeOffset.Parse(
+                    revokedAt.S,
+                    CultureInfo.InvariantCulture
+                )
+                : null
+        );
+    }
+}

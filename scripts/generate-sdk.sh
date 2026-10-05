@@ -35,15 +35,16 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SERVER_DIR="$ROOT_DIR/autoassure-server"
+WEBAPI_PROJECT="$SERVER_DIR/src/A2.Server.WebApi/A2.Server.WebApi.csproj"
 SDK_DIR="$ROOT_DIR/autoassure-server-sdk"
 SPEC_SCRATCH_DIR="$SDK_DIR/.spec"
 
-echo "==> Building autoassure-server (generates OpenAPI spec)"
-dotnet build "$SERVER_DIR" -c Release --nologo -v minimal
+echo "==> Building autoassure-server WebApi (generates OpenAPI spec)"
+dotnet build "$WEBAPI_PROJECT" -c Release --nologo -v minimal
 
-SPEC_FILE="$(find "$SPEC_SCRATCH_DIR" -maxdepth 1 -name '*.json' | head -n 1)"
-if [ -z "$SPEC_FILE" ]; then
-  echo "error: no OpenAPI spec found in $SPEC_SCRATCH_DIR after build" >&2
+SPEC_FILE="$SPEC_SCRATCH_DIR/A2.Server.WebApi.json"
+if [ ! -f "$SPEC_FILE" ]; then
+  echo "error: OpenAPI spec not found at $SPEC_FILE after build" >&2
   exit 1
 fi
 

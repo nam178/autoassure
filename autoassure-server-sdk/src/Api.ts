@@ -1144,7 +1144,7 @@ export class HttpClient<SecurityDataType = unknown> {
 }
 
 /**
- * @title A2.Server | v1
+ * @title A2.Server.WebApi | v1
  * @version 1.0.0
  */
 export class Api<SecurityDataType extends unknown> {

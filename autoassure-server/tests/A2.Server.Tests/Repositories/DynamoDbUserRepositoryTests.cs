@@ -1,6 +1,6 @@
 using A2.Server.Common;
-using A2.Server.Models;
-using A2.Server.Repositories;
+using A2.Server.UserManagement.Models;
+using A2.Server.UserManagement.Repositories;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.Options;

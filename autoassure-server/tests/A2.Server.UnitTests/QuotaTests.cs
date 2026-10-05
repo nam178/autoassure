@@ -1,4 +1,4 @@
-using A2.Server.Common;
+using A2.Server.Engine;
 
 namespace A2.Server.UnitTests;
 
@@ -25,6 +25,7 @@ public sealed class QuotaTests
             + Quota.MaxActivityCountPerScenario;
 
         // verify
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalse -- intentional: test ensures quotas never exceed DynamoDB limit
         Assert.True(
             totalItems <= DynamoDbTransactionItemLimit,
             $"The quotas are wrong, not this test. Lower the quotas in Quota.cs. "

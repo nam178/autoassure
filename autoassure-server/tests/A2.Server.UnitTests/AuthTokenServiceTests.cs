@@ -1,8 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using A2.Server.Common;
-using A2.Server.Models;
-using A2.Server.Repositories;
-using A2.Server.Services;
+using A2.Server.UserManagement;
+using A2.Server.UserManagement.Models;
+using A2.Server.UserManagement.Repositories;
+using A2.Server.UserManagement.Services;
 using Microsoft.Extensions.Options;
 
 namespace A2.Server.UnitTests;
