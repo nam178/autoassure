@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text;
 using A2.Server.Common;
+using A2.Server.Engine.AsyncProcessing;
 using A2.Server.Engine.Repositories;
 using A2.Server.Engine.Services;
 using A2.Server.UserManagement;
@@ -10,6 +11,7 @@ using A2.Server.WebApi.Common;
 using A2.Server.WebApi.Contracts;
 using A2.Server.WebApi.Services;
 using Amazon.DynamoDBv2;
+using Amazon.SQS;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -122,6 +124,11 @@ builder.Services.AddScoped<IActivityRepository, DynamoDbActivityRepository>();
 builder.Services.AddScoped<IRunRepository, DynamoDbRunRepository>();
 builder.Services.AddScoped<IRunSnapshotBuilder, RunSnapshotBuilder>();
 builder.Services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
+builder.Services.Configure<WorkerQueueOptions>(
+    builder.Configuration.GetSection("WorkerQueue")
+);
+builder.Services.AddSingleton<IAmazonSQS>(_ => new AmazonSQSClient());
+builder.Services.AddSingleton<IWorkerQueuePublisher, SqsWorkerQueuePublisher>();
 if (!isDesignTimeBuild)
     builder.Services.AddHostedService<ConfigValidationHostedService>();
 
