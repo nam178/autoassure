@@ -160,6 +160,7 @@ public sealed class SqsWorkerQueueConsumer(
             return;
         }
 
+        // Dispatch to the dispatcher for processing
         WorkerMessageDispatchResult result;
         try
         {
@@ -180,6 +181,7 @@ public sealed class SqsWorkerQueueConsumer(
             return;
         }
 
+        // When processing completes, delete the message.
         switch (result)
         {
             case WorkerMessageDispatchResult.Handled:
@@ -228,6 +230,7 @@ public sealed class SqsWorkerQueueConsumer(
         CancellationToken programCancellationToken
     )
     {
+        // Start a heartbeat loop
         using var heartbeatCancellationToken =
             CancellationTokenSource.CreateLinkedTokenSource(
                 programCancellationToken
@@ -238,6 +241,7 @@ public sealed class SqsWorkerQueueConsumer(
             heartbeatCancellationToken.Token
         );
 
+        // Pass the message to the dispatcher for processing
         try
         {
             return await dispatcher.DispatchMessage(
@@ -248,6 +252,7 @@ public sealed class SqsWorkerQueueConsumer(
         }
         finally
         {
+            // Once finish, stop the heartbeat loop
             await heartbeatCancellationToken.CancelAsync();
             await heartbeat;
         }
