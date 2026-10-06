@@ -38,8 +38,8 @@ downloads providers. Re-run it whenever `backend.tf` or provider versions
 change.
 
 No need to set AWS region separately — it's set per-environment in each
-`.tfvars` file (`aws_region`), currently `ap-southeast-2` for both dev and
-prod. Pass a different `-var-file` to deploy elsewhere.
+`.tfvars` file (`aws_region`), currently `ap-southeast-2` for both dev and prod.
+Pass a different `-var-file` to deploy elsewhere.
 
 ## Step 2: Select an environment
 
