@@ -1,13 +1,11 @@
-﻿{
+{
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "http_dev": {
+    "dev": {
       "commandName": "Project",
       "dotnetRunMessages": true,
-      "launchBrowser": false,
-      "applicationUrl": "http://localhost:5234",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_ENVIRONMENT": "Development",
         "AUTOASSURE_SSM_PARAMETER_PATH": "/AutoAssure/Prod/",
         "AWS_PROFILE": "nam-admin"
       }

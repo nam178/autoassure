@@ -24,6 +24,8 @@
   <ItemGroup>
     <PackageReference Include="Amazon.Extensions.Configuration.SystemsManager" Version="7.0.0" />
     <PackageReference Include="AWSSDK.DynamoDBv2" Version="4.0.103.2" />
+    <PackageReference Include="AWSSDK.SSO" Version="4.0.0.7" />
+    <PackageReference Include="AWSSDK.SSOOIDC" Version="4.0.0.7" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
   </ItemGroup>
 </Project>
