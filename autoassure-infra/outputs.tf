@@ -147,3 +147,18 @@ output "running_runs_table_arn" {
   description = "ARN of the running-runs table, e.g. for scoping an IAM policy to it."
   value       = aws_dynamodb_table.running_runs.arn
 }
+
+output "worker_queue_url" {
+  description = "SQS queue URL — set autoassure-server's WorkerQueue:QueueUrl to this value."
+  value       = aws_sqs_queue.worker.url
+}
+
+output "worker_queue_arn" {
+  description = "ARN of the worker queue, e.g. for scoping an IAM policy to it."
+  value       = aws_sqs_queue.worker.arn
+}
+
+output "worker_dead_letter_queue_arn" {
+  description = "ARN of the worker dead-letter queue, e.g. for alarms or an IAM policy."
+  value       = aws_sqs_queue.worker_dead_letter.arn
+}

@@ -212,11 +212,6 @@ resource "aws_dynamodb_table" "environments" {
     type = "S"
   }
 
-  attribute {
-    name = "OrganizationId"
-    type = "S"
-  }
-
   point_in_time_recovery {
     enabled = var.environment == "prod"
   }
@@ -289,11 +284,6 @@ resource "aws_dynamodb_table" "preconditions" {
     type = "S"
   }
 
-  attribute {
-    name = "OrganizationId"
-    type = "S"
-  }
-
   point_in_time_recovery {
     enabled = var.environment == "prod"
   }
@@ -330,11 +320,6 @@ resource "aws_dynamodb_table" "evidence_definitions" {
     type = "S"
   }
 
-  attribute {
-    name = "OrganizationId"
-    type = "S"
-  }
-
   point_in_time_recovery {
     enabled = var.environment == "prod"
   }
@@ -368,11 +353,6 @@ resource "aws_dynamodb_table" "scenarios" {
 
   attribute {
     name = "Id"
-    type = "S"
-  }
-
-  attribute {
-    name = "OrganizationId"
     type = "S"
   }
 
@@ -486,11 +466,6 @@ resource "aws_dynamodb_table" "activities" {
 
   attribute {
     name = "Id"
-    type = "S"
-  }
-
-  attribute {
-    name = "OrganizationId"
     type = "S"
   }
 
