@@ -9,7 +9,8 @@ namespace A2.Server.UserManagement.Contracts;
 /// </summary>
 public record ExchangeGoogleCodeRequest
 {
-    /// <summary>The authorization code returned by Google after the user consents.</summary>
+    /// <summary>The authorization code returned by Google after the user
+    /// consents.</summary>
     [Required]
     [MaxLength(2000)]
     public required string Code { get; init; }

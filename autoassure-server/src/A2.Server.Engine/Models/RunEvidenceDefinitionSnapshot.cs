@@ -15,8 +15,8 @@ public record RunEvidenceDefinitionSnapshot
 
     /// <summary>
     /// Copies an EvidenceDefinition as it is right now. OrganizationId and
-    /// ApplicationId are left
-    /// out -- they already live on the Run, and a Run never spans two of either.
+    /// ApplicationId are left out -- they already live on the Run, and a Run
+    /// never spans two of either.
     /// </summary>
     public static RunEvidenceDefinitionSnapshot FromEvidenceDefinition(
         EvidenceDefinition evidenceDefinition

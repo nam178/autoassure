@@ -35,8 +35,8 @@ public record RunEnvironmentSnapshot
     /// <summary>
     /// Masks every sensitive variable's value (see
     /// <see cref="RunEnvironmentVariableSnapshot.Masked" />), leaving
-    /// non-sensitive ones untouched.
-    /// Idempotent: calling it again on the result returns an equivalent snapshot.
+    /// non-sensitive ones untouched. Idempotent: calling it again on the result
+    /// returns an equivalent snapshot.
     /// </summary>
     public RunEnvironmentSnapshot Masked()
     {

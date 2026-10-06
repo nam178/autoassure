@@ -3,7 +3,8 @@ using A2.Server.Common;
 
 namespace A2.Server.Engine.Contracts;
 
-/// <summary>Request body to add a Precondition to an Application's library.</summary>
+/// <summary>Request body to add a Precondition to an Application's
+/// library.</summary>
 public record CreatePreconditionRequest
 {
     [Required]

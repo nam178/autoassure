@@ -9,8 +9,8 @@ namespace A2.Server.UserManagement.Services;
 public interface IGoogleTokenExchangeService
 {
     /// <summary>
-    /// Exchanges <paramref name="code" /> and <paramref name="codeVerifier" /> for
-    /// the caller's Google identity.
+    /// Exchanges <paramref name="code" /> and <paramref name="codeVerifier" />
+    /// for the caller's Google identity.
     /// </summary>
     /// <exception cref="GoogleTokenExchangeException">
     /// Google rejected the code or

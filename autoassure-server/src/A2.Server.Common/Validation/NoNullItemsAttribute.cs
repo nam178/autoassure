@@ -5,8 +5,8 @@ namespace A2.Server.Common;
 
 /// <summary>
 /// Validation attribute for collections and dictionaries that must not contain
-/// null items. The collection itself can be null (use [Required] to prevent that).
-/// Works on IEnumerable and dictionary values.
+/// null items. The collection itself can be null (use [Required] to prevent
+/// that). Works on IEnumerable and dictionary values.
 /// </summary>
 public class NoNullItemsAttribute()
     : ValidationAttribute("Items must not be null.")

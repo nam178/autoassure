@@ -3,7 +3,8 @@ using A2.Server.Common;
 
 namespace A2.Server.Engine.Contracts;
 
-/// <summary>Request body to create a new Application in the caller's Organization.</summary>
+/// <summary>Request body to create a new Application in the caller's
+/// Organization.</summary>
 public record CreateApplicationRequest
 {
     [Required]

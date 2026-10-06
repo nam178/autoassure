@@ -30,15 +30,15 @@ public class RunStatusUpdatesController(
     // it received, rather than this endpoint looping to assemble a complete result.
     private const int MaxStatusUpdatesPerPage = 1000;
 
-    /// <response code="400">ActivityResult.Status is Pending or Running.</response>
+    /// <response code="400">ActivityResult.Status is Pending or
+    /// Running.</response>
     /// <response code="404">
     /// No Run with the given runId exists in this Application, in the caller's
     /// Organization.
     /// </response>
     /// <response code="409">
-    /// Seq is not greater than the Run's current LastSeq, or the Run's Status is
-    /// not
-    /// Running.
+    /// Seq is not greater than the Run's current LastSeq, or the Run's Status
+    /// is not Running.
     /// </response>
     [HttpPost(
         "applications/{applicationId:guid}/runs/{runId:guid}/status-updates",

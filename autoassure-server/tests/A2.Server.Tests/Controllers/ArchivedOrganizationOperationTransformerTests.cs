@@ -9,9 +9,8 @@ namespace A2.Server.Tests.Controllers;
 /// Integration tests for
 /// <see cref="A2.Server.WebApi.Common.ArchivedOrganizationOperationTransformer" />.
 /// These tests verify that the OpenAPI documentation is correctly updated to
-/// show 403 responses
-/// for non-GET operations on endpoints that require authentication and don't
-/// allow archived organizations.
+/// show 403 responses for non-GET operations on endpoints that require
+/// authentication and don't allow archived organizations.
 /// </summary>
 public sealed class ArchivedOrganizationOperationTransformerTests
     : IClassFixture<WebApplicationFactory<Program>>

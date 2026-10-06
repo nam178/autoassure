@@ -15,7 +15,8 @@ public record CreateActivityRequest
 
     /// <summary>
     /// Zero-based display position within the Scenario, chosen by the caller.
-    /// Not checked for uniqueness -- use the reorder endpoint to fix up positions.
+    /// Not checked for uniqueness -- use the reorder endpoint to fix up
+    /// positions.
     /// </summary>
     [Range(0, Quota.MaxActivityCountPerScenario - 1)]
     public required int Order { get; init; }

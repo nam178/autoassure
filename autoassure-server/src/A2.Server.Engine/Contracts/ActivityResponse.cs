@@ -1,6 +1,7 @@
 namespace A2.Server.Engine.Contracts;
 
-/// <summary>A single step within a Scenario, as returned to the client.</summary>
+/// <summary>A single step within a Scenario, as returned to the
+/// client.</summary>
 public record ActivityResponse
 {
     public required Guid Id { get; init; }

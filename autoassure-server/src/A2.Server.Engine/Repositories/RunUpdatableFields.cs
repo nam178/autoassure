@@ -11,21 +11,20 @@ public record RunUpdatableFields
 {
     /// <summary>
     /// Proves the owning worker is still alive by overwriting
-    /// <c>LastHeartbeatAt</c>. This is the
-    /// one Run attribute that is never a permanent record -- it is overwritten in
-    /// place on every beat,
-    /// and a beat is worth nothing once the next one arrives.
+    /// <c>LastHeartbeatAt</c>. This is the one Run attribute that is never a
+    /// permanent record -- it is overwritten in place on every beat, and a beat
+    /// is worth nothing once the next one arrives.
     /// </summary>
     public DateTimeOffset? HeartbeatAt { get; init; }
 
     /// <summary>
-    /// Overwrites the Run's four activity counts with the absolute values supplied
-    /// here -- never
-    /// an increment -- so a retried call does no harm. Set together with
-    /// <see cref="PassedActivityCount" />, <see cref="FailedActivityCount" /> and
+    /// Overwrites the Run's four activity counts with the absolute values
+    /// supplied here -- never an increment -- so a retried call does no harm.
+    /// Set together with <see cref="PassedActivityCount" />,
+    /// <see cref="FailedActivityCount" /> and
     /// <see cref="SkippedActivityCount" />; nothing that needs exact progress
-    /// reads these counts, since
-    /// that caller folds the status update log instead.
+    /// reads these counts, since that caller folds the status update log
+    /// instead.
     /// </summary>
     public int? TotalActivityCount { get; init; }
 

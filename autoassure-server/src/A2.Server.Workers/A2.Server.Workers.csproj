@@ -7,7 +7,7 @@
     <RootNamespace>A2.Server.Workers</RootNamespace>
     <AssemblyName>A2.Server.Workers</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+    <NoWarn>$(NoWarn);CS1591;CS1573;CA1848;CA1873</NoWarn>
     <OutputType>Exe</OutputType>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest-recommended</AnalysisLevel>

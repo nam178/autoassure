@@ -14,8 +14,9 @@ public sealed class SqsWorkerQueuePublisher(
     public const string OrganizationIdAttributeName = "organizationId";
 
     /// <exception cref="MessagePublishingException">
-    /// The message could not be delivered to the queue service, for example because of a network error,
-    /// missing permission or a rejected request. See the inner exception for details.
+    /// The message could not be delivered to the queue service, for example
+    /// because of a network error, missing permission or a rejected request.
+    /// See the inner exception for details.
     /// </exception>
     public async Task PublishMessage<TMessage>(
         TMessage message,

@@ -11,10 +11,9 @@ namespace A2.Server.Common;
 public static class DynamoDbMapper
 {
     /// <summary>
-    /// Reads a required boolean field. Every writer always sets it, so a missing
-    /// or null BOOL
-    /// means the stored row itself is corrupted -- there is no sensible default to
-    /// fall back to.
+    /// Reads a required boolean field. Every writer always sets it, so a
+    /// missing or null BOOL means the stored row itself is corrupted -- there
+    /// is no sensible default to fall back to.
     /// </summary>
     /// <exception cref="CorruptedDynamoDbRowException">
     /// The attribute has no BOOL
@@ -37,13 +36,11 @@ public static class DynamoDbMapper
     }
 
     /// <summary>
-    /// The inverse of <see cref="ApplicationScopedPartitionKey" />, for a caller
-    /// that only has
-    /// the combined key back from a query -- a sparse GSI's <c>KEYS_ONLY</c>
-    /// projection, for
-    /// instance, which returns the base table's partition key attribute as this
-    /// one string rather than
-    /// the OrganizationId and ApplicationId it was built from.
+    /// The inverse of <see cref="ApplicationScopedPartitionKey" />, for a
+    /// caller that only has the combined key back from a query -- a sparse
+    /// GSI's <c>KEYS_ONLY</c> projection, for instance, which returns the base
+    /// table's partition key attribute as this one string rather than the
+    /// OrganizationId and ApplicationId it was built from.
     /// </summary>
     public static (
         Guid OrganizationId,

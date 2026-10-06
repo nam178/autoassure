@@ -17,7 +17,8 @@ public interface IApplicationRepository
     /// <summary>Point lookup by Id, scoped to the Organization.</summary>
     Task<Application?> GetByIdAsync(Guid organizationId, Guid applicationId);
 
-    /// <summary>All Applications owned by this Organization. Ordering: newest first.</summary>
+    /// <summary>All Applications owned by this Organization. Ordering: newest
+    /// first.</summary>
     Task<IReadOnlyList<Application>> ListByOrganizationAsync(
         Guid organizationId
     );

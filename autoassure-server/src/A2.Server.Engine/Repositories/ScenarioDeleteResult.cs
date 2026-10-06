@@ -2,7 +2,8 @@ namespace A2.Server.Engine.Repositories;
 
 /// <summary>
 /// Outcome of <see cref="IScenarioRepository.TryDeleteAsync" />: distinguishes
-/// whether the Scenario was successfully deleted, not found, or modified concurrently.
+/// whether the Scenario was successfully deleted, not found, or modified
+/// concurrently.
 /// </summary>
 public enum ScenarioDeleteResult
 {

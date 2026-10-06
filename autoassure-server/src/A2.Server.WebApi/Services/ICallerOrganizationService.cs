@@ -11,6 +11,7 @@ namespace A2.Server.WebApi.Services;
 /// </summary>
 public interface ICallerOrganizationService
 {
-    /// <summary>The Organization of the currently authenticated caller.</summary>
+    /// <summary>The Organization of the currently authenticated
+    /// caller.</summary>
     Task<Organization> GetCallerOrganizationAsync();
 }

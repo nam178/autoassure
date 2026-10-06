@@ -9,7 +9,8 @@ namespace A2.Server.UserManagement.Repositories;
 /// </summary>
 public interface IOrganizationRepository
 {
-    /// <summary>Looks up an Organization by Id, or null if none exists.</summary>
+    /// <summary>Looks up an Organization by Id, or null if none
+    /// exists.</summary>
     Task<Organization?> GetByIdAsync(Guid organizationId);
 
     /// <summary>
@@ -21,9 +22,9 @@ public interface IOrganizationRepository
     );
 
     /// <summary>
-    /// Attempts to set the lifecycle state of an Organization to the given state.
-    /// Returns true if the Organization exists and was updated, false if it doesn't
-    /// exist.
+    /// Attempts to set the lifecycle state of an Organization to the given
+    /// state. Returns true if the Organization exists and was updated, false if
+    /// it doesn't exist.
     /// </summary>
     Task<bool> TrySetLifecycleStateAsync(
         Guid organizationId,

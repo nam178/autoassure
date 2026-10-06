@@ -28,13 +28,11 @@ public interface IScenarioRepository
     Task<bool> TrySaveAsync(Scenario scenario);
 
     /// <summary>
-    /// Atomically updates only Title, Description, Folder, Tags, UpdatedByUserId,
-    /// and
-    /// UpdatedAt on the Scenario, and reconciles its folder/tag mappings against
-    /// <paramref name="previousState" />, after verifying the Scenario and its
-    /// Application still
-    /// exist. Takes the full Scenario (not a narrower fields type) because the
-    /// mapping diff needs
+    /// Atomically updates only Title, Description, Folder, Tags,
+    /// UpdatedByUserId, and UpdatedAt on the Scenario, and reconciles its
+    /// folder/tag mappings against <paramref name="previousState" />, after
+    /// verifying the Scenario and its Application still exist. Takes the full
+    /// Scenario (not a narrower fields type) because the mapping diff needs
     /// every field.
     /// </summary>
     Task<ScenarioUpdateResult> TryUpdateAsync(
@@ -50,12 +48,10 @@ public interface IScenarioRepository
 
     /// <summary>
     /// Batched point lookup by Id, scoped to the Organization and Application.
-    /// Returns only
-    /// the Scenarios that actually exist and belong to this Application -- callers
-    /// MUST check the
-    /// returned list's ids against <paramref name="scenarioIds" /> to detect
-    /// missing or foreign ids.
-    /// Order of the returned list does not follow <paramref name="scenarioIds" />.
+    /// Returns only the Scenarios that actually exist and belong to this
+    /// Application -- callers MUST check the returned list's ids against
+    /// <paramref name="scenarioIds" /> to detect missing or foreign ids. Order
+    /// of the returned list does not follow <paramref name="scenarioIds" />.
     /// </summary>
     Task<IReadOnlyList<Scenario>> GetByIdsAsync(
         Guid organizationId,
@@ -104,8 +100,8 @@ public interface IScenarioRepository
     );
 
     /// <summary>
-    /// Atomically deletes the Scenario, the given Activities, and its folder/tag
-    /// mappings in a single transaction.
+    /// Atomically deletes the Scenario, the given Activities, and its
+    /// folder/tag mappings in a single transaction.
     /// </summary>
     Task<ScenarioDeleteResult> TryDeleteAsync(
         Guid organizationId,

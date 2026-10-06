@@ -2,7 +2,8 @@ using A2.Server.UserManagement.Models;
 
 namespace A2.Server.UnitTests;
 
-/// <summary>Unit tests for <see cref="GoogleIdentity.IsEmailReallyVerified" />.</summary>
+/// <summary>Unit tests for
+/// <see cref="GoogleIdentity.IsEmailReallyVerified" />.</summary>
 public sealed class GoogleIdentityTests
 {
     [Theory]

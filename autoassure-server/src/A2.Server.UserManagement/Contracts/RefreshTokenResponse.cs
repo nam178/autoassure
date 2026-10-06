@@ -1,7 +1,8 @@
 namespace A2.Server.UserManagement.Contracts;
 
 // ReSharper disable NotAccessedPositionalProperty.Global -- serialized to the JSON response body, not read in-process
-/// <summary>Returned after a successful token refresh: the newly issued tokens.</summary>
+/// <summary>Returned after a successful token refresh: the newly issued
+/// tokens.</summary>
 /// <param name="ExpiresInSeconds">
 /// Number of seconds until <paramref name="Token" /> expires, measured from
 /// when the response is sent.

@@ -34,9 +34,8 @@ public record ActivityResult
     > ResolvedPreconditions { get; init; } = new Dictionary<Guid, string>();
 
     /// <summary>
-    /// Keyed by EvidenceDefinition Id -- not Name, since two EvidenceDefinitions
-    /// can share a
-    /// Name.
+    /// Keyed by EvidenceDefinition Id -- not Name, since two
+    /// EvidenceDefinitions can share a Name.
     /// </summary>
     public IReadOnlyDictionary<Guid, string> Evidence { get; init; } =
         new Dictionary<Guid, string>();

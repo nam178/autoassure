@@ -21,7 +21,8 @@ public interface IRunRepository
     /// Lists an Application's Runs, newest first, restricted to the given
     /// <paramref name="triggers" />.
     /// </summary>
-    /// <exception cref="ArgumentException"><paramref name="triggers" /> is empty.</exception>
+    /// <exception cref="ArgumentException"><paramref name="triggers" /> is
+    /// empty.</exception>
     Task<IReadOnlyList<RunInfo>> ListByApplicationAsync(
         Guid organizationId,
         Guid applicationId,
@@ -47,9 +48,8 @@ public interface IRunRepository
 
     /// <exception cref="ArgumentException">
     /// <paramref name="terminalStatus" /> is Pending or Running -- neither is a
-    /// state this operation can
-    /// end a Run in. Callers avoid this by only ever passing Completed, Cancelled
-    /// or Abandoned.
+    /// state this operation can end a Run in. Callers avoid this by only ever
+    /// passing Completed, Cancelled or Abandoned.
     /// </exception>
     Task<bool> TryMarkAsEndedAsync(
         Guid organizationId,
@@ -71,7 +71,8 @@ public interface IRunRepository
         RunUpdatableFields fields
     );
 
-    /// <summary>Lists the Runs currently Running for this Application.</summary>
+    /// <summary>Lists the Runs currently Running for this
+    /// Application.</summary>
     Task<IReadOnlyList<RunningRun>> ListRunningByApplicationAsync(
         Guid organizationId,
         Guid applicationId
@@ -79,14 +80,11 @@ public interface IRunRepository
 
     /// <summary>
     /// Appends one entry to the Run's status update log and advances the Run's
-    /// <c>LastSeq</c> to
-    /// match, atomically.
-    /// Returns false, and writes nothing, when this Seq was already appended; when
-    /// a concurrent append
-    /// with a larger Seq has already moved the Run's <c>LastSeq</c> past it, so
-    /// this one permanently loses
-    /// its slot rather than being applied out of order; or when its <c>Status</c>
-    /// is not Running.
+    /// <c>LastSeq</c> to match, atomically. Returns false, and writes nothing,
+    /// when this Seq was already appended; when a concurrent append with a
+    /// larger Seq has already moved the Run's <c>LastSeq</c> past it, so this
+    /// one permanently loses its slot rather than being applied out of order;
+    /// or when its <c>Status</c> is not Running.
     /// </summary>
     Task<bool> TryAppendStatusUpdateAsync(
         Guid organizationId,

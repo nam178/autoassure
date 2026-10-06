@@ -1,6 +1,7 @@
 namespace A2.Server.UserManagement.Models;
 
-/// <summary>An AutoAssure user account, provisioned from a Google sign-in.</summary>
+/// <summary>An AutoAssure user account, provisioned from a Google
+/// sign-in.</summary>
 public record User
 {
     public required Guid Id { get; init; }

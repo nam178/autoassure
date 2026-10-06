@@ -27,12 +27,11 @@ using RunTrigger = A2.Server.Engine.Contracts.RunTrigger;
 namespace A2.Server.Tests.Controllers;
 
 /// <summary>
-/// Integration tests for <see cref="A2.Server.WebApi.Controllers.RunsController" />
-/// over real HTTP,
+/// Integration tests for
+/// <see cref="A2.Server.WebApi.Controllers.RunsController" /> over real HTTP,
 /// against DynamoDB Local: Create Run (Manual), Get Run, List Runs, Start Run
-/// and End Run, plus the
-/// nested route's read-after-write fix, snapshot immutability, and the 404/409
-/// rules.
+/// and End Run, plus the nested route's read-after-write fix, snapshot
+/// immutability, and the 404/409 rules.
 /// </summary>
 [Collection("DynamoDbLocal")]
 public sealed class RunsControllerTests

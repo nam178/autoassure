@@ -27,7 +27,8 @@ public record RunResponse
 
     public required RunEnvironmentSnapshotResponse Environment { get; init; }
 
-    /// <summary>One snapshot per Scenario the Run ran, in no particular order.</summary>
+    /// <summary>One snapshot per Scenario the Run ran, in no particular
+    /// order.</summary>
     public required IReadOnlyList<RunScenarioSnapshotResponse> Scenarios { get; init; }
 
     /// <summary>
@@ -49,10 +50,8 @@ public record RunResponse
 
     /// <summary>
     /// When the owning worker last proved it was alive. Null while Status is
-    /// Pending. A Run
-    /// stuck on Running with an old LastHeartbeatAt has likely lost its worker --
-    /// Status alone does not
-    /// tell you that.
+    /// Pending. A Run stuck on Running with an old LastHeartbeatAt has likely
+    /// lost its worker -- Status alone does not tell you that.
     /// </summary>
     public DateTimeOffset? LastHeartbeatAt { get; init; }
 }

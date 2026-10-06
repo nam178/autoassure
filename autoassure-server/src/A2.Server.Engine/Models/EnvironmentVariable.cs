@@ -18,10 +18,9 @@ public record EnvironmentVariable
     public required DateTimeOffset UpdatedAt { get; init; }
 
     /// <summary>
-    /// When true, the Value holds a secret (a token, a password, an API key). It
-    /// is stored
-    /// whole -- the executor needs the real value -- but the API masks it on the
-    /// way out.
+    /// When true, the Value holds a secret (a token, a password, an API key).
+    /// It is stored whole -- the executor needs the real value -- but the API
+    /// masks it on the way out.
     /// </summary>
     public required bool IsSensitive { get; init; }
 }

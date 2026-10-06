@@ -15,7 +15,8 @@ public static class WorkerMessageSerializer
         where TMessage : IWorkerMessage =>
         JsonSerializer.Serialize(message, Options);
 
-    /// <exception cref="JsonException">The body is not valid JSON for <typeparamref name="TMessage"/>.</exception>
+    /// <exception cref="JsonException">The body is not valid JSON for
+    /// <typeparamref name="TMessage"/>.</exception>
     public static TMessage DeserializeMessage<TMessage>(string messageBody)
         where TMessage : IWorkerMessage =>
         JsonSerializer.Deserialize<TMessage>(messageBody, Options)

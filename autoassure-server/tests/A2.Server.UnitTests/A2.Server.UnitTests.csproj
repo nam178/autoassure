@@ -20,5 +20,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\A2.Server.UserManagement\A2.Server.UserManagement.csproj" />
     <ProjectReference Include="..\..\src\A2.Server.Engine\A2.Server.Engine.csproj" />
+    <ProjectReference Include="..\..\src\A2.Server.Workers\A2.Server.Workers.csproj" />
   </ItemGroup>
 </Project>

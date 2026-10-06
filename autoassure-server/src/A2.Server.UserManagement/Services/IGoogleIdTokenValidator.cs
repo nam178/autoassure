@@ -9,7 +9,8 @@ namespace A2.Server.UserManagement.Services;
 /// </summary>
 public interface IGoogleIdTokenValidator
 {
-    /// <summary>Validates <paramref name="idToken" /> and returns its decoded payload.</summary>
+    /// <summary>Validates <paramref name="idToken" /> and returns its decoded
+    /// payload.</summary>
     /// <exception cref="InvalidJwtException">
     /// The token's signature, audience, or
     /// claims failed validation.

@@ -24,7 +24,8 @@ public class ScenariosController(
     private const string DefaultFolder = "/";
 
     /// <response code="400">
-    /// A tag in Tags is longer than 50 characters or Tags contains duplicate values (case-sensitive).
+    /// A tag in Tags is longer than 50 characters or Tags contains duplicate
+    /// values (case-sensitive).
     /// </response>
     /// <response code="404">
     /// No Application with the given applicationId exists in the caller's
@@ -92,8 +93,8 @@ public class ScenariosController(
     }
 
     /// <summary>
-    /// Returns active Scenarios in the Application. Supports filtering by folder or tag,
-    /// which are mutually exclusive.
+    /// Returns active Scenarios in the Application. Supports filtering by
+    /// folder or tag, which are mutually exclusive.
     /// </summary>
     /// <response code="400">
     /// Both folder and tag were provided; they are mutually
@@ -123,7 +124,8 @@ public class ScenariosController(
         return result;
     }
 
-    /// <summary>Returns archived Scenarios in the Application. Supports filtering by folder or tag, which are mutually exclusive.</summary>
+    /// <summary>Returns archived Scenarios in the Application. Supports
+    /// filtering by folder or tag, which are mutually exclusive.</summary>
     /// <response code="400">
     /// Both folder and tag were provided; they are mutually
     /// exclusive.
@@ -326,7 +328,8 @@ public class ScenariosController(
     }
 
     /// <response code="400">
-    /// A tag in Tags is longer than 50 characters or Tags contains duplicate values (case-sensitive).
+    /// A tag in Tags is longer than 50 characters or Tags contains duplicate
+    /// values (case-sensitive).
     /// </response>
     /// <response code="404">
     /// No Scenario with the given scenarioId exists in this Application,

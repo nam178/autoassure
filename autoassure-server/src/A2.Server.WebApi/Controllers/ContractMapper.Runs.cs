@@ -17,16 +17,14 @@ namespace A2.Server.WebApi.Controllers;
 public static partial class ContractMapper
 {
     /// <summary>
-    /// Maps a whole Run to the response Create Run, Get Run and Start Run return.
-    /// Never carries
-    /// the status update log -- see RunResponse's doc.
+    /// Maps a whole Run to the response Create Run, Get Run and Start Run
+    /// return. Never carries the status update log -- see RunResponse's doc.
     /// <paramref name="maskSensitiveValues" /> defaults to true, masking every
-    /// sensitive variable's value
-    /// (see <see cref="SensitiveValueMasker.Mask" />) whether or not it is already
-    /// masked, which is
-    /// harmless. Start Run's success path is the only caller that passes false:
-    /// the winning claim is the
-    /// one time real values are ever returned.
+    /// sensitive variable's value (see
+    /// <see cref="SensitiveValueMasker.Mask" />) whether or not it is already
+    /// masked, which is harmless. Start Run's success path is the only caller
+    /// that passes false: the winning claim is the one time real values are
+    /// ever returned.
     /// </summary>
     public static RunResponse ToResponse(
         this Run run,
@@ -221,11 +219,9 @@ public static partial class ContractMapper
     }
 
     /// <summary>
-    /// Maps an appended status update's request body to the domain model, stamping
-    /// Seq, Kind
-    /// and CreatedAt onto it -- the caller supplies only Seq and the
-    /// ActivityResult
-    /// payload.
+    /// Maps an appended status update's request body to the domain model,
+    /// stamping Seq, Kind and CreatedAt onto it -- the caller supplies only Seq
+    /// and the ActivityResult payload.
     /// </summary>
     public static RunStatusUpdate ToModel(
         this AppendRunStatusUpdateRequest request,

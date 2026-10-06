@@ -22,14 +22,11 @@ public interface IActivityRepository
 
     /// <summary>
     /// Updates only Description, PreconditionIds, EvidenceIds, UpdatedByUserId,
-    /// and
-    /// UpdatedAt on an existing Activity, after verifying the Activity and every
-    /// newly referenced
-    /// Precondition/EvidenceDefinition still exist.
-    /// <paramref name="applicationId" /> is the
-    /// Activity's own ApplicationId (the caller already has it from a prior
-    /// lookup), used to scope
-    /// the Precondition/EvidenceDefinition checks.
+    /// and UpdatedAt on an existing Activity, after verifying the Activity and
+    /// every newly referenced Precondition/EvidenceDefinition still exist.
+    /// <paramref name="applicationId" /> is the Activity's own ApplicationId
+    /// (the caller already has it from a prior lookup), used to scope the
+    /// Precondition/EvidenceDefinition checks.
     /// </summary>
     Task<ActivityUpdateResult> TryUpdateAsync(
         Guid organizationId,
@@ -56,10 +53,10 @@ public interface IActivityRepository
     );
 
     /// <summary>
-    /// Atomically reassigns the Order of every Activity in this Scenario to match
-    /// <paramref name="orderedActivityIds" />'s position. Returns false if any id
-    /// no longer exists.
-    /// <paramref name="orderedActivityIds" /> MUST NOT exceed 100 entries.
+    /// Atomically reassigns the Order of every Activity in this Scenario to
+    /// match <paramref name="orderedActivityIds" />'s position. Returns false
+    /// if any id no longer exists. <paramref name="orderedActivityIds" /> MUST
+    /// NOT exceed 100 entries.
     /// </summary>
     Task<bool> TryReorderAsync(
         Guid organizationId,
@@ -72,7 +69,8 @@ public interface IActivityRepository
     /// ActivityCount in the same transaction.
     ///
     /// Returns false if the Activity no longer exists. Throws if the Scenario
-    /// vanished or its counter is already at  zero, indicating a bug in the application.
+    /// vanished or its counter is already at zero, indicating a bug in the
+    /// application.
     /// </summary>
     Task<bool> TryDeleteAsync(
         Guid organizationId,

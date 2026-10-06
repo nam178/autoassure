@@ -33,20 +33,17 @@ public interface IRunSnapshotBuilder
 
     /// <summary>
     /// Copies each of <paramref name="scenarios" /> -- and, for each, its
-    /// Activities and the
-    /// Preconditions/EvidenceDefinitions they currently reference -- into one
-    /// <see cref="RunScenarioSnapshot" /> per Scenario, in the same order as
-    /// <paramref name="scenarios" />.
-    /// A Precondition or EvidenceDefinition id an Activity references but that no
-    /// longer resolves is left
-    /// out of that Activity's snapshot rather than failing the whole Run: today's
-    /// repositories hard-delete
-    /// library rows without detaching Activities that reference them, so a stale
-    /// id already means "this
+    /// Activities and the Preconditions/EvidenceDefinitions they currently
+    /// reference -- into one <see cref="RunScenarioSnapshot" /> per Scenario,
+    /// in the same order as <paramref name="scenarios" />. A Precondition or
+    /// EvidenceDefinition id an Activity references but that no longer resolves
+    /// is left out of that Activity's snapshot rather than failing the whole
+    /// Run: today's repositories hard-delete library rows without detaching
+    /// Activities that reference them, so a stale id already means "this
     /// reference is gone" everywhere else in the app too.
     /// <paramref name="scenarios" /> MUST all belong to
-    /// <paramref name="applicationId" /> -- the caller is
-    /// responsible for that check; this method does not repeat it.
+    /// <paramref name="applicationId" /> -- the caller is responsible for that
+    /// check; this method does not repeat it.
     /// </summary>
     Task<IReadOnlyList<RunScenarioSnapshot>> BuildScenarioSnapshotsAsync(
         Guid organizationId,

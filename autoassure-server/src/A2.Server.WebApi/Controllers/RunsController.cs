@@ -34,9 +34,8 @@ public class RunsController(
 {
     /// <response code="400">
     /// EnvironmentId does not reference an Environment belonging to this
-    /// Application, ScenarioIds contains a duplicate, or ScenarioIds contains an
-    /// id that does not
-    /// reference a Scenario belonging to this Application.
+    /// Application, ScenarioIds contains a duplicate, or ScenarioIds contains
+    /// an id that does not reference a Scenario belonging to this Application.
     /// </response>
     /// <response code="404">
     /// No Application with the given applicationId exists in the caller's
@@ -166,10 +165,9 @@ public class RunsController(
     }
 
     /// <summary>
-    /// Lists the Runs currently Running for this Application, strongly consistent
-    /// -- a Run that
-    /// just started is never briefly missing from this result, unlike
-    /// <see cref="List" />.
+    /// Lists the Runs currently Running for this Application, strongly
+    /// consistent -- a Run that just started is never briefly missing from this
+    /// result, unlike <see cref="List" />.
     /// </summary>
     [HttpGet(
         "applications/{applicationId:guid}/runs/running",

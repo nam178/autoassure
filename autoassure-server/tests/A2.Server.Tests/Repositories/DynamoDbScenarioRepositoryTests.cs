@@ -1050,10 +1050,12 @@ public sealed class DynamoDbScenarioRepositoryTests(
 }
 
 /// <summary>
-/// Test wrapper for IActivityRepository that injects a race condition mutation during ListByScenarioAsync.
-/// The mutation callback is executed after the Scenario read but before the transaction executes,
-/// allowing tests to simulate concurrent modifications (ActivityCount changes, folder/tag deletions, etc.).
-/// Used for repository tests via direct instantiation and for controller tests via DI customization.
+/// Test wrapper for IActivityRepository that injects a race condition mutation
+/// during ListByScenarioAsync. The mutation callback is executed after the
+/// Scenario read but before the transaction executes, allowing tests to
+/// simulate concurrent modifications (ActivityCount changes, folder/tag
+/// deletions, etc.). Used for repository tests via direct instantiation and for
+/// controller tests via DI customization.
 /// </summary>
 public sealed class ActivityRepositoryRaceConditionWrapper(
     IActivityRepository inner,

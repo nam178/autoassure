@@ -21,7 +21,8 @@ public record Precondition
     public required DateTimeOffset UpdatedAt { get; init; }
 }
 
-/// <summary>Where a Precondition's value comes from at execution time.</summary>
+/// <summary>Where a Precondition's value comes from at execution
+/// time.</summary>
 public enum PreconditionValueSource
 {
     PriorActivity,

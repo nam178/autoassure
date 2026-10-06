@@ -23,10 +23,8 @@ public record RunSummaryResponse
 
     /// <summary>
     /// When the owning worker last proved it was alive. Null while Status is
-    /// Pending. A Run
-    /// stuck on Running with an old LastHeartbeatAt has likely lost its worker --
-    /// Status alone does not
-    /// tell you that.
+    /// Pending. A Run stuck on Running with an old LastHeartbeatAt has likely
+    /// lost its worker -- Status alone does not tell you that.
     /// </summary>
     public DateTimeOffset? LastHeartbeatAt { get; init; }
 }

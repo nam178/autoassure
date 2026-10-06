@@ -40,12 +40,12 @@ public interface IOrganizationUserRepository
     Task<IReadOnlyList<OrganizationUser>> ListByUserAsync(Guid userId);
 
     /// <summary>
-    /// Deletes a membership and atomically updates the Organization's OwnerCount
-    /// when removing an Owner. Returns the outcome: Removed when deleted, NotFound
-    /// when the membership does not exist or the role does not match, or
-    /// CannotDeleteLastOwner when trying to remove the last Owner.
-    /// <paramref name="role" /> is the caller's expected current role, used to
-    /// condition the delete and keep the counter honest.
+    /// Deletes a membership and atomically updates the Organization's
+    /// OwnerCount when removing an Owner. Returns the outcome: Removed when
+    /// deleted, NotFound when the membership does not exist or the role does
+    /// not match, or CannotDeleteLastOwner when trying to remove the last
+    /// Owner. <paramref name="role" /> is the caller's expected current role,
+    /// used to condition the delete and keep the counter honest.
     /// </summary>
     Task<RemoveMembershipOutcome> TryDeleteAsync(
         Guid organizationId,
@@ -53,6 +53,7 @@ public interface IOrganizationUserRepository
         OrganizationRole role
     );
 
-    /// <summary>Point lookup: the User's membership in this Organization, or null.</summary>
+    /// <summary>Point lookup: the User's membership in this Organization, or
+    /// null.</summary>
     Task<OrganizationUser?> GetAsync(Guid organizationId, Guid userId);
 }

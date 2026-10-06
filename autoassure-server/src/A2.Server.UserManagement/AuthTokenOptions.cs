@@ -24,16 +24,15 @@ public record AuthTokenOptions
     public string Audience { get; init; } = "";
 
     /// <summary>
-    /// How long an access token stays valid. Short-lived: once expired, the client
-    /// must call
-    /// the refresh endpoint to get a new one rather than logging in again.
+    /// How long an access token stays valid. Short-lived: once expired, the
+    /// client must call the refresh endpoint to get a new one rather than
+    /// logging in again.
     /// </summary>
     public int AccessTokenExpiryMinutes { get; init; } = 15;
 
     /// <summary>
-    /// How long a refresh token stays valid after being issued. Long-lived: once
-    /// expired, the
-    /// user must log in again to get a new one.
+    /// How long a refresh token stays valid after being issued. Long-lived:
+    /// once expired, the user must log in again to get a new one.
     /// </summary>
     public int RefreshTokenExpiryDays { get; init; } = 30;
 }

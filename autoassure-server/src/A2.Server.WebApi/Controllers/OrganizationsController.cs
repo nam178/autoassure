@@ -24,8 +24,9 @@ public class OrganizationsController(
     /// The caller's Organization could not be found, has been
     /// deleted, or is a personal organization.
     /// </response>
-    /// <response code="403">The caller is not an Owner of the Organization.</response>
-    /// <response code="404">The Organization does not exist.</response>
+    /// <response code="403">The caller is not an Owner of the
+    /// Organization.</response> <response code="404">The Organization does not
+    /// exist.</response>
     [HttpPost("{id:guid}/archive", Name = "ArchiveOrganization")]
     [AllowArchivedOrganization]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -85,8 +86,9 @@ public class OrganizationsController(
     /// The caller's Organization could not be found or has been
     /// deleted.
     /// </response>
-    /// <response code="403">The caller is not an Owner of the Organization.</response>
-    /// <response code="404">The Organization does not exist.</response>
+    /// <response code="403">The caller is not an Owner of the
+    /// Organization.</response> <response code="404">The Organization does not
+    /// exist.</response>
     [HttpPost("{id:guid}/unarchive", Name = "UnarchiveOrganization")]
     [AllowArchivedOrganization]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -189,7 +191,8 @@ public class OrganizationsController(
     /// Organization is personal, or the caller is the last Owner.
     /// </response>
     /// <response code="403">The caller is not an Owner.</response>
-    /// <response code="404">The target User is not a member of the Organization.</response>
+    /// <response code="404">The target User is not a member of the
+    /// Organization.</response>
     [HttpDelete(
         "{organizationId:guid}/members/{userId:guid}",
         Name = "RemoveOrganizationMember"

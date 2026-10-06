@@ -178,17 +178,14 @@ public static class RunDynamoDbMapper
     // ----- Header summary (RunHeaderIndex projection) -----
 
     /// <summary>
-    /// Builds a <see cref="RunInfo" /> from a <c>RunHeaderIndex</c> query result.
-    /// Reads only
-    /// the attributes that index projects (see the GSI's <c>non_key_attributes</c>
-    /// in dynamodb.tf) --
-    /// unlike <see cref="ToRun" />, this never touches OrganizationId,
-    /// ApplicationId, LastSeq or
-    /// TriggeredByUserId, none of which the index carries. The Environment
-    /// snapshot is not a header-row
-    /// attribute at all -- it lives on its own row -- so it was never something
-    /// this index could have
-    /// projected either.
+    /// Builds a <see cref="RunInfo" /> from a <c>RunHeaderIndex</c> query
+    /// result. Reads only the attributes that index projects (see the GSI's
+    /// <c>non_key_attributes</c> in dynamodb.tf) -- unlike
+    /// <see cref="ToRun" />, this never touches OrganizationId, ApplicationId,
+    /// LastSeq or TriggeredByUserId, none of which the index carries. The
+    /// Environment snapshot is not a header-row attribute at all -- it lives on
+    /// its own row -- so it was never something this index could have projected
+    /// either.
     /// </summary>
     public static RunInfo ToRunInfo(this Dictionary<string, AttributeValue> row)
     {

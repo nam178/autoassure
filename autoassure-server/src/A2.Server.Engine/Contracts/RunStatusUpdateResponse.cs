@@ -14,9 +14,8 @@ public record RunStatusUpdateResponse
     public required DateTimeOffset CreatedAt { get; init; }
 
     /// <summary>
-    /// Set when Kind is AppendActivityResult -- the only kind today, so always set
-    /// in
-    /// practice.
+    /// Set when Kind is AppendActivityResult -- the only kind today, so always
+    /// set in practice.
     /// </summary>
     public ActivityResult? ActivityResult { get; init; }
 }

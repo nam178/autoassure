@@ -3,7 +3,8 @@ using EvidenceDefinition = A2.Server.Engine.Models.EvidenceDefinition;
 
 namespace A2.Server.WebApi.Controllers;
 
-/// <summary>Mapping between EvidenceDefinition Contracts and domain Models.</summary>
+/// <summary>Mapping between EvidenceDefinition Contracts and domain
+/// Models.</summary>
 public static partial class ContractMapper
 {
     public static EvidenceDefinitionResponse ToResponse(

@@ -2,7 +2,8 @@ using A2.Server.Engine.Models;
 
 namespace A2.Server.UnitTests;
 
-/// <summary>Unit tests for <see cref="RunScenarioSnapshot.FromScenario" />.</summary>
+/// <summary>Unit tests for
+/// <see cref="RunScenarioSnapshot.FromScenario" />.</summary>
 public sealed class RunScenarioSnapshotTests
 {
     [Fact]

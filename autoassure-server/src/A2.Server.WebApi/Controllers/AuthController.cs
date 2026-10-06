@@ -57,7 +57,8 @@ public class AuthController(
         }
     }
 
-    /// <response code="401">The refresh token is invalid, expired, or revoked.</response>
+    /// <response code="401">The refresh token is invalid, expired, or
+    /// revoked.</response>
     [HttpPost("refresh", Name = "RefreshToken")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(

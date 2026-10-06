@@ -10,11 +10,10 @@ public record Run
     public required IReadOnlyList<RunScenarioSnapshot> Scenarios { get; init; }
 
     /// <summary>
-    /// Running does not by itself mean the owning worker is still alive -- it may
-    /// have crashed
-    /// or been killed without anything having noticed yet. Treat Running as "not
-    /// yet terminal," and
-    /// check <see cref="LastHeartbeatAt" /> to tell whether it is actually making
+    /// Running does not by itself mean the owning worker is still alive -- it
+    /// may have crashed or been killed without anything having noticed yet.
+    /// Treat Running as "not yet terminal," and check
+    /// <see cref="LastHeartbeatAt" /> to tell whether it is actually making
     /// progress.
     /// </summary>
     public required RunStatus Status { get; init; }
@@ -26,9 +25,8 @@ public record Run
     public long LastStatusUpdateSequenceNumber { get; init; }
 
     /// <summary>
-    /// Who triggered this Run. A person triggers a Manual run. Null means a system
-    /// timer
-    /// triggered it.
+    /// Who triggered this Run. A person triggers a Manual run. Null means a
+    /// system timer triggered it.
     /// </summary>
     public Guid? TriggeredByUserId { get; init; }
 

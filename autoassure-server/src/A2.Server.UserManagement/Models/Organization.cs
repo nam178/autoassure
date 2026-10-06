@@ -19,10 +19,10 @@ public record Organization
     public required DateTimeOffset UpdatedAt { get; init; }
 
     /// <summary>
-    /// The lifecycle state of this Organization. An Organization only ever holds
-    /// <see cref="LifecycleState.Active" /> or
-    /// <see cref="LifecycleState.Archived" />; it is never purged,
-    /// so <see cref="LifecycleState.Deleting" /> does not apply.
+    /// The lifecycle state of this Organization. An Organization only ever
+    /// holds <see cref="LifecycleState.Active" /> or
+    /// <see cref="LifecycleState.Archived" />; it is never purged, so
+    /// <see cref="LifecycleState.Deleting" /> does not apply.
     /// </summary>
     public required LifecycleState LifecycleState { get; init; }
 

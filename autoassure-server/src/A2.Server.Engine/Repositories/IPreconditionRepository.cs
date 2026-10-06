@@ -16,8 +16,8 @@ public interface IPreconditionRepository
 
     /// <summary>
     /// Updates only Name, ValueSource, ExampleValue, UpdatedByUserId, and
-    /// UpdatedAt on an
-    /// existing Precondition. Returns false if the Precondition no longer exists.
+    /// UpdatedAt on an existing Precondition. Returns false if the Precondition
+    /// no longer exists.
     /// </summary>
     Task<bool> TryUpdateAsync(
         Guid organizationId,

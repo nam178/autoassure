@@ -2,7 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace A2.Server.UserManagement.Contracts;
 
-/// <summary>Requests a new access token using a previously issued refresh token.</summary>
+/// <summary>Requests a new access token using a previously issued refresh
+/// token.</summary>
 public record RefreshTokenRequest
 {
     /// <summary>

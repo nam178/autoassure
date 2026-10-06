@@ -4,10 +4,9 @@ using A2.Server.Engine.Repositories;
 namespace A2.Server.UnitTests;
 
 /// <summary>
-/// Unit tests for the runs-table row mappers in <c>DynamoDbMapper.Run.cs</c> (now <c>RunDynamoDbMapper.cs</c>):
-/// the header row,
-/// the Scenario snapshot row and the status update row, each converted to a
-/// DynamoDB attribute map and
+/// Unit tests for the runs-table row mappers in <c>DynamoDbMapper.Run.cs</c>
+/// (now <c>RunDynamoDbMapper.cs</c>): the header row, the Scenario snapshot row
+/// and the status update row, each converted to a DynamoDB attribute map and
 /// back.
 /// </summary>
 public sealed class DynamoDbMapperRunTests

@@ -13,11 +13,9 @@ public interface IEnvironmentVariableRepository
 {
     /// <summary>
     /// Creates or updates a single variable's Value and IsSensitive as a whole.
-    /// Always sets
-    /// Value, IsSensitive, OrganizationId, EnvironmentId, UpdatedByUserId,
-    /// UpdatedAt; sets CreatedAt
-    /// and CreatedByUserId only if the row doesn't already exist. Returns false if
-    /// the Environment no
+    /// Always sets Value, IsSensitive, OrganizationId, EnvironmentId,
+    /// UpdatedByUserId, UpdatedAt; sets CreatedAt and CreatedByUserId only if
+    /// the row doesn't already exist. Returns false if the Environment no
     /// longer exists.
     /// </summary>
     Task<bool> TrySaveAsync(
@@ -31,10 +29,9 @@ public interface IEnvironmentVariableRepository
     );
 
     /// <summary>
-    /// All variables for this Environment. Ordering: alphabetically by Key — not
-    /// the order
-    /// variables were set, since variable names have no inherent creation-time
-    /// ordering.
+    /// All variables for this Environment. Ordering: alphabetically by Key —
+    /// not the order variables were set, since variable names have no inherent
+    /// creation-time ordering.
     /// </summary>
     Task<IReadOnlyList<EnvironmentVariable>> ListByEnvironmentAsync(
         Guid organizationId,

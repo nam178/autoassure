@@ -167,7 +167,8 @@ public class EnvironmentsController(
     /// </param>
     /// <response code="404">
     /// No Environment with the given environmentId exists in the caller's
-    /// Organization, or it no longer exists (deleted after this request started).
+    /// Organization, or it no longer exists (deleted after this request
+    /// started).
     /// </response>
     [HttpPut(
         "applications/{applicationId:guid}/environments/{environmentId:guid}/variables/{key}",

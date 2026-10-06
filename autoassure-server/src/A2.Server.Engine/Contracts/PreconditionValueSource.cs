@@ -1,6 +1,7 @@
 namespace A2.Server.Engine.Contracts;
 
-/// <summary>Where a Precondition's value comes from at execution time.</summary>
+/// <summary>Where a Precondition's value comes from at execution
+/// time.</summary>
 public enum PreconditionValueSource
 {
     PriorActivity,

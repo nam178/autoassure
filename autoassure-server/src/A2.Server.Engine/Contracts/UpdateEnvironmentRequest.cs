@@ -3,7 +3,8 @@ using A2.Server.Common;
 
 namespace A2.Server.Engine.Contracts;
 
-/// <summary>Request body to update an existing Environment's Name/Classification.</summary>
+/// <summary>Request body to update an existing Environment's
+/// Name/Classification.</summary>
 public record UpdateEnvironmentRequest
 {
     [Required]
