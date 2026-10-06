@@ -1,5 +1,5 @@
+using System.Text.Json;
 using A2.Server.Engine.AsyncProcessing;
-using Amazon.Runtime;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using Microsoft.Extensions.Hosting;
@@ -22,7 +22,7 @@ public sealed class SqsWorkerQueueConsumer(
     private const int VisibilityTimeoutSeconds = 900;
 
     private static readonly TimeSpan VisibilityHeartbeatInterval =
-        TimeSpan.FromMinutes(5);
+        TimeSpan.FromMinutes(1);
 
     private static readonly TimeSpan ReceiveFailureDelay = TimeSpan.FromSeconds(
         10
@@ -96,7 +96,7 @@ public sealed class SqsWorkerQueueConsumer(
             return response.Messages ?? [];
         }
         catch (Exception exception)
-            when (exception is AmazonServiceException or AmazonClientException)
+            when (exception is not OperationCanceledException)
         {
             logger.LogError(
                 exception,
@@ -132,9 +132,6 @@ public sealed class SqsWorkerQueueConsumer(
         }
     }
 
-    /// <exception cref="System.Text.Json.JsonException">
-    /// When the body of <paramref name="message" /> does not match its kind.
-    /// </exception>
     /// <exception cref="Exception">
     /// Any exception the handler throws is rethrown unchanged.
     /// </exception>
@@ -175,9 +172,21 @@ public sealed class SqsWorkerQueueConsumer(
             when (programCancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(
-                "Message {MessageId} interrupted by shutdown; left on the queue",
+                "Message {MessageId} interrupted by shutdown; returned to the queue",
                 message.MessageId
             );
+            await ReturnMessageToQueue(queueUrl, message);
+            return;
+        }
+        catch (JsonException exception)
+        {
+            logger.LogError(
+                exception,
+                "Message {MessageId} has a body that does not match kind {Kind}; returned to the queue now so it reaches the dead-letter queue sooner",
+                message.MessageId,
+                kindAttribute.StringValue
+            );
+            await ReturnMessageToQueue(queueUrl, message);
             return;
         }
 
@@ -293,25 +302,12 @@ public sealed class SqsWorkerQueueConsumer(
                 return;
             }
             catch (Exception exception)
-                when (exception
-                          is RequestThrottledException
-                          or AmazonClientException
-                     )
             {
-                logger.LogWarning(
+                logger.LogError(
                     exception,
                     "Extending visibility of message {MessageId} failed; will try again",
                     message.MessageId
                 );
-            }
-            catch (Exception exception)
-            {
-                logger.LogError(
-                    exception,
-                    "Extending visibility of message {MessageId} failed; heartbeat stopped",
-                    message.MessageId
-                );
-                return;
             }
         }
     }
@@ -331,7 +327,7 @@ public sealed class SqsWorkerQueueConsumer(
         }
         catch (Exception exception)
         {
-            logger.LogWarning(
+            logger.LogError(
                 exception,
                 "Returning message {MessageId} to the queue failed",
                 message.MessageId
@@ -353,7 +349,7 @@ public sealed class SqsWorkerQueueConsumer(
         }
         catch (Exception exception)
         {
-            logger.LogWarning(
+            logger.LogError(
                 exception,
                 "Deleting handled message {MessageId} failed",
                 message.MessageId
