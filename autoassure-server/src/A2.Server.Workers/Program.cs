@@ -11,7 +11,7 @@ using Microsoft.Extensions.Hosting;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-var ssmParameterPath = builder.Configuration["AUTOASSURE_SSM_PARAMETER_PATH"];
+var ssmParameterPath = builder.Configuration["Ssm:ParameterPath"];
 if (!string.IsNullOrEmpty(ssmParameterPath))
     builder.Configuration.AddSystemsManager(ssmParameterPath);
 

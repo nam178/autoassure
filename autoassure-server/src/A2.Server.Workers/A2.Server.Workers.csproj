@@ -18,6 +18,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="appsettings*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../A2.Server.Engine/A2.Server.Engine.csproj" />
   </ItemGroup>
 
@@ -26,6 +30,10 @@
     <PackageReference Include="AWSSDK.DynamoDBv2" Version="4.0.103.2" />
     <PackageReference Include="AWSSDK.SSO" Version="4.0.0.7" />
     <PackageReference Include="AWSSDK.SSOOIDC" Version="4.0.0.7" />
+    <PackageReference
+      Include="Microsoft.Extensions.Diagnostics.ResourceMonitoring"
+      Version="10.10.0"
+    />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
   </ItemGroup>
 </Project>

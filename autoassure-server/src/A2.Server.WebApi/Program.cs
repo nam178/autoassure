@@ -23,7 +23,7 @@ var builder = WebApplication.CreateBuilder(args);
 var isDesignTimeBuild =
     Assembly.GetEntryAssembly()?.GetName().Name != "A2.Server.WebApi";
 
-var ssmParameterPath = builder.Configuration["AUTOASSURE_SSM_PARAMETER_PATH"];
+var ssmParameterPath = builder.Configuration["Ssm:ParameterPath"];
 if (!isDesignTimeBuild && !string.IsNullOrEmpty(ssmParameterPath))
     builder.Configuration.AddSystemsManager(ssmParameterPath);
 

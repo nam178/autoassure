@@ -6,7 +6,6 @@
       "dotnetRunMessages": true,
       "environmentVariables": {
         "DOTNET_ENVIRONMENT": "Development",
-        "AUTOASSURE_SSM_PARAMETER_PATH": "/AutoAssure/Prod/",
         "AWS_PROFILE": "nam-admin"
       }
     }
