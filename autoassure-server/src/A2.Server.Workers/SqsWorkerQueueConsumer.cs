@@ -11,19 +11,23 @@ namespace A2.Server.Workers;
 public sealed class SqsWorkerQueueConsumer(
     IAmazonSQS sqsClient,
     IOptions<WorkerQueueOptions> queueOptions,
+    IOptions<WorkerVisibilityOptions> visibilityOptions,
+    ConcurrencyGate concurrencyGate,
     WorkerMessageDispatcher dispatcher,
     ILogger<SqsWorkerQueueConsumer> logger
 ) : BackgroundService
 {
     private const string KindAttributeName = "kind";
-    private const int MaxConcurrentMessages = 4;
 
-    // Must match visibility_timeout_seconds of the worker queue in autoassure-infra/sqs.tf.
-    private const int VisibilityTimeoutSeconds = 900;
-
-    private static readonly TimeSpan VisibilityHeartbeatInterval =
+    /// <summary>
+    /// How often to send heartbeat to SQS, indicating that the message is alive and being processed?
+    /// </summary>
+    private static readonly TimeSpan SendHeartBeatInterval =
         TimeSpan.FromMinutes(1);
 
+    /// <summary>
+    /// When it fails to receive messages from SQS, how long to wait before we try again?
+    /// </summary>
     private static readonly TimeSpan ReceiveFailureDelay = TimeSpan.FromSeconds(
         10
     );
@@ -32,32 +36,28 @@ public sealed class SqsWorkerQueueConsumer(
     {
         var queueUrl = queueOptions.Value.QueueUrl;
         logger.LogInformation("Consuming worker queue {QueueUrl}", queueUrl);
-        using var freeSlots = new SemaphoreSlim(
-            MaxConcurrentMessages,
-            MaxConcurrentMessages
-        );
         var runningMessages = new List<Task>();
 
         try
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                await freeSlots.WaitAsync(stoppingToken);
-                freeSlots.Release();
+                var freeSlots = await concurrencyGate.WaitForFreeSlotAsync(
+                    stoppingToken
+                );
                 var receivedMessages = await ReceiveMessages(
                     queueUrl,
-                    freeSlots.CurrentCount,
+                    freeSlots,
                     stoppingToken
                 );
 
                 foreach (var message in receivedMessages)
                 {
-                    await freeSlots.WaitAsync(stoppingToken);
+                    concurrencyGate.TakeSlot();
                     runningMessages.Add(
                         RunThenRelease(
                             HandleMessage(queueUrl, message, stoppingToken),
-                            message.MessageId,
-                            freeSlots
+                            message.MessageId
                         )
                     );
                 }
@@ -96,7 +96,7 @@ public sealed class SqsWorkerQueueConsumer(
             return response.Messages ?? [];
         }
         catch (Exception exception)
-            when (exception is not OperationCanceledException)
+            when (!stoppingToken.IsCancellationRequested)
         {
             logger.LogError(
                 exception,
@@ -107,11 +107,7 @@ public sealed class SqsWorkerQueueConsumer(
         }
     }
 
-    private async Task RunThenRelease(
-        Task work,
-        string messageId,
-        SemaphoreSlim semaphore
-    )
+    private async Task RunThenRelease(Task work, string messageId)
     {
         try
         {
@@ -128,7 +124,7 @@ public sealed class SqsWorkerQueueConsumer(
         }
         finally
         {
-            semaphore.Release();
+            concurrencyGate.ReleaseSlot();
         }
     }
 
@@ -273,7 +269,7 @@ public sealed class SqsWorkerQueueConsumer(
         CancellationToken cancellationToken
     )
     {
-        using var timer = new PeriodicTimer(VisibilityHeartbeatInterval);
+        using var timer = new PeriodicTimer(SendHeartBeatInterval);
         while (true)
         {
             try
@@ -292,12 +288,15 @@ public sealed class SqsWorkerQueueConsumer(
                     {
                         QueueUrl = queueUrl,
                         ReceiptHandle = message.ReceiptHandle,
-                        VisibilityTimeout = VisibilityTimeoutSeconds,
+                        VisibilityTimeout = visibilityOptions
+                            .Value
+                            .VisibilityTimeoutSeconds,
                     },
                     cancellationToken
                 );
             }
             catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
             {
                 return;
             }
